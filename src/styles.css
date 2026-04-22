@@ -39,6 +39,11 @@
   padding: 8px 10px;
 }
 
+.spec-context--specd {
+  background: #eef8f0;
+  border-color: #7fb58a;
+}
+
 .spec-project {
   font-size: 11px;
   font-weight: 700;
@@ -49,6 +54,14 @@
   color: #566052;
   font-size: 12px;
   margin-top: 2px;
+}
+
+.spec-page-status {
+  color: #1f7a3a;
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 4px;
+  text-transform: uppercase;
 }
 
 .spec-button {
@@ -68,6 +81,13 @@
 
 .spec-button:hover {
   background: #176530;
+}
+
+.spec-button--specd {
+  background: #145f2b;
+  box-shadow:
+    0 0 0 3px rgb(31 122 58 / 28%),
+    0 8px 24px rgb(0 0 0 / 22%);
 }
 
 .sally-panel {
@@ -139,6 +159,7 @@
 }
 
 .field input,
+.field select,
 .field textarea {
   background: #fff;
   border: 1px solid #cbd5c8;
@@ -153,6 +174,13 @@
 .field textarea {
   min-height: 84px;
   resize: vertical;
+}
+
+.inline-add {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr auto;
 }
 
 .image-preview {
@@ -214,3 +242,19 @@
   opacity: 0.55;
 }
 
+.restore-draft-button {
+  background: #f6f8f4;
+  border: 1px solid #c9d2c3;
+  border-radius: 6px;
+  bottom: 84px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+  color: #1d6132;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 12px;
+  position: fixed;
+  right: 24px;
+  z-index: 2147483647;
+}

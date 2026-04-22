@@ -16,15 +16,17 @@
 3. Confirm Sally opens as a right-side ride-along panel.
 4. Confirm the panel briefly shows `Reading page`.
 5. Confirm editable proposal fields appear.
-6. Edit at least `Zone` and `Title`.
-7. Click `Undo`.
-8. Confirm the generated draft values return.
-9. Edit a field again.
-10. Click `OK`.
-11. Confirm the panel disappears.
-12. Confirm the item count increments.
-13. Refresh the page.
-14. Confirm the item count remains.
+6. Pick an existing `Zone`.
+7. Choose `Add new zone...`, add a new zone, and confirm the new zone is selected.
+8. Edit at least `Title`.
+9. Press `Esc`.
+10. Confirm the panel minimizes and a `Restore Sally draft` button appears.
+11. Restore the draft and confirm edits remain.
+12. Click `OK`.
+13. Confirm the panel disappears.
+14. Confirm the item count increments and the floating control shows `Page spec'd`.
+15. Refresh the page.
+16. Confirm the item count remains and the page still shows as spec'd.
 
 ## Known PoC Limits
 

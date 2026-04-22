@@ -1,20 +1,20 @@
-import { UndoButton } from "./UndoButton";
+import { useState } from "react";
 import type { ScheduleItem } from "../lib/types";
 
 type PanelState =
   | { kind: "thinking" }
-  | { kind: "review"; original: ScheduleItem; draft: ScheduleItem };
+  | { kind: "review"; draft: ScheduleItem };
 
 type SallyPanelProps = {
   panel: PanelState;
+  zones: string[];
   onChange: (draft: ScheduleItem) => void;
-  onUndo: () => void;
+  onAddZone: (zone: string) => void;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
 };
 
 const textFields = [
-  ["zone", "Zone"],
   ["title", "Title"],
   ["manufacturer", "Manufacturer"],
   ["modelNumber", "Model"],
@@ -23,8 +23,12 @@ const textFields = [
   ["finishModelNumber", "Finish Model"]
 ] as const;
 
-export function SallyPanel({ panel, onChange, onUndo, onAccept, onCancel }: SallyPanelProps) {
+const ADD_NEW_ZONE_VALUE = "__add_new__";
+
+export function SallyPanel({ panel, zones, onChange, onAddZone, onAccept, onCancel }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
+  const [isAddingZone, setIsAddingZone] = useState(false);
+  const [newZone, setNewZone] = useState("");
 
   function updateField<Key extends keyof ScheduleItem>(key: Key, value: ScheduleItem[Key]) {
     if (!draft) {
@@ -48,6 +52,59 @@ export function SallyPanel({ panel, onChange, onUndo, onAccept, onCancel }: Sall
           <>
             {draft?.sourceImageUrl ? (
               <img className="image-preview" src={draft.sourceImageUrl} alt="" />
+            ) : null}
+
+            <div className="field">
+              <label htmlFor="sally-zone">Zone</label>
+              <select
+                id="sally-zone"
+                value={isAddingZone ? ADD_NEW_ZONE_VALUE : draft?.zone ?? ""}
+                onChange={(event) => {
+                  if (event.target.value === ADD_NEW_ZONE_VALUE) {
+                    setIsAddingZone(true);
+                    return;
+                  }
+
+                  setIsAddingZone(false);
+                  updateField("zone", event.target.value);
+                }}
+              >
+                <option value="">Unassigned</option>
+                {zones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+                {draft?.zone && !zones.includes(draft.zone) ? (
+                  <option value={draft.zone}>{draft.zone}</option>
+                ) : null}
+                <option value={ADD_NEW_ZONE_VALUE}>Add new zone...</option>
+              </select>
+            </div>
+
+            {isAddingZone ? (
+              <div className="inline-add">
+                <div className="field">
+                  <label htmlFor="sally-new-zone">New zone</label>
+                  <input
+                    id="sally-new-zone"
+                    value={newZone}
+                    onChange={(event) => setNewZone(event.target.value)}
+                  />
+                </div>
+                <button
+                  className="action-button secondary"
+                  disabled={!newZone.trim()}
+                  type="button"
+                  onClick={() => {
+                    onAddZone(newZone);
+                    setNewZone("");
+                    setIsAddingZone(false);
+                  }}
+                >
+                  Add zone
+                </button>
+              </div>
             ) : null}
 
             {textFields.map(([key, label]) => (
@@ -106,7 +163,6 @@ export function SallyPanel({ panel, onChange, onUndo, onAccept, onCancel }: Sall
       </div>
 
       <div className="panel-actions">
-        {panel.kind === "review" ? <UndoButton onClick={onUndo} /> : null}
         <button className="action-button secondary" type="button" onClick={onCancel}>
           Cancel
         </button>
@@ -129,4 +185,3 @@ function splitList(value: string): string[] {
     .map((item) => item.trim())
     .filter(Boolean);
 }
-

@@ -3,25 +3,45 @@ import { SallyPanel } from "./components/SallyPanel";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
-import { listScheduleItems, saveScheduleItem } from "./lib/storage";
+import { listScheduleItems, listZones, saveScheduleItem, saveZone } from "./lib/storage";
 import type { ScheduleItem } from "./lib/types";
 
 type PanelState =
   | { kind: "closed" }
   | { kind: "thinking" }
-  | { kind: "review"; original: ScheduleItem; draft: ScheduleItem };
+  | { kind: "review"; draft: ScheduleItem }
+  | { kind: "minimized"; draft: ScheduleItem };
 
 export default function App() {
   const [panel, setPanel] = useState<PanelState>({ kind: "closed" });
   const [itemCount, setItemCount] = useState(0);
+  const [isCurrentPageSpecd, setIsCurrentPageSpecd] = useState(false);
+  const [zones, setZones] = useState<string[]>([]);
 
   useEffect(() => {
     refreshItemCount();
+    refreshZones();
   }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && panel.kind === "review") {
+        setPanel({ kind: "minimized", draft: panel.draft });
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [panel]);
 
   async function refreshItemCount() {
     const items = await listScheduleItems();
     setItemCount(items.length);
+    setIsCurrentPageSpecd(items.some((item) => samePageUrl(item.sourceUrl, window.location.href)));
+  }
+
+  async function refreshZones() {
+    setZones(await listZones());
   }
 
   function handleSpecClick() {
@@ -29,8 +49,16 @@ export default function App() {
     window.setTimeout(() => {
       const captured = capturePage(document, window.location);
       const proposal = mockExtractScheduleItem(captured);
-      setPanel({ kind: "review", original: proposal, draft: proposal });
+      setPanel({ kind: "review", draft: proposal });
     }, 250);
+  }
+
+  async function handleAddZone(zone: string) {
+    const nextZones = await saveZone(zone);
+    setZones(nextZones);
+    if (panel.kind === "review") {
+      setPanel({ kind: "review", draft: { ...panel.draft, zone: zone.trim() } });
+    }
   }
 
   async function handleAccept(item: ScheduleItem) {
@@ -41,20 +69,44 @@ export default function App() {
 
   return (
     <div className="sally-root">
-      <SpecButton itemCount={itemCount} onClick={handleSpecClick} />
-      {panel.kind !== "closed" ? (
+      <SpecButton
+        isCurrentPageSpecd={isCurrentPageSpecd}
+        itemCount={itemCount}
+        onClick={handleSpecClick}
+      />
+      {panel.kind === "minimized" ? (
+        <button
+          className="restore-draft-button"
+          type="button"
+          onClick={() => setPanel({ kind: "review", draft: panel.draft })}
+        >
+          Restore Sally draft
+        </button>
+      ) : null}
+      {panel.kind === "thinking" || panel.kind === "review" ? (
         <SallyPanel
           panel={panel}
+          zones={zones}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
             panel.kind === "review" ? setPanel({ ...panel, draft }) : undefined
           }
-          onUndo={() =>
-            panel.kind === "review" ? setPanel({ ...panel, draft: panel.original }) : undefined
-          }
+          onAddZone={handleAddZone}
           onAccept={handleAccept}
         />
       ) : null}
     </div>
   );
+}
+
+function samePageUrl(left: string, right: string): boolean {
+  try {
+    const leftUrl = new URL(left);
+    const rightUrl = new URL(right);
+    leftUrl.hash = "";
+    rightUrl.hash = "";
+    return leftUrl.href === rightUrl.href;
+  } catch {
+    return left === right;
+  }
 }

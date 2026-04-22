@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearScheduleItems, listScheduleItems, saveScheduleItem } from "./storage";
+import {
+  clearScheduleItems,
+  listScheduleItems,
+  listZones,
+  saveScheduleItem,
+  saveZone
+} from "./storage";
 import type { ScheduleItem } from "./types";
 
 const storageState: Record<string, unknown> = {};
@@ -77,5 +83,24 @@ describe("schedule item storage", () => {
 
     await expect(listScheduleItems()).resolves.toEqual([]);
   });
-});
 
+  it("lists default zones when no custom zones are stored", async () => {
+    await expect(listZones()).resolves.toEqual([
+      "Entry",
+      "Kitchen",
+      "Powder Room",
+      "Primary Bath",
+      "Bath 2",
+      "Laundry",
+      "Exterior"
+    ]);
+  });
+
+  it("saves new zones without duplicating existing values", async () => {
+    await saveZone("Guest Bath");
+    await saveZone("Guest Bath");
+
+    await expect(listZones()).resolves.toContain("Guest Bath");
+    expect((await listZones()).filter((zone) => zone === "Guest Bath")).toHaveLength(1);
+  });
+});
