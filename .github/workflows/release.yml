@@ -24,7 +24,10 @@ jobs:
       - run: npm run build
 
       - name: Zip extension
-        run: cd dist && zip -r ../sally-extension.zip . && cd ..
+        run: |
+          FILENAME="sally-$(date +%Y-%m-%d)-${GITHUB_SHA::7}.zip"
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          cd dist && zip -r "../$FILENAME" . && cd ..
 
       - name: Publish latest release
         env:
@@ -32,14 +35,14 @@ jobs:
         run: |
           gh release delete latest --yes 2>/dev/null || true
           gh release create latest \
-            --title "Latest Build" \
+            --title "Latest Build ($(date +%Y-%m-%d))" \
             --notes "## Install instructions
 
-          1. Download **sally-extension.zip** below
+          1. Download **$FILENAME** below
           2. Unzip it anywhere (e.g. your Downloads folder)
           3. Open Chrome and go to \`chrome://extensions\`
           4. Toggle on **Developer mode** (top-right corner)
           5. Click **Load unpacked** and select the unzipped folder
           6. The extension is installed — repeat steps 3-5 to update it" \
             --prerelease \
-            sally-extension.zip
+            "$FILENAME"

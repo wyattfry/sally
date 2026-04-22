@@ -1,25 +1,6 @@
 # Sally & Mothership
 
-Initial design developer thoughts:
-
-- prioritize creating a usable application quickly to aid short iterations
-- use popular, mature stacks that make developing painless, e.g. QoL features like file watching, auto restarting server, ci/cd automation (maybe GitHub self-hosted agents?)
-- include an auto-update mechanism in Chrome extension so end user need not perform awkward tasks whenever a change is published
-- use strict dir / file structure
-- use test-driven development
-- keep functions pure, single-purpose
-- consider using Docker Compose for initial PoC
-- initial components: Chrome browser extension, Mothership dashboard application, database
-- support multiple users, each user can have multiple projects, each project has one "schedule" (need to confirm), each entity with the full CRUD abilities
-- use oauth or something else easy for first PoC
-- select an appropriate AI agent to use in the loop to support two users, can be a service if free/included/cheap, or can be run on my own hardware
-- for frontend, i've liked using Next.JS before for its completeness and dev-friendliness, but am open to whatever the standard is for extension development
-- for backend, i prefer Go, keep things simple and clean. Makefiles.
-- monorepo unless there's a compelling reason to go multi-repo
-
-## Current PoC
-
-This repo now contains a Chrome MV3 extension proof of concept for the Sally SPEC capture loop.
+This repo contains a Chrome MV3 extension proof of concept for the Sally SPEC capture loop.
 
 The PoC does this:
 
