@@ -24,47 +24,6 @@
   z-index: 2147483647;
 }
 
-.spec-context {
-  align-items: flex-end;
-  background: #f6f8f4;
-  border: 1px solid #c9d2c3;
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
-  color: #2d352f;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  line-height: 1.15;
-  min-width: 112px;
-  padding: 8px 10px;
-  text-align: right;
-}
-
-.spec-context--specd {
-  background: #eef8f0;
-  border-color: #7fb58a;
-}
-
-.spec-project {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.spec-count {
-  color: #566052;
-  font-size: 12px;
-  margin-top: 2px;
-}
-
-.spec-page-status {
-  color: #1f7a3a;
-  font-size: 11px;
-  font-weight: 800;
-  margin-top: 4px;
-  text-transform: uppercase;
-}
-
 .spec-button {
   background: #1f7a3a;
   border: 0;
@@ -82,23 +41,6 @@
 
 .spec-button:hover {
   background: #176530;
-}
-
-.spec-context:hover {
-  border-color: #9dae98;
-  cursor: pointer;
-}
-
-.spec-button--specd {
-  background: #9fc8a6;
-  box-shadow:
-    0 0 0 3px rgb(31 122 58 / 16%),
-    0 8px 24px rgb(0 0 0 / 16%);
-  color: #11391f;
-}
-
-.spec-button--specd:hover {
-  background: #8aba94;
 }
 
 .sally-panel {
@@ -134,6 +76,49 @@
   font-weight: 800;
   line-height: 1.1;
   margin-top: 4px;
+}
+
+.project-name-button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #17201a;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: 4px;
+  padding: 4px 7px 4px 0;
+  text-align: left;
+}
+
+.project-name-button:hover {
+  background: #f1f5ee;
+  border-color: #cbd5c8;
+}
+
+.project-name-button:focus {
+  outline: 2px solid #7fb58a;
+  outline-offset: 2px;
+}
+
+.project-name-input {
+  background: #fff;
+  border: 1px solid #9dae98;
+  border-radius: 6px;
+  color: #17201a;
+  display: block;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: 4px;
+  max-width: 280px;
+  padding: 5px 8px;
+  width: 100%;
 }
 
 .panel-source {
@@ -270,6 +255,44 @@
   z-index: 2147483647;
 }
 
+.toast {
+  background: #f6f8f4;
+  border: 1px solid #9dae98;
+  border-radius: 6px;
+  bottom: 84px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  color: #17201a;
+  font-weight: 800;
+  min-width: 180px;
+  overflow: hidden;
+  padding: 11px 12px 13px;
+  position: fixed;
+  right: 24px;
+  z-index: 2147483647;
+}
+
+.toast-progress {
+  animation: toast-progress 3.2s linear forwards;
+  background: #1f7a3a;
+  bottom: 0;
+  height: 3px;
+  left: 0;
+  position: absolute;
+  width: 100%;
+}
+
+@keyframes toast-progress {
+  from {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  to {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+}
+
 .schedule-viewer {
   background: #fbfcf8;
   border-left: 1px solid #cfd8cb;
@@ -287,23 +310,34 @@
 }
 
 .viewer-header {
-  align-items: start;
+  align-items: center;
   border-bottom: 1px solid #d8dfd5;
   display: flex;
   justify-content: space-between;
   padding: 18px;
 }
 
+.viewer-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .icon-button {
+  align-items: center;
   background: #fff;
   border: 1px solid #b8c4b4;
   border-radius: 6px;
   color: #273026;
   cursor: pointer;
+  display: inline-flex;
   font: inherit;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 700;
   height: 32px;
-  line-height: 1;
+  justify-content: center;
+  line-height: 0;
+  padding: 0 0 2px;
   width: 32px;
 }
 
@@ -323,10 +357,26 @@
   background: #fff;
   border: 1px solid #d5ded1;
   border-radius: 6px;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 84px 1fr;
+  display: flow-root;
   padding: 12px;
+}
+
+.remove-item-button {
+  background: transparent;
+  border: 0;
+  color: #a13a2a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0;
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.schedule-item:hover .remove-item-button,
+.remove-item-button:focus {
+  opacity: 1;
 }
 
 .schedule-thumb {
@@ -339,11 +389,17 @@
   display: flex;
   font-size: 11px;
   font-weight: 800;
+  float: left;
   justify-content: center;
+  margin: 0 12px 8px 0;
   overflow: hidden;
   text-align: center;
   text-transform: uppercase;
   width: 84px;
+}
+
+.schedule-thumb:hover {
+  border-color: #9dae98;
 }
 
 .schedule-thumb img {
@@ -353,27 +409,38 @@
 }
 
 .schedule-item-content {
-  display: grid;
-  gap: 8px;
   min-width: 0;
+}
+
+.schedule-item-heading {
+  align-items: start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 14px;
 }
 
 .schedule-item h2 {
   font-size: 17px;
   line-height: 1.15;
-  margin: 0;
+  margin: 5px 0 8px;
 }
 
 .schedule-item p {
   color: #374333;
   line-height: 1.35;
-  margin: 0;
+  margin: 8px 0;
 }
 
 .schedule-item a {
   color: #1d6132;
   font-size: 12px;
   overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.schedule-item a:hover {
+  text-decoration: underline;
 }
 
 .schedule-item-topline {
@@ -402,4 +469,114 @@
 .schedule-item-grid strong {
   color: #17201a;
   font-size: 12px;
+}
+
+@media print {
+  @page {
+    margin: 0.45in;
+    size: landscape;
+  }
+
+  :host {
+    all: initial;
+  }
+
+  .spec-control,
+  .sally-panel,
+  .restore-draft-button,
+  .viewer-actions {
+    display: none !important;
+  }
+
+  .sally-root {
+    color: #000;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+  }
+
+  .schedule-viewer {
+    background: #fff;
+    border: 0;
+    box-shadow: none;
+    color: #000;
+    display: block;
+    inset: auto;
+    max-width: none;
+    position: static;
+    width: 100%;
+  }
+
+  .viewer-header {
+    border-bottom: 3px solid #000;
+    display: block;
+    padding: 0 0 10pt;
+  }
+
+  .panel-kicker {
+    color: #000;
+    font-size: 8pt;
+  }
+
+  .panel-title {
+    color: #000;
+    font-size: 20pt;
+  }
+
+  .viewer-list {
+    display: table;
+    overflow: visible;
+    padding: 12pt 0 0;
+    width: 100%;
+  }
+
+  .viewer-list::before {
+    content: "ZONE  CATEGORY  ITEM  MANUFACTURER  MODEL  FINISH  DESCRIPTION / NOTES  SOURCE";
+    display: table-caption;
+    font-size: 8pt;
+    font-weight: 800;
+    letter-spacing: 0;
+    padding-bottom: 5pt;
+  }
+
+  .schedule-item {
+    border: 2px solid #000;
+    border-radius: 0;
+    break-inside: avoid;
+    display: grid;
+    gap: 8pt;
+    grid-template-columns: 0.7in 1fr;
+    margin-bottom: 8pt;
+    padding: 7pt;
+  }
+
+  .schedule-thumb {
+    border: 1px solid #000;
+    border-radius: 0;
+    color: #000;
+    filter: grayscale(100%);
+    font-size: 7pt;
+    width: 0.7in;
+  }
+
+  .schedule-item-topline {
+    color: #000;
+    font-size: 8pt;
+  }
+
+  .schedule-item h2 {
+    color: #000;
+    font-size: 13pt;
+  }
+
+  .schedule-item-grid {
+    grid-template-columns: 0.85in 1fr 0.5in 1fr 0.45in 1fr;
+  }
+
+  .schedule-item-grid span,
+  .schedule-item-grid strong,
+  .schedule-item p,
+  .schedule-item a {
+    color: #000;
+    font-size: 8pt;
+  }
 }

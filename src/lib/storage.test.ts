@@ -3,6 +3,7 @@ import {
   clearScheduleItems,
   listScheduleItems,
   listZones,
+  removeScheduleItem,
   saveScheduleItem,
   saveZone
 } from "./storage";
@@ -74,6 +75,19 @@ describe("schedule item storage", () => {
     await saveScheduleItem(second);
 
     await expect(listScheduleItems()).resolves.toEqual([first, second]);
+  });
+
+  it("stores duplicate captures with unique ids so removing one leaves the others", async () => {
+    await saveScheduleItem(scheduleItem({ title: "First capture" }));
+    await saveScheduleItem(scheduleItem({ title: "Second capture" }));
+
+    const items = await listScheduleItems();
+    expect(items).toHaveLength(2);
+    expect(new Set(items.map((item) => item.id)).size).toBe(2);
+
+    await removeScheduleItem(items[0].id);
+
+    await expect(listScheduleItems()).resolves.toEqual([items[1]]);
   });
 
   it("clears stored schedule items", async () => {

@@ -6,7 +6,7 @@ Build a proof of concept that validates the browser extension capture experience
 
 ## Scope
 
-The PoC uses a real Chrome MV3 extension with a Vite and React injected UI. It has no backend, auth, database, product-page detection, context menu, or full Mothership dashboard. Persistence is limited to accepted schedule items in `chrome.storage.local`.
+The PoC uses a real Chrome MV3 extension with a Vite and React injected UI. It has no backend, auth, database, product-page detection, or full Mothership dashboard. Persistence is limited to accepted schedule items in `chrome.storage.local`.
 
 ## User Flow
 
@@ -18,7 +18,8 @@ The PoC uses a real Chrome MV3 extension with a Vite and React injected UI. It h
 6. The user edits the proposal.
 7. The user clicks `OK`.
 8. The item is saved to `chrome.storage.local`.
-9. Sally disappears and the user returns to browsing with only the `SPEC` button and small project/item-count context visible.
+9. Sally disappears, a short `Item added` toast confirms the capture, and the user returns to browsing with only the `SPEC` button visible.
+10. The user can reopen Sally and click `View Items`, or use the context menu invocation, to continue the same local schedule flow.
 
 ## Data Model
 
@@ -41,9 +42,9 @@ The mock extractor should accept the same kind of captured payload a real extrac
 
 ## Components
 
-- `SpecButton`: always-visible green invocation control and item count.
-- `SallyPanel`: thinking state and editable proposal form.
-- `UndoButton`: restores the proposal to its last generated state during review.
+- `SpecButton`: always-visible green invocation control.
+- `SallyPanel`: thinking state, editable proposal form, project name context, and View Items action.
+- `ScheduleViewer`: accepted item list, project rename, item removal, thumbnail links, and print output.
 - Capture library: reads the active page DOM.
 - Mock extraction library: turns captured page data into a schedule item proposal.
 - Storage library: wraps `chrome.storage.local` behind `listScheduleItems`, `saveScheduleItem`, and `clearScheduleItems`.
@@ -55,7 +56,7 @@ The mock extractor should accept the same kind of captured payload a real extrac
 - Clicking `SPEC` opens Sally without navigating away.
 - Sally presents one editable schedule proposal after a thinking state.
 - `OK` persists the accepted item to `chrome.storage.local`.
-- The panel disappears after `OK`.
-- Reloading or changing pages preserves the accepted item count.
+- The panel disappears after `OK` and shows a temporary confirmation toast.
+- `View Items` closes the Sally panel and opens the schedule viewer.
+- Reloading or changing pages preserves accepted items.
 - The implementation remains mocked and local-only.
-

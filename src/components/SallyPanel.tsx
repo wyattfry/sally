@@ -7,25 +7,44 @@ type PanelState =
 
 type SallyPanelProps = {
   panel: PanelState;
+  projectName: string;
   zones: string[];
   onChange: (draft: ScheduleItem) => void;
   onAddZone: (zone: string) => void;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
+  onViewItems: () => void;
 };
 
 const textFields = [
   ["title", "Title"],
   ["manufacturer", "Manufacturer"],
   ["modelNumber", "Model"],
-  ["category", "Category"],
   ["finish", "Finish"],
   ["finishModelNumber", "Finish Model"]
 ] as const;
 
 const ADD_NEW_ZONE_VALUE = "__add_new__";
+const DEFAULT_CATEGORIES = [
+  "Plumbing Fixture",
+  "Lighting",
+  "Appliance",
+  "Hardware",
+  "Finish",
+  "Furniture",
+  "Accessory"
+];
 
-export function SallyPanel({ panel, zones, onChange, onAddZone, onAccept, onCancel }: SallyPanelProps) {
+export function SallyPanel({
+  panel,
+  projectName,
+  zones,
+  onChange,
+  onAddZone,
+  onAccept,
+  onCancel,
+  onViewItems
+}: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
   const [isAddingZone, setIsAddingZone] = useState(false);
   const [newZone, setNewZone] = useState("");
@@ -38,9 +57,9 @@ export function SallyPanel({ panel, zones, onChange, onAddZone, onAccept, onCanc
   }
 
   return (
-    <aside className="sally-panel" aria-label="Sally proposal">
+    <aside className="sally-panel" aria-label="Sally capture panel">
       <div className="panel-header">
-        <div className="panel-kicker">Sally proposal</div>
+        <div className="panel-kicker">{projectName}</div>
         <div className="panel-title">{panel.kind === "thinking" ? "Reading page" : "Add item to schedule"}</div>
         {draft ? <div className="panel-source">{draft.sourceTitle}</div> : null}
       </div>
@@ -107,6 +126,24 @@ export function SallyPanel({ panel, zones, onChange, onAddZone, onAccept, onCanc
               </div>
             ) : null}
 
+            <div className="field">
+              <label htmlFor="sally-category">Category</label>
+              <select
+                id="sally-category"
+                value={draft?.category ?? ""}
+                onChange={(event) => updateField("category", event.target.value)}
+              >
+                {draft?.category && !DEFAULT_CATEGORIES.includes(draft.category) ? (
+                  <option value={draft.category}>{draft.category}</option>
+                ) : null}
+                {DEFAULT_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {textFields.map(([key, label]) => (
               <div className="field" key={key}>
                 <label htmlFor={`sally-${key}`}>{label}</label>
@@ -163,6 +200,9 @@ export function SallyPanel({ panel, zones, onChange, onAddZone, onAccept, onCanc
       </div>
 
       <div className="panel-actions">
+        <button className="action-button secondary" type="button" onClick={onViewItems}>
+          View Items
+        </button>
         <button className="action-button secondary" type="button" onClick={onCancel}>
           Cancel
         </button>

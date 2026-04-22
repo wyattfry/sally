@@ -46,24 +46,28 @@ describe("App", () => {
     installChromeStorageMock();
   });
 
-  it("opens Sally, edits a proposal, saves it, and refreshes the item count", async () => {
+  it("opens Sally, edits a proposal, saves it, and shows an accepted-item toast", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(await screen.findByText("0 items")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "SPEC" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /My New Project.*0 items/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "SPEC" }));
 
     expect(screen.getByText("Reading page")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("Wall Faucet")).toBeInTheDocument();
+    expect(screen.getByText("My New Project")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("Zone"), "Primary Bath");
+    await user.selectOptions(screen.getByLabelText("Category"), "Plumbing Fixture");
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Wall faucet revised");
     await user.click(screen.getByRole("button", { name: "OK" }));
 
-    await waitFor(() => expect(screen.queryByText("Sally proposal")).not.toBeInTheDocument());
-    expect(await screen.findByText("1 item")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument());
+    expect(screen.getByText("Item added")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "SPEC" })).not.toHaveClass("spec-button--specd");
   });
 
   it("does not show undo while creating a new proposal", async () => {
@@ -104,13 +108,13 @@ describe("App", () => {
 
     await user.keyboard("{Escape}");
 
-    expect(screen.queryByLabelText("Sally proposal")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Restore Sally draft" }));
 
     expect(await screen.findByDisplayValue("Draft title to keep")).toBeInTheDocument();
   });
 
-  it("shows when the current page has already been spec'd", async () => {
+  it("does not visually change SPEC when the current page has already been spec'd", async () => {
     storageState["sally.scheduleItems"] = [
       {
         id: "item-1",
@@ -132,12 +136,24 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Page spec'd")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "SPEC" })).toHaveClass("spec-button--specd");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "SPEC" })).not.toHaveClass("spec-button--specd")
+    );
   });
 
-  it("opens a crude schedule viewer from the item count", async () => {
+  it("opens the schedule viewer from the Sally panel", async () => {
     const user = userEvent.setup();
+    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    const printDocument = {
+      close: vi.fn(),
+      write: vi.fn()
+    };
+    const printWindow = {
+      document: printDocument,
+      focus: vi.fn(),
+      print: vi.fn()
+    };
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(printWindow as unknown as Window);
     storageState["sally.scheduleItems"] = [
       {
         id: "item-1",
@@ -160,19 +176,93 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /Sally PoC.*1 item/i }));
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+    await user.click(await screen.findByRole("button", { name: "View Items" }));
 
     expect(screen.getByLabelText("Captured schedule")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rename My New Project" })).toBeInTheDocument();
     expect(screen.getByText("Wall Faucet")).toBeInTheDocument();
     expect(screen.getByText("Primary Bath")).toBeInTheDocument();
     expect(screen.getByText("Example Co.")).toBeInTheDocument();
     expect(screen.getByText("WF-200")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Wall Faucet thumbnail" })).toHaveAttribute(
+    const thumbnailLink = screen.getByRole("link", { name: "Wall Faucet thumbnail" });
+    expect(thumbnailLink).toHaveAttribute("href", "https://example.com/products/wf-200");
+    expect(thumbnailLink.querySelector("img")).toHaveAttribute(
       "src",
       "https://example.com/faucet.jpg"
     );
 
+    await user.click(screen.getByRole("button", { name: "Rename My New Project" }));
+    await user.clear(screen.getByLabelText("Project name"));
+    await user.type(screen.getByLabelText("Project name"), "Lake House");
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByRole("button", { name: "Rename Lake House" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Print" }));
+    expect(openSpy).toHaveBeenCalledWith("", "_blank", "width=1100,height=800");
+    expect(printDocument.write).toHaveBeenCalledWith(expect.stringContaining("Lake House"));
+    expect(printDocument.write).toHaveBeenCalledWith(expect.stringContaining("Wall Faucet"));
+    expect(printDocument.write).toHaveBeenCalledWith(expect.stringContaining("Primary Bath"));
+    expect(printWindow.print).toHaveBeenCalledOnce();
+    expect(printSpy).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Remove Wall Faucet" }));
+    await waitFor(() => expect(screen.queryByText("Wall Faucet")).not.toBeInTheDocument());
+    expect(screen.getByText("No accepted items yet.")).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Close schedule" }));
     expect(screen.queryByLabelText("Captured schedule")).not.toBeInTheDocument();
+  });
+
+  it("removes only one duplicate item from the viewer", async () => {
+    const user = userEvent.setup();
+    storageState["sally.scheduleItems"] = [
+      {
+        id: "item-1",
+        capturedAt: "2026-04-21T12:00:00.000Z",
+        zone: "Primary Bath",
+        title: "Wall Faucet",
+        manufacturer: "Example Co.",
+        modelNumber: "WF-200",
+        category: "Faucet",
+        description: "Wall-mounted faucet.",
+        finish: "Polished Chrome",
+        requiredAddOns: [],
+        optionalCompanions: [],
+        sourceUrl: "https://example.com/products/wf-200",
+        sourceTitle: "Example Product",
+        sourcePdfLinks: []
+      },
+      {
+        id: "item-1-2",
+        capturedAt: "2026-04-21T12:01:00.000Z",
+        zone: "Powder Room",
+        title: "Wall Faucet",
+        manufacturer: "Example Co.",
+        modelNumber: "WF-200",
+        category: "Faucet",
+        description: "Wall-mounted faucet.",
+        finish: "Polished Chrome",
+        requiredAddOns: [],
+        optionalCompanions: [],
+        sourceUrl: "https://example.com/products/wf-200",
+        sourceTitle: "Example Product",
+        sourcePdfLinks: []
+      }
+    ];
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+    await user.click(await screen.findByRole("button", { name: "View Items" }));
+    expect(screen.getAllByText("Wall Faucet")).toHaveLength(2);
+
+    await user.click(screen.getAllByRole("button", { name: "Remove Wall Faucet" })[0]);
+
+    expect(screen.getAllByText("Wall Faucet")).toHaveLength(1);
+    expect(screen.getByText("Powder Room")).toBeInTheDocument();
+    expect(screen.queryByText("Primary Bath")).not.toBeInTheDocument();
   });
 });

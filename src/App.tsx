@@ -4,7 +4,15 @@ import { ScheduleViewer } from "./components/ScheduleViewer";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
-import { listScheduleItems, listZones, saveScheduleItem, saveZone } from "./lib/storage";
+import {
+  getProjectName,
+  listScheduleItems,
+  listZones,
+  removeScheduleItem,
+  saveProjectName,
+  saveScheduleItem,
+  saveZone
+} from "./lib/storage";
 import type { ScheduleItem } from "./lib/types";
 
 type PanelState =
@@ -16,14 +24,30 @@ type PanelState =
 export default function App() {
   const [panel, setPanel] = useState<PanelState>({ kind: "closed" });
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [itemCount, setItemCount] = useState(0);
-  const [isCurrentPageSpecd, setIsCurrentPageSpecd] = useState(false);
+  const [projectName, setProjectName] = useState("My New Project");
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
   const [zones, setZones] = useState<string[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     refreshItemCount();
+    refreshProjectName();
     refreshZones();
+  }, []);
+
+  useEffect(() => {
+    if (!globalThis.chrome?.runtime?.onMessage) {
+      return;
+    }
+
+    function handleRuntimeMessage(message: unknown) {
+      if (isSpecMessage(message)) {
+        handleSpecClick();
+      }
+    }
+
+    chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+    return () => chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
   }, []);
 
   useEffect(() => {
@@ -40,12 +64,14 @@ export default function App() {
   async function refreshItemCount() {
     const items = await listScheduleItems();
     setScheduleItems(items);
-    setItemCount(items.length);
-    setIsCurrentPageSpecd(items.some((item) => samePageUrl(item.sourceUrl, window.location.href)));
   }
 
   async function refreshZones() {
     setZones(await listZones());
+  }
+
+  async function refreshProjectName() {
+    setProjectName(await getProjectName());
   }
 
   function handleSpecClick() {
@@ -69,18 +95,47 @@ export default function App() {
     await saveScheduleItem(item);
     await refreshItemCount();
     setPanel({ kind: "closed" });
+    showToast("Item added");
+  }
+
+  async function handleRenameProject(nextProjectName: string) {
+    setProjectName(await saveProjectName(nextProjectName));
+  }
+
+  async function handleRemoveItem(itemId: string) {
+    const items = await removeScheduleItem(itemId);
+    setScheduleItems(items);
+  }
+
+  function handleViewItems() {
+    setPanel({ kind: "closed" });
+    setIsScheduleOpen(true);
+  }
+
+  function showToast(message: string) {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 3200);
   }
 
   return (
     <div className="sally-root">
       <SpecButton
-        isCurrentPageSpecd={isCurrentPageSpecd}
-        itemCount={itemCount}
-        onOpenSchedule={() => setIsScheduleOpen(true)}
         onClick={handleSpecClick}
       />
+      {toast ? (
+        <div className="toast" role="status">
+          <span>{toast}</span>
+          <div className="toast-progress" />
+        </div>
+      ) : null}
       {isScheduleOpen ? (
-        <ScheduleViewer items={scheduleItems} onClose={() => setIsScheduleOpen(false)} />
+        <ScheduleViewer
+          items={scheduleItems}
+          projectName={projectName}
+          onClose={() => setIsScheduleOpen(false)}
+          onRemoveItem={handleRemoveItem}
+          onRenameProject={handleRenameProject}
+        />
       ) : null}
       {panel.kind === "minimized" ? (
         <button
@@ -94,6 +149,7 @@ export default function App() {
       {panel.kind === "thinking" || panel.kind === "review" ? (
         <SallyPanel
           panel={panel}
+          projectName={projectName}
           zones={zones}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
@@ -101,20 +157,18 @@ export default function App() {
           }
           onAddZone={handleAddZone}
           onAccept={handleAccept}
+          onViewItems={handleViewItems}
         />
       ) : null}
     </div>
   );
 }
 
-function samePageUrl(left: string, right: string): boolean {
-  try {
-    const leftUrl = new URL(left);
-    const rightUrl = new URL(right);
-    leftUrl.hash = "";
-    rightUrl.hash = "";
-    return leftUrl.href === rightUrl.href;
-  } catch {
-    return left === right;
-  }
+function isSpecMessage(message: unknown): message is { type: string } {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    "type" in message &&
+    message.type === "SALLY_SPEC_THIS_PAGE"
+  );
 }

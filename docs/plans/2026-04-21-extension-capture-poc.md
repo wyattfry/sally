@@ -68,15 +68,15 @@
 - Create: `src/App.tsx`
 - Create: `src/components/SpecButton.tsx`
 - Create: `src/components/SallyPanel.tsx`
-- Create: `src/components/UndoButton.tsx`
+- Create: `src/components/ScheduleViewer.tsx`
 - Modify: `src/contentScript.tsx`
 - Modify: `src/styles.css`
 
 **Steps:**
 1. Write component tests for the core flow if the test setup remains light enough; otherwise keep logic in testable libraries and verify UI through build/manual loading.
-2. Implement the SPEC button with item count.
-3. Implement the Sally panel with thinking, editable fields, undo, cancel, and OK.
-4. Wire capture, mock extraction, storage save, and count refresh.
+2. Implement the always-present SPEC button.
+3. Implement the Sally panel with thinking, editable fields, View Items, cancel, and OK.
+4. Wire capture, mock extraction, storage save, toast feedback, and schedule viewer refresh.
 5. Run `npm test`.
 6. Run `npm run build`.
 
@@ -92,4 +92,3 @@
 3. Run `npm test`.
 4. Run `npm run build`.
 5. Report the commands and results.
-

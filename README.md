@@ -26,11 +26,13 @@ The PoC does this:
 - injects an always-present green `SPEC` button onto normal webpages
 - captures the current page title, URL, visible text, structured product JSON-LD, likely product image, and likely PDF/spec links
 - uses a mocked extraction function to propose one editable schedule item
-- lets the user edit the proposal, undo back to Sally's generated draft, cancel, or click `OK`
+- lets the user edit the proposal, choose a zone and category, cancel, view accepted items, or click `OK`
 - saves accepted items to `chrome.storage.local`
-- shows a small local item count next to the `SPEC` button
+- shows a short confirmation toast after an item is accepted
+- opens a local schedule viewer for thumbnails, project renaming, item removal, and print output
+- supports both the green `SPEC` button and the browser context menu invocation
 
-The PoC does not include backend storage, auth, a full Mothership dashboard, product-page detection, context menu invocation, or a real AI call.
+The PoC does not include backend storage, auth, a full Mothership dashboard, product-page detection, or a real AI call.
 
 ## Development
 
