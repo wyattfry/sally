@@ -1,0 +1,45 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Zip extension
+        run: cd dist && zip -r ../sally-extension.zip . && cd ..
+
+      - name: Publish latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes 2>/dev/null || true
+          gh release create latest \
+            --title "Latest Build" \
+            --notes "## Install instructions
+
+          1. Download **sally-extension.zip** below
+          2. Unzip it anywhere (e.g. your Downloads folder)
+          3. Open Chrome and go to \`chrome://extensions\`
+          4. Toggle on **Developer mode** (top-right corner)
+          5. Click **Load unpacked** and select the unzipped folder
+          6. The extension is installed — repeat steps 3-5 to update it" \
+            --prerelease \
+            sally-extension.zip
