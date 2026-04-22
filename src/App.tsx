@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SallyPanel } from "./components/SallyPanel";
+import { ScheduleViewer } from "./components/ScheduleViewer";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
@@ -14,8 +15,10 @@ type PanelState =
 
 export default function App() {
   const [panel, setPanel] = useState<PanelState>({ kind: "closed" });
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [itemCount, setItemCount] = useState(0);
   const [isCurrentPageSpecd, setIsCurrentPageSpecd] = useState(false);
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
   const [zones, setZones] = useState<string[]>([]);
 
   useEffect(() => {
@@ -36,6 +39,7 @@ export default function App() {
 
   async function refreshItemCount() {
     const items = await listScheduleItems();
+    setScheduleItems(items);
     setItemCount(items.length);
     setIsCurrentPageSpecd(items.some((item) => samePageUrl(item.sourceUrl, window.location.href)));
   }
@@ -72,8 +76,12 @@ export default function App() {
       <SpecButton
         isCurrentPageSpecd={isCurrentPageSpecd}
         itemCount={itemCount}
+        onOpenSchedule={() => setIsScheduleOpen(true)}
         onClick={handleSpecClick}
       />
+      {isScheduleOpen ? (
+        <ScheduleViewer items={scheduleItems} onClose={() => setIsScheduleOpen(false)} />
+      ) : null}
       {panel.kind === "minimized" ? (
         <button
           className="restore-draft-button"

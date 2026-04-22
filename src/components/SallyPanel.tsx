@@ -41,7 +41,7 @@ export function SallyPanel({ panel, zones, onChange, onAddZone, onAccept, onCanc
     <aside className="sally-panel" aria-label="Sally proposal">
       <div className="panel-header">
         <div className="panel-kicker">Sally proposal</div>
-        <div className="panel-title">{panel.kind === "thinking" ? "Reading page" : "Review item"}</div>
+        <div className="panel-title">{panel.kind === "thinking" ? "Reading page" : "Add item to schedule"}</div>
         {draft ? <div className="panel-source">{draft.sourceTitle}</div> : null}
       </div>
 

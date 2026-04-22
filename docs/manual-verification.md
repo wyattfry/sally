@@ -25,8 +25,11 @@
 12. Click `OK`.
 13. Confirm the panel disappears.
 14. Confirm the item count increments and the floating control shows `Page spec'd`.
-15. Refresh the page.
-16. Confirm the item count remains and the page still shows as spec'd.
+15. Click the `Sally PoC` / item count context.
+16. Confirm the captured schedule drawer opens and shows the accepted item with a thumbnail.
+17. Close the drawer.
+18. Refresh the page.
+19. Confirm the item count remains and the page still shows as spec'd.
 
 ## Known PoC Limits
 

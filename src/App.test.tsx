@@ -135,4 +135,44 @@ describe("App", () => {
     expect(await screen.findByText("Page spec'd")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "SPEC" })).toHaveClass("spec-button--specd");
   });
+
+  it("opens a crude schedule viewer from the item count", async () => {
+    const user = userEvent.setup();
+    storageState["sally.scheduleItems"] = [
+      {
+        id: "item-1",
+        capturedAt: "2026-04-21T12:00:00.000Z",
+        zone: "Primary Bath",
+        title: "Wall Faucet",
+        manufacturer: "Example Co.",
+        modelNumber: "WF-200",
+        category: "Faucet",
+        description: "Wall-mounted faucet.",
+        finish: "Polished Chrome",
+        requiredAddOns: ["Rough valve body"],
+        optionalCompanions: [],
+        sourceUrl: "https://example.com/products/wf-200",
+        sourceTitle: "Example Co. WF-200 Wall Faucet",
+        sourceImageUrl: "https://example.com/faucet.jpg",
+        sourcePdfLinks: []
+      }
+    ];
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /Sally PoC.*1 item/i }));
+
+    expect(screen.getByLabelText("Captured schedule")).toBeInTheDocument();
+    expect(screen.getByText("Wall Faucet")).toBeInTheDocument();
+    expect(screen.getByText("Primary Bath")).toBeInTheDocument();
+    expect(screen.getByText("Example Co.")).toBeInTheDocument();
+    expect(screen.getByText("WF-200")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Wall Faucet thumbnail" })).toHaveAttribute(
+      "src",
+      "https://example.com/faucet.jpg"
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close schedule" }));
+    expect(screen.queryByLabelText("Captured schedule")).not.toBeInTheDocument();
+  });
 });
