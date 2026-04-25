@@ -58,8 +58,11 @@ jobs:
 
       - name: Deploy server directly on runner host
         env:
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          OLLAMA_BASE_URL: ${{ vars.OLLAMA_BASE_URL }}
+          OLLAMA_MODEL: ${{ vars.OLLAMA_MODEL }}
           PORT: ${{ vars.SALLY_SERVER_PORT }}
           DEPLOY_ROOT: ${{ vars.SALLY_SERVER_DEPLOY_ROOT }}
         run: |

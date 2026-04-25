@@ -26,7 +26,11 @@ Current endpoints:
 - `GET /healthz`
 - `POST /v1/extract-spec` extraction response using the configured provider
 
-If `OPENAI_API_KEY` and `OPENAI_MODEL` are both configured, the server uses the hosted OpenAI extractor. If neither is configured, the server uses the stub extractor for local development.
+Provider selection is controlled by `LLM_PROVIDER`:
+
+- `stub`: local stub extractor
+- `openai`: hosted OpenAI extractor
+- `ollama`: Ollama over local or LAN HTTP
 
 Run the backend tests:
 
@@ -70,6 +74,10 @@ cp .env.example .env
 - `VITE_SALLY_BACKEND_BASE_URL` should point at your shared development backend host, for example `http://<development-host>:8080`
 - `VITE_SALLY_ALLOW_MOCK_FALLBACK` defaults to `false`
 - mock fallback is intended for development only, must be enabled explicitly, and is only used for transport or unreachable-backend failures
+- backend provider examples:
+  - `LLM_PROVIDER=stub`
+  - `LLM_PROVIDER=openai` with `OPENAI_API_KEY` and `OPENAI_MODEL`
+  - `LLM_PROVIDER=ollama` with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
 
 Run tests:
 
@@ -108,9 +116,12 @@ Expected result:
 - Local backend iteration: `docker compose up --build` on the current machine
 - Shared dev integration target: the backend URL configured in `VITE_SALLY_BACKEND_BASE_URL`
 - GitHub Actions on the self-hosted runner: test, build, and directly deploy the Go server in the repository `development` environment; Docker image artifacts are optional and only built when Docker is usable on that host
-- Real extractor runtime on the development host requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-5-mini` if unset
+- Real extractor runtime on the development host depends on `LLM_PROVIDER`
 - Optional GitHub environment variables:
+  - `LLM_PROVIDER`
   - `OPENAI_MODEL`
+  - `OLLAMA_BASE_URL`
+  - `OLLAMA_MODEL`
   - `SALLY_SERVER_PORT`
   - `SALLY_SERVER_DEPLOY_ROOT`
 

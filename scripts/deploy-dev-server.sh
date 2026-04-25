@@ -4,11 +4,32 @@ set -euo pipefail
 
 : "${DEPLOY_ROOT:=$HOME/.local/share/sally-dev}"
 : "${PORT:=8080}"
+: "${LLM_PROVIDER:=stub}"
 : "${OPENAI_MODEL:=gpt-5-mini}"
 
+case "${LLM_PROVIDER}" in
+  stub)
+    ;;
+  openai)
+    if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+      echo "OPENAI_API_KEY is required when LLM_PROVIDER=openai" >&2
+      exit 1
+    fi
+    ;;
+  ollama)
+    if [[ -z "${OLLAMA_BASE_URL:-}" || -z "${OLLAMA_MODEL:-}" ]]; then
+      echo "OLLAMA_BASE_URL and OLLAMA_MODEL are required when LLM_PROVIDER=ollama" >&2
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Unsupported LLM_PROVIDER: ${LLM_PROVIDER}" >&2
+    exit 1
+    ;;
+esac
+
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
-  echo "OPENAI_API_KEY is required" >&2
-  exit 1
+  OPENAI_API_KEY=""
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,8 +51,11 @@ popd >/dev/null
 
 cat >"${ENV_FILE}" <<EOF
 PORT=${PORT}
+LLM_PROVIDER=${LLM_PROVIDER}
 OPENAI_API_KEY=${OPENAI_API_KEY}
 OPENAI_MODEL=${OPENAI_MODEL}
+OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+OLLAMA_MODEL=${OLLAMA_MODEL:-}
 SALLY_ALLOW_MOCK_FALLBACK=false
 EOF
 

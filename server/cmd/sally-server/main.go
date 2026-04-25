@@ -11,17 +11,8 @@ import (
 
 func main() {
 	cfg := config.Load()
-	validateOpenAIConfig(cfg)
 	addr := ":" + cfg.Port
-	extractor := provider.Extractor(provider.NewStubExtractor())
-	if cfg.OpenAIAPIKey != "" && cfg.OpenAIModel != "" {
-		extractor = provider.NewOpenAIExtractor(
-			cfg.OpenAIAPIKey,
-			cfg.OpenAIModel,
-			cfg.OpenAIBaseURL,
-			&http.Client{Timeout: cfg.OpenAITimeout},
-		)
-	}
+	extractor := newExtractor(cfg)
 
 	server := &http.Server{
 		Addr:    addr,
@@ -34,15 +25,41 @@ func main() {
 	}
 }
 
-func validateOpenAIConfig(cfg config.Config) {
-	hasAPIKey := cfg.OpenAIAPIKey != ""
-	hasModel := cfg.OpenAIModel != ""
-	if hasAPIKey == hasModel {
-		return
-	}
+func newExtractor(cfg config.Config) provider.Extractor {
+	client := &http.Client{Timeout: cfg.OpenAITimeout}
 
-	if hasAPIKey {
-		log.Fatal("OPENAI_API_KEY is set but OPENAI_MODEL is missing")
+	switch cfg.LLMProvider {
+	case "", "stub":
+		return provider.NewStubExtractor()
+	case "openai":
+		validateOpenAIConfig(cfg)
+		return provider.NewOpenAIExtractor(
+			cfg.OpenAIAPIKey,
+			cfg.OpenAIModel,
+			cfg.OpenAIBaseURL,
+			client,
+		)
+	case "ollama":
+		validateOllamaConfig(cfg)
+		return provider.NewOllamaExtractor(
+			cfg.OllamaModel,
+			cfg.OllamaBaseURL,
+			client,
+		)
+	default:
+		log.Fatalf("unsupported LLM_PROVIDER %q", cfg.LLMProvider)
+		return nil
 	}
-	log.Fatal("OPENAI_MODEL is set but OPENAI_API_KEY is missing")
+}
+
+func validateOpenAIConfig(cfg config.Config) {
+	if cfg.OpenAIAPIKey == "" || cfg.OpenAIModel == "" {
+		log.Fatal("LLM_PROVIDER=openai requires OPENAI_API_KEY and OPENAI_MODEL")
+	}
+}
+
+func validateOllamaConfig(cfg config.Config) {
+	if cfg.OllamaBaseURL == "" || cfg.OllamaModel == "" {
+		log.Fatal("LLM_PROVIDER=ollama requires OLLAMA_BASE_URL and OLLAMA_MODEL")
+	}
 }

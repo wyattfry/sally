@@ -20,7 +20,7 @@ docker compose up --build
 - expected local health check: `http://localhost:8080/healthz`
 - env source: `server/.env`
 
-If `server/.env` is absent, Compose will warn. Create it only when you need non-default settings or OpenAI credentials for local iteration.
+If `server/.env` is absent, Compose will warn. Create it only when you need non-default provider settings for local iteration.
 
 ## Shared Development Host
 
@@ -40,10 +40,15 @@ The self-hosted workflow in the `development` environment does three things:
 2. builds the `sally-server` binary
 3. uploads the server binary artifact, optionally builds a `sally-server:dev` image when Docker is usable on the runner host, and deploys the binary directly on the runner host
 
-The `development` environment should hold the runtime config needed for the real extractor, including:
+The `development` environment should hold the runtime config needed for the selected extractor, including:
 
-- `OPENAI_API_KEY`
-- optional `OPENAI_MODEL` defaulting to `gpt-5-mini`
+- `LLM_PROVIDER`
+- optional OpenAI settings:
+  - `OPENAI_API_KEY`
+  - `OPENAI_MODEL` defaulting to `gpt-5-mini`
+- optional Ollama settings:
+  - `OLLAMA_BASE_URL`
+  - `OLLAMA_MODEL`
 - optional `SALLY_SERVER_PORT` defaulting to `8080`
 - optional `SALLY_SERVER_DEPLOY_ROOT` defaulting to `~/.local/share/sally-dev`
 
