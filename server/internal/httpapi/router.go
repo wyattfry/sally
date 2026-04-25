@@ -14,9 +14,7 @@ func NewRouter(cfg config.Config) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	mux.HandleFunc("POST /v1/extract-spec", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "not implemented", http.StatusNotImplemented)
-	})
+	mux.HandleFunc("POST /v1/extract-spec", handleExtractSpec)
 
 	_ = cfg
 

@@ -21,7 +21,7 @@ func TestRouterHealthzReturnsOK(t *testing.T) {
 	}
 }
 
-func TestRouterExtractSpecReturnsNotImplemented(t *testing.T) {
+func TestRouterExtractSpecReturnsBadRequestForMissingBody(t *testing.T) {
 	router := NewRouter(config.Config{})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/extract-spec", nil)
@@ -29,7 +29,7 @@ func TestRouterExtractSpecReturnsNotImplemented(t *testing.T) {
 
 	router.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusNotImplemented {
-		t.Fatalf("expected 501, got %d", rr.Code)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rr.Code)
 	}
 }
