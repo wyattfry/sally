@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SallyPanel } from "./components/SallyPanel";
 import { ScheduleViewer } from "./components/ScheduleViewer";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
-import { extractScheduleItem } from "./lib/extractApi";
+import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
+import { mockExtractScheduleItem } from "./lib/mockExtraction";
 import {
   getProjectName,
   listScheduleItems,
@@ -19,7 +20,8 @@ type PanelState =
   | { kind: "closed" }
   | { kind: "thinking" }
   | { kind: "review"; draft: ScheduleItem }
-  | { kind: "minimized"; draft: ScheduleItem };
+  | { kind: "minimized"; draft: ScheduleItem }
+  | { kind: "error"; message: string };
 
 const DEFAULT_CATEGORIES = [
   "Plumbing Fixture",
@@ -38,6 +40,7 @@ export default function App() {
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
   const [zones, setZones] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     refreshItemCount();
@@ -71,6 +74,15 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [panel]);
 
+  useEffect(
+    () => () => {
+      if (toastTimeoutRef.current !== null) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    },
+    []
+  );
+
   async function refreshItemCount() {
     const items = await listScheduleItems();
     setScheduleItems(items);
@@ -97,8 +109,20 @@ export default function App() {
         });
         setPanel({ kind: "review", draft: proposal });
       } catch (error) {
-        setPanel({ kind: "closed" });
-        showToast(error instanceof Error ? error.message : "Could not extract item.");
+        const message = error instanceof Error ? error.message : "Could not extract item.";
+        if (shouldAllowMockFallback() && shouldFallbackToMock(error)) {
+          try {
+            const proposal = mockExtractScheduleItem(captured);
+            setPanel({ kind: "review", draft: proposal });
+            showToast("Using local mock fallback.");
+            return;
+          } catch {
+            // fall through to visible error state
+          }
+        }
+
+        setPanel({ kind: "error", message });
+        showToast(message);
       }
     }, 250);
   }
@@ -133,8 +157,14 @@ export default function App() {
   }
 
   function showToast(message: string) {
+    if (toastTimeoutRef.current !== null) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
     setToast(message);
-    window.setTimeout(() => setToast(null), 3200);
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimeoutRef.current = null;
+    }, 3200);
   }
 
   return (
@@ -165,6 +195,19 @@ export default function App() {
         >
           Restore Sally draft
         </button>
+      ) : null}
+      {panel.kind === "error" ? (
+        <div aria-label="Extraction error" className="sally-error-state">
+          <p>{panel.message}</p>
+          <div>
+            <button type="button" onClick={handleSpecClick}>
+              Retry extraction
+            </button>
+            <button type="button" onClick={() => setPanel({ kind: "closed" })}>
+              Dismiss
+            </button>
+          </div>
+        </div>
       ) : null}
       {panel.kind === "thinking" || panel.kind === "review" ? (
         <SallyPanel

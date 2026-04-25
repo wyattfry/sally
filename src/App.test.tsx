@@ -1,12 +1,19 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScheduleItem } from "./lib/types";
-import { extractScheduleItem } from "./lib/extractApi";
+import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
+import { mockExtractScheduleItem } from "./lib/mockExtraction";
 
 vi.mock("./lib/extractApi", () => ({
-  extractScheduleItem: vi.fn()
+  extractScheduleItem: vi.fn(),
+  shouldAllowMockFallback: vi.fn(),
+  shouldFallbackToMock: vi.fn()
+}));
+
+vi.mock("./lib/mockExtraction", () => ({
+  mockExtractScheduleItem: vi.fn()
 }));
 
 import App from "./App";
@@ -58,6 +65,7 @@ function installChromeStorageMock() {
 
 describe("App", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     document.title = "Example Co. WF-200 Wall Faucet";
     document.head.innerHTML = `
       <meta property="og:image" content="https://example.com/faucet.jpg" />
@@ -73,6 +81,9 @@ describe("App", () => {
     }
     installChromeStorageMock();
     vi.mocked(extractScheduleItem).mockResolvedValue(extractedItem());
+    vi.mocked(mockExtractScheduleItem).mockReturnValue(extractedItem({ id: "mock-draft-123" }));
+    vi.mocked(shouldAllowMockFallback).mockReturnValue(false);
+    vi.mocked(shouldFallbackToMock).mockReturnValue(false);
   });
 
   it("opens Sally, edits a proposal, saves it, and shows an accepted-item toast", async () => {
@@ -293,5 +304,106 @@ describe("App", () => {
     expect(screen.getAllByText("Wall Faucet")).toHaveLength(1);
     expect(screen.getByText("Powder Room")).toBeInTheDocument();
     expect(screen.queryByText("Primary Bath")).not.toBeInTheDocument();
+  });
+
+  it("uses mock extraction in dev when fallback is explicitly enabled", async () => {
+    const user = userEvent.setup();
+    vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Extraction backend is unreachable."));
+    vi.mocked(mockExtractScheduleItem).mockReturnValue(
+      extractedItem({ id: "mock-draft-123", title: "Mock fallback faucet" })
+    );
+    vi.mocked(shouldAllowMockFallback).mockReturnValue(true);
+    vi.mocked(shouldFallbackToMock).mockReturnValue(true);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+
+    expect(await screen.findByDisplayValue("Mock fallback faucet")).toBeInTheDocument();
+    expect(screen.getByText("Using local mock fallback.")).toBeInTheDocument();
+  });
+
+  it("does not silently fall back in production-facing mode", async () => {
+    const user = userEvent.setup();
+    vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Backend unavailable"));
+    vi.mocked(shouldAllowMockFallback).mockReturnValue(false);
+    vi.mocked(shouldFallbackToMock).mockReturnValue(true);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+
+    await waitFor(() => expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument());
+    expect(screen.queryByDisplayValue("Wall Faucet")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Extraction error")).toBeInTheDocument();
+    expect(screen.getAllByText("Backend unavailable")).toHaveLength(2);
+    expect(mockExtractScheduleItem).not.toHaveBeenCalled();
+  });
+
+  it("does not use mock fallback for backend extraction errors even when fallback is enabled", async () => {
+    const user = userEvent.setup();
+    vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Model rejected the page."));
+    vi.mocked(shouldAllowMockFallback).mockReturnValue(true);
+    vi.mocked(shouldFallbackToMock).mockReturnValue(false);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+
+    expect(await screen.findByLabelText("Extraction error")).toBeInTheDocument();
+    expect(screen.getAllByText("Model rejected the page.")).toHaveLength(2);
+    expect(mockExtractScheduleItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps extraction failures user-visible and recoverable", async () => {
+    const user = userEvent.setup();
+    vi.mocked(extractScheduleItem)
+      .mockRejectedValueOnce(new Error("Backend unavailable"))
+      .mockResolvedValueOnce(extractedItem({ title: "Recovered faucet" }));
+    vi.mocked(shouldFallbackToMock).mockReturnValue(false);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+
+    expect(await screen.findByLabelText("Extraction error")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry extraction" }));
+
+    expect(await screen.findByDisplayValue("Recovered faucet")).toBeInTheDocument();
+  });
+
+  it("does not clear a newer toast when an older timer expires", async () => {
+    vi.useFakeTimers();
+    vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Extraction backend is unreachable."));
+    vi.mocked(shouldAllowMockFallback).mockReturnValue(true);
+    vi.mocked(shouldFallbackToMock).mockReturnValue(true);
+    vi.mocked(mockExtractScheduleItem).mockReturnValueOnce(extractedItem({ title: "Fallback item" }));
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "SPEC" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    expect(screen.getByText("Using local mock fallback.")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    await act(async () => {});
+    expect(screen.getByText("Item added")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2200);
+    });
+    expect(screen.getByText("Item added")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.queryByText("Item added")).not.toBeInTheDocument();
+    vi.useRealTimers();
   });
 });

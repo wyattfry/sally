@@ -9,6 +9,7 @@
     "128": "icon-128.png"
   },
   "permissions": ["contextMenus", "storage"],
+  "host_permissions": ["__SALLY_BACKEND_ORIGIN__/*"],
   "background": {
     "service_worker": "background.js"
   },

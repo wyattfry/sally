@@ -6,14 +6,16 @@ The PoC does this:
 
 - injects an always-present green `SPEC` button onto normal webpages
 - captures the current page title, URL, visible text, structured product JSON-LD, likely product image, and likely PDF/spec links
-- uses a mocked extraction function to propose one editable schedule item
+- sends the captured page to the local Sally backend and uses the backend extraction response to propose one editable schedule item
 - lets the user edit the proposal, choose a zone and category, cancel, view accepted items, or click `OK`
 - saves accepted items to `chrome.storage.local`
 - shows a short confirmation toast after an item is accepted
 - opens a local schedule viewer for thumbnails, project renaming, item removal, and print output
 - supports both the green `SPEC` button and the browser context menu invocation
 
-The PoC does not include backend storage, auth, a full Mothership dashboard, product-page detection, or a real AI call.
+By default, the extension uses backend extraction. Local mock fallback exists only as an explicitly enabled development option for transport-style failures.
+
+The PoC does not include backend storage, auth, a full Mothership dashboard, or product-page detection.
 
 ## Go server skeleton
 
@@ -22,7 +24,7 @@ The repo also includes an early Go backend skeleton under `server/`.
 Current endpoints:
 
 - `GET /healthz`
-- `POST /v1/extract-spec` placeholder only
+- `POST /v1/extract-spec` contract-valid stub response
 
 Run the backend tests:
 
@@ -38,6 +40,16 @@ Install dependencies:
 ```bash
 npm install
 ```
+
+Optional extension env config:
+
+```bash
+cp .env.example .env
+```
+
+- `VITE_SALLY_BACKEND_BASE_URL` defaults to `http://10.0.0.104:8080`
+- `VITE_SALLY_ALLOW_MOCK_FALLBACK` defaults to `false`
+- mock fallback is intended for development only, must be enabled explicitly, and is only used for transport or unreachable-backend failures
 
 Run tests:
 
