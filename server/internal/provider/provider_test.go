@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,6 +14,20 @@ import (
 	"sally/server/internal/httpapi"
 	"sally/server/internal/provider"
 )
+
+// parseSSEData returns the JSON data payload of the first SSE event matching eventType.
+func parseSSEData(body []byte, eventType string) ([]byte, error) {
+	var currentEvent string
+	for _, line := range strings.Split(string(body), "\n") {
+		switch {
+		case strings.HasPrefix(line, "event: "):
+			currentEvent = strings.TrimPrefix(line, "event: ")
+		case strings.HasPrefix(line, "data: ") && currentEvent == eventType:
+			return []byte(strings.TrimPrefix(line, "data: ")), nil
+		}
+	}
+	return nil, fmt.Errorf("no %q event in SSE body: %s", eventType, body)
+}
 
 func TestStubExtractorReturnsProposal(t *testing.T) {
 	extractor := provider.NewStubExtractor()
@@ -55,12 +70,16 @@ func TestExtractHandlerMapsProviderTimeoutToContractError(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusGatewayTimeout {
-		t.Fatalf("expected 504, got %d", rr.Code)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 
+	data, err := parseSSEData(rr.Body.Bytes(), "error")
+	if err != nil {
+		t.Fatalf("parse SSE: %v", err)
+	}
 	var resp extract.ExtractSpecResponse
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal(data, &resp); err != nil {
 		t.Fatalf("unmarshal error response: %v", err)
 	}
 
@@ -85,12 +104,16 @@ func TestExtractHandlerMapsProviderFailureToContractError(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusBadGateway {
-		t.Fatalf("expected 502, got %d", rr.Code)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 
+	data, err := parseSSEData(rr.Body.Bytes(), "error")
+	if err != nil {
+		t.Fatalf("parse SSE: %v", err)
+	}
 	var resp extract.ExtractSpecResponse
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal(data, &resp); err != nil {
 		t.Fatalf("unmarshal error response: %v", err)
 	}
 

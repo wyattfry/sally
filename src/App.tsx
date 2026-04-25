@@ -56,6 +56,9 @@ export default function App() {
     function handleRuntimeMessage(message: unknown) {
       if (isSpecMessage(message)) {
         handleSpecClick();
+      } else if (isViewMessage(message)) {
+        setPanel({ kind: "closed" });
+        setIsScheduleOpen(true);
       }
     }
 
@@ -174,6 +177,11 @@ export default function App() {
     <div className="sally-root">
       <SpecButton
         onClick={handleSpecClick}
+        itemCount={scheduleItems.length}
+        onViewItems={() => {
+          setPanel({ kind: "closed" });
+          setIsScheduleOpen(true);
+        }}
       />
       {toast ? (
         <div className="toast" role="status">
@@ -236,5 +244,14 @@ function isSpecMessage(message: unknown): message is { type: string } {
     message !== null &&
     "type" in message &&
     message.type === "SALLY_SPEC_THIS_PAGE"
+  );
+}
+
+function isViewMessage(message: unknown): message is { type: string } {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    "type" in message &&
+    message.type === "SALLY_VIEW_ITEMS"
   );
 }

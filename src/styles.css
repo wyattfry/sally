@@ -24,6 +24,24 @@
   z-index: 2147483647;
 }
 
+.view-items-button {
+  background: #fff;
+  border: 1px solid #9dae98;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+  color: #1f7a3a;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 14px;
+}
+
+.view-items-button:hover {
+  background: #f1f5ee;
+}
+
 .spec-button {
   background: #1f7a3a;
   border: 0;

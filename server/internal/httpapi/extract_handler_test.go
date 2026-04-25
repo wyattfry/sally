@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,20 @@ import (
 	"sally/server/internal/config"
 	"sally/server/internal/extract"
 )
+
+// parseSSEData returns the JSON data payload of the first SSE event matching eventType.
+func parseSSEData(body []byte, eventType string) ([]byte, error) {
+	var currentEvent string
+	for _, line := range strings.Split(string(body), "\n") {
+		switch {
+		case strings.HasPrefix(line, "event: "):
+			currentEvent = strings.TrimPrefix(line, "event: ")
+		case strings.HasPrefix(line, "data: ") && currentEvent == eventType:
+			return []byte(strings.TrimPrefix(line, "data: ")), nil
+		}
+	}
+	return nil, fmt.Errorf("no %q event in SSE body: %s", eventType, body)
+}
 
 func TestExtractSpecHandlerReturnsOKForValidRequest(t *testing.T) {
 	router := NewRouter(config.Config{})
@@ -49,9 +64,16 @@ func TestExtractSpecHandlerReturnsOKForValidRequest(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
+	if ct := rr.Header().Get("Content-Type"); ct != "text/event-stream" {
+		t.Fatalf("expected text/event-stream, got %q", ct)
+	}
 
+	data, err := parseSSEData(rr.Body.Bytes(), "done")
+	if err != nil {
+		t.Fatalf("parse SSE: %v", err)
+	}
 	var resp extract.ExtractSpecResponse
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal(data, &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
 	if resp.Status != "ok" {
