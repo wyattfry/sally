@@ -77,7 +77,7 @@ func TestExtractHandlerMapsProviderTimeoutToContractError(t *testing.T) {
 
 func TestExtractHandlerMapsProviderFailureToContractError(t *testing.T) {
 	handler := httpapi.NewExtractHandler(&fakeExtractor{
-		err: provider.ErrFailure,
+		err: errors.Join(provider.ErrFailure, errors.New("upstream status 400: bad request")),
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/extract-spec", strings.NewReader(validRequestJSON))
@@ -99,6 +99,9 @@ func TestExtractHandlerMapsProviderFailureToContractError(t *testing.T) {
 	}
 	if resp.Error == nil || resp.Error.Code != "PROVIDER_ERROR" {
 		t.Fatalf("expected PROVIDER_ERROR payload, got %#v", resp.Error)
+	}
+	if !strings.Contains(resp.Error.Message, "upstream status 400") {
+		t.Fatalf("expected detailed provider error message, got %#v", resp.Error)
 	}
 	if resp.Meta.Provider != "fake-provider" || resp.Meta.Model != "fake-model" {
 		t.Fatalf("expected provider meta from extractor, got %#v", resp.Meta)

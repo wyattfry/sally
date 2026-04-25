@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -69,15 +70,20 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 	}
 	defer httpResp.Body.Close()
 
-	var upstream openAIResponse
-	if err := json.NewDecoder(httpResp.Body).Decode(&upstream); err != nil {
-		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: decode response: %v", ErrFailure, err)
+	responseBody, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: read response: %v", ErrFailure, err)
 	}
 	if httpResp.StatusCode >= 400 {
 		if httpResp.StatusCode == http.StatusGatewayTimeout || httpResp.StatusCode == http.StatusRequestTimeout {
-			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d", ErrTimeout, httpResp.StatusCode)
+			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrTimeout, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
 		}
-		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d", ErrFailure, httpResp.StatusCode)
+		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrFailure, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
+	}
+
+	var upstream openAIResponse
+	if err := json.Unmarshal(responseBody, &upstream); err != nil {
+		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: decode response: %v", ErrFailure, err)
 	}
 
 	outputText := strings.TrimSpace(upstream.OutputText())
@@ -336,4 +342,15 @@ func isTimeoutError(err error) bool {
 	}
 	var netErr net.Error
 	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
+func summarizeUpstreamBody(body []byte) string {
+	text := strings.TrimSpace(string(body))
+	if text == "" {
+		return "empty response body"
+	}
+	if len(text) > 500 {
+		return text[:500] + "..."
+	}
+	return text
 }

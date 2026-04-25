@@ -51,12 +51,17 @@ func validExtractSpecRequest(req extract.ExtractSpecRequest) bool {
 }
 
 func writeProviderError(w http.ResponseWriter, requestID string, meta extract.ResponseMeta, err error) {
+	message := "Extraction provider failed."
+	if err != nil {
+		message = err.Error()
+	}
+
 	resp := extract.ExtractSpecResponse{
 		RequestID: requestID,
 		Status:    "error",
 		Error: &extract.ErrorPayload{
 			Code:    "PROVIDER_ERROR",
-			Message: "Extraction provider failed.",
+			Message: message,
 		},
 		Meta: meta,
 	}

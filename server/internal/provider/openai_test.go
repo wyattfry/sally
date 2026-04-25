@@ -216,6 +216,29 @@ func TestOpenAIExtractorFailsClearlyWhenStructuredOutputTextIsMissing(t *testing
 	}
 }
 
+func TestOpenAIExtractorIncludesUpstreamErrorBodyInFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]any{
+				"message": "Unsupported parameter: text.format.schema",
+			},
+		})
+	}))
+	defer server.Close()
+
+	extractor := NewOpenAIExtractor("test-key", "gpt-5-mini", server.URL, server.Client())
+
+	_, err := extractor.Extract(context.Background(), validOpenAIRequest())
+	if !errors.Is(err, ErrFailure) {
+		t.Fatalf("expected ErrFailure, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "Unsupported parameter") {
+		t.Fatalf("expected upstream body in error, got %v", err)
+	}
+}
+
 func TestExtractionSchemaDefinesNestedObjectsStrictly(t *testing.T) {
 	schema := extractionSchema()
 
