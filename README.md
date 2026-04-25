@@ -15,6 +15,22 @@ The PoC does this:
 
 The PoC does not include backend storage, auth, a full Mothership dashboard, product-page detection, or a real AI call.
 
+## Go server skeleton
+
+The repo also includes an early Go backend skeleton under `server/`.
+
+Current endpoints:
+
+- `GET /healthz`
+- `POST /v1/extract-spec` placeholder only
+
+Run the backend tests:
+
+```bash
+cd server
+go test ./...
+```
+
 ## Development
 
 Install dependencies:
