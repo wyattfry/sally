@@ -6,15 +6,17 @@ import (
 
 	"sally/server/internal/config"
 	"sally/server/internal/httpapi"
+	"sally/server/internal/provider"
 )
 
 func main() {
 	cfg := config.Load()
 	addr := ":" + cfg.Port
+	extractor := provider.NewStubExtractor()
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: httpapi.NewRouter(cfg),
+		Handler: httpapi.NewRouterWithExtractor(cfg, extractor),
 	}
 
 	log.Printf("sally server listening on %s", addr)
