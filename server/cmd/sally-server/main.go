@@ -11,8 +11,17 @@ import (
 
 func main() {
 	cfg := config.Load()
+	validateOpenAIConfig(cfg)
 	addr := ":" + cfg.Port
-	extractor := provider.NewStubExtractor()
+	extractor := provider.Extractor(provider.NewStubExtractor())
+	if cfg.OpenAIAPIKey != "" && cfg.OpenAIModel != "" {
+		extractor = provider.NewOpenAIExtractor(
+			cfg.OpenAIAPIKey,
+			cfg.OpenAIModel,
+			cfg.OpenAIBaseURL,
+			&http.Client{Timeout: cfg.OpenAITimeout},
+		)
+	}
 
 	server := &http.Server{
 		Addr:    addr,
@@ -23,4 +32,17 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
+}
+
+func validateOpenAIConfig(cfg config.Config) {
+	hasAPIKey := cfg.OpenAIAPIKey != ""
+	hasModel := cfg.OpenAIModel != ""
+	if hasAPIKey == hasModel {
+		return
+	}
+
+	if hasAPIKey {
+		log.Fatal("OPENAI_API_KEY is set but OPENAI_MODEL is missing")
+	}
+	log.Fatal("OPENAI_MODEL is set but OPENAI_API_KEY is missing")
 }
