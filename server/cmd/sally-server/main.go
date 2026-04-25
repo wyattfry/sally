@@ -19,7 +19,7 @@ func main() {
 		Handler: httpapi.NewRouterWithExtractor(cfg, extractor),
 	}
 
-	log.Printf("sally server listening on %s", addr)
+	log.Printf("sally server listening on %s provider=%s timeout=%s", addr, cfg.LLMProvider, cfg.OpenAITimeout)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}

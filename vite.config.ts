@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 
-const DEFAULT_BACKEND_BASE_URL = "http://10.0.0.104:8080";
+const DEFAULT_BACKEND_BASE_URL = "http://localhost:8080";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");

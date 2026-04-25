@@ -3,7 +3,10 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"sally/server/internal/extract"
 	"sally/server/internal/provider"
@@ -22,15 +25,44 @@ func NewExtractHandler(extractor provider.Extractor) http.HandlerFunc {
 			return
 		}
 
-		resp, err := extractor.Extract(r.Context(), req)
+		log.Printf("[extract] %s: received page=%q", req.RequestID, req.Page.URL)
+		start := time.Now()
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Accel-Buffering", "no")
+
+		flusher, _ := w.(http.Flusher)
+		sendEvent := func(event string, data []byte) {
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+
+		var resp extract.ExtractSpecResponse
+		var err error
+
+		if se, ok := extractor.(provider.StreamingExtractor); ok {
+			resp, err = se.ExtractStreaming(r.Context(), req, func(chunkCount int) {
+				data, _ := json.Marshal(map[string]int{"tokens": chunkCount})
+				sendEvent("progress", data)
+			})
+		} else {
+			resp, err = extractor.Extract(r.Context(), req)
+		}
+
+		elapsed := time.Since(start)
 		if err != nil {
-			writeProviderError(w, req.RequestID, extractor.Meta(), err)
+			log.Printf("[extract] %s: failed after %dms: %v", req.RequestID, elapsed.Milliseconds(), err)
+			data, _ := json.Marshal(buildErrorResponse(req.RequestID, extractor.Meta(), err))
+			sendEvent("error", data)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(resp)
+		log.Printf("[extract] %s: ok in %dms", req.RequestID, elapsed.Milliseconds())
+		data, _ := json.Marshal(resp)
+		sendEvent("done", data)
 	}
 }
 
@@ -50,30 +82,23 @@ func validExtractSpecRequest(req extract.ExtractSpecRequest) bool {
 	return true
 }
 
-func writeProviderError(w http.ResponseWriter, requestID string, meta extract.ResponseMeta, err error) {
+func buildErrorResponse(requestID string, meta extract.ResponseMeta, err error) extract.ExtractSpecResponse {
+	code := "PROVIDER_ERROR"
 	message := "Extraction provider failed."
 	if err != nil {
 		message = err.Error()
 	}
-
-	resp := extract.ExtractSpecResponse{
+	if errors.Is(err, provider.ErrTimeout) {
+		code = "MODEL_TIMEOUT"
+		message = "Extraction did not complete in time."
+	}
+	return extract.ExtractSpecResponse{
 		RequestID: requestID,
 		Status:    "error",
 		Error: &extract.ErrorPayload{
-			Code:    "PROVIDER_ERROR",
+			Code:    code,
 			Message: message,
 		},
 		Meta: meta,
 	}
-
-	status := http.StatusBadGateway
-	if errors.Is(err, provider.ErrTimeout) {
-		status = http.StatusGatewayTimeout
-		resp.Error.Code = "MODEL_TIMEOUT"
-		resp.Error.Message = "Extraction did not complete in time."
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(resp)
 }

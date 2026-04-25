@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { EXTRACT_TIMEOUT_MS } from "../lib/extractApi";
 import type { ScheduleItem } from "../lib/types";
 
+const TOTAL_TIMEOUT_SECONDS = Math.ceil(EXTRACT_TIMEOUT_MS / 1000);
+
 type PanelState =
-  | { kind: "thinking" }
+  | { kind: "thinking"; tokenCount: number }
   | { kind: "review"; draft: ScheduleItem };
 
 type SallyPanelProps = {
@@ -48,6 +51,22 @@ export function SallyPanel({
   const draft = panel.kind === "review" ? panel.draft : undefined;
   const [isAddingZone, setIsAddingZone] = useState(false);
   const [newZone, setNewZone] = useState("");
+  const [secondsLeft, setSecondsLeft] = useState(TOTAL_TIMEOUT_SECONDS);
+  const intervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (panel.kind !== "thinking") {
+      setSecondsLeft(TOTAL_TIMEOUT_SECONDS);
+      return;
+    }
+    setSecondsLeft(TOTAL_TIMEOUT_SECONDS);
+    intervalRef.current = window.setInterval(() => {
+      setSecondsLeft((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => {
+      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    };
+  }, [panel.kind]);
 
   function updateField<Key extends keyof ScheduleItem>(key: Key, value: ScheduleItem[Key]) {
     if (!draft) {
@@ -66,7 +85,17 @@ export function SallyPanel({
 
       <div className="panel-body">
         {panel.kind === "thinking" ? (
-          <div className="thinking">Reading product information and drafting a schedule item.</div>
+          <div className="thinking">
+            <div aria-hidden="true" className="thinking-spinner" />
+            <p>
+              {panel.tokenCount > 0
+                ? `Generating response… (${panel.tokenCount} tokens)`
+                : "Reading product information and drafting a schedule item."}
+            </p>
+            <div className={`thinking-countdown${secondsLeft <= 10 ? " thinking-countdown--urgent" : ""}`}>
+              {secondsLeft}s remaining
+            </div>
+          </div>
         ) : (
           <>
             {draft?.sourceImageUrl ? (

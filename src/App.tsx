@@ -18,7 +18,7 @@ import type { ScheduleItem } from "./lib/types";
 
 type PanelState =
   | { kind: "closed" }
-  | { kind: "thinking" }
+  | { kind: "thinking"; tokenCount: number }
   | { kind: "review"; draft: ScheduleItem }
   | { kind: "minimized"; draft: ScheduleItem }
   | { kind: "error"; message: string };
@@ -97,7 +97,7 @@ export default function App() {
   }
 
   function handleSpecClick() {
-    setPanel({ kind: "thinking" });
+    setPanel({ kind: "thinking", tokenCount: 0 });
     window.setTimeout(async () => {
       const captured = capturePage(document, window.location);
       try {
@@ -105,7 +105,10 @@ export default function App() {
           capturedPage: captured,
           projectName,
           knownZones: zones,
-          knownCategories: DEFAULT_CATEGORIES
+          knownCategories: DEFAULT_CATEGORIES,
+          onProgress: (tokenCount) => {
+            setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
+          }
         });
         setPanel({ kind: "review", draft: proposal });
       } catch (error) {

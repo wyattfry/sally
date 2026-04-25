@@ -18,6 +18,15 @@ type Extractor interface {
 	Meta() extract.ResponseMeta
 }
 
+// ProgressFunc receives the cumulative token chunk count as generation progresses.
+type ProgressFunc func(chunkCount int)
+
+// StreamingExtractor is an optional interface for providers that support token streaming.
+// The HTTP handler detects this interface and uses SSE when available.
+type StreamingExtractor interface {
+	ExtractStreaming(ctx context.Context, req extract.ExtractSpecRequest, onProgress ProgressFunc) (extract.ExtractSpecResponse, error)
+}
+
 type StubExtractor struct{}
 
 func NewStubExtractor() StubExtractor {

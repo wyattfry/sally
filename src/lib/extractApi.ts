@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 const DEFAULT_BACKEND_BASE_URL = "http://10.0.0.104:8080";
-const EXTRACT_TIMEOUT_MS = 18_000;
+export const EXTRACT_TIMEOUT_MS = 30_000;
 const EXTRACT_PATH = "/v1/extract-spec";
 
 type ExtractionErrorKind = "transport" | "backend" | "invalid";
@@ -33,6 +33,7 @@ type ExtractScheduleItemArgs = {
   knownZones: string[];
   knownCategories: string[];
   now?: Date;
+  onProgress?: (tokenCount: number) => void;
 };
 
 export async function extractScheduleItem({
@@ -40,7 +41,8 @@ export async function extractScheduleItem({
   projectName,
   knownZones,
   knownCategories,
-  now = new Date()
+  now = new Date(),
+  onProgress
 }: ExtractScheduleItemArgs): Promise<ScheduleItem> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), EXTRACT_TIMEOUT_MS);
@@ -53,22 +55,55 @@ export async function extractScheduleItem({
   });
 
   try {
-    const response = await fetch(getExtractApiUrl(), {
+    const apiUrl = getExtractApiUrl();
+    console.debug("Sending extraction request to", apiUrl, "with payload", request);
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
       signal: controller.signal
     });
 
-    const payload = await parseExtractSpecResponse(response);
     if (!response.ok) {
-      throw new ExtractionError("backend", payload?.error?.message || "Extraction request failed.");
-    }
-    if (!payload || payload.status !== "ok" || !payload.proposal) {
-      throw new ExtractionError("invalid", "Extraction request failed.");
+      const text = await response.text();
+      throw new ExtractionError("backend", text.trim() || "Extraction request failed.");
     }
 
-    return toScheduleItem(payload, now);
+    if (!response.body) {
+      throw new ExtractionError("invalid", "Empty response from extraction server.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const { events, remaining } = parseSSEBuffer(buffer);
+      buffer = remaining;
+
+      for (const { event, data } of events) {
+        if (event === "progress") {
+          const parsed = JSON.parse(data) as { tokens: number };
+          onProgress?.(parsed.tokens);
+        } else if (event === "done") {
+          const payload = JSON.parse(data) as ExtractSpecResponse;
+          if (!payload.proposal) {
+            throw new ExtractionError("invalid", "Extraction response was missing a proposal.");
+          }
+          return toScheduleItem(payload, now);
+        } else if (event === "error") {
+          const payload = JSON.parse(data) as ExtractSpecResponse;
+          throw new ExtractionError("backend", payload?.error?.message || "Extraction request failed.");
+        }
+      }
+    }
+
+    throw new ExtractionError("invalid", "Stream ended without a completion event.");
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new ExtractionError("transport", "Extraction request timed out.");
@@ -83,6 +118,28 @@ export async function extractScheduleItem({
   } finally {
     window.clearTimeout(timeoutId);
   }
+}
+
+function parseSSEBuffer(buffer: string): {
+  events: Array<{ event: string; data: string }>;
+  remaining: string;
+} {
+  const events: Array<{ event: string; data: string }> = [];
+  const parts = buffer.split("\n\n");
+  const remaining = parts.pop() ?? "";
+
+  for (const part of parts) {
+    if (!part.trim()) continue;
+    let event = "message";
+    let data = "";
+    for (const line of part.split("\n")) {
+      if (line.startsWith("event: ")) event = line.slice(7).trim();
+      else if (line.startsWith("data: ")) data = line.slice(6);
+    }
+    if (data) events.push({ event, data });
+  }
+
+  return { events, remaining };
 }
 
 function getExtractApiUrl(): string {
@@ -116,21 +173,6 @@ function getRuntimeConfig(): Required<SallyRuntimeConfig> {
   };
 }
 
-async function parseExtractSpecResponse(response: Response): Promise<ExtractSpecResponse | null> {
-  const text = await response.text();
-  if (!text.trim()) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(text) as ExtractSpecResponse;
-  } catch {
-    if (response.ok) {
-      throw new ExtractionError("invalid", "Extraction request failed.");
-    }
-    return null;
-  }
-}
 
 function buildExtractSpecRequest({
   capturedPage,
@@ -138,7 +180,7 @@ function buildExtractSpecRequest({
   knownZones,
   knownCategories,
   now
-}: Required<ExtractScheduleItemArgs>): ExtractSpecRequest {
+}: Required<Omit<ExtractScheduleItemArgs, "onProgress">> & { now: Date }): ExtractSpecRequest {
   return {
     requestId: createId(),
     sentAt: now.toISOString(),
