@@ -376,9 +376,9 @@ git commit -m "feat: add hosted extraction provider"
 
 **Step 1: Write the manual verification checklist updates**
 
-Add exact local run steps for:
+Add exact run steps for:
 
-- starting the Go server on `10.0.0.104`
+- starting the Go server on the shared dev host reachable at `10.0.0.104`
 - loading the unpacked extension
 - confirming the extension calls the backend
 - confirming a real proposal appears in Sally
@@ -430,43 +430,65 @@ git add docs/manual-verification.md README.md server/README.md
 git commit -m "docs: add extraction backend setup and verification"
 ```
 
-### Task 9: Deployment Prep For Self-Hosted Runner
+### Task 9: Local Compose And Self-Hosted Dev Deployment Prep
 
 **Files:**
+- Create: `docker-compose.yml`
 - Create: `server/Dockerfile`
 - Create: `.github/workflows/server-build.yml`
 - Create: `docs/plans/2026-04-24-deployment-notes.md`
+- Modify: `README.md`
+- Modify: `server/README.md`
 
-**Step 1: Write the failing workflow or build expectation**
+**Step 1: Define the environment split**
+
+Document the intended workflow:
+
+- local backend iteration happens on the current development machine via Docker Compose
+- the shared dev environment lives at `10.0.0.104`
+- the extension's normal dev/test target is `10.0.0.104`
+- GitHub Actions builds and deploys the server to `10.0.0.104`
+
+Keep this split explicit so local fast iteration and shared integration testing do not get conflated.
+
+**Step 2: Write the failing workflow or build expectation**
 
 Define the expected outputs:
 
 - build Go binary
-- optionally build Docker image
-- make artifact available to your self-hosted environment
+- build Docker image
+- support `docker compose up` for local backend development
+- make the server artifact available to the self-hosted dev environment at `10.0.0.104`
 
-**Step 2: Implement minimal deployment assets**
+**Step 3: Implement minimal local/dev deployment assets**
 
+- local `docker-compose.yml` for the backend service
 - multi-stage Dockerfile for the Go server
-- GitHub Actions workflow that runs on the self-hosted runner, executes `go test ./...`, and builds the server artifact
+- GitHub Actions workflow that runs on the self-hosted runner, executes `go test ./...`, builds the server artifact, and prepares deployment to `10.0.0.104`
+- docs describing:
+  - local compose usage
+  - expected env file handling
+  - how `10.0.0.104` differs from local compose
 
 Keep deployment simple. Do not automate production rollout yet.
 
-**Step 3: Verify locally where possible**
+**Step 4: Verify locally where possible**
 
 Run:
 
 ```bash
+docker compose up --build
 cd server && docker build -t sally-server .
 ```
 
 Expected:
 
+- compose starts the local backend container successfully
 - container image builds successfully
 
-**Step 4: Commit**
+**Step 5: Commit**
 
 ```bash
-git add server/Dockerfile .github/workflows/server-build.yml docs/plans/2026-04-24-deployment-notes.md
-git commit -m "chore: add server build and deployment prep"
+git add docker-compose.yml server/Dockerfile .github/workflows/server-build.yml docs/plans/2026-04-24-deployment-notes.md README.md server/README.md
+git commit -m "chore: add local and dev deployment assets"
 ```
