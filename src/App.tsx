@@ -3,7 +3,7 @@ import { SallyPanel } from "./components/SallyPanel";
 import { ScheduleViewer } from "./components/ScheduleViewer";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
-import { mockExtractScheduleItem } from "./lib/mockExtraction";
+import { extractScheduleItem } from "./lib/extractApi";
 import {
   getProjectName,
   listScheduleItems,
@@ -20,6 +20,16 @@ type PanelState =
   | { kind: "thinking" }
   | { kind: "review"; draft: ScheduleItem }
   | { kind: "minimized"; draft: ScheduleItem };
+
+const DEFAULT_CATEGORIES = [
+  "Plumbing Fixture",
+  "Lighting",
+  "Appliance",
+  "Hardware",
+  "Finish",
+  "Furniture",
+  "Accessory"
+];
 
 export default function App() {
   const [panel, setPanel] = useState<PanelState>({ kind: "closed" });
@@ -76,10 +86,20 @@ export default function App() {
 
   function handleSpecClick() {
     setPanel({ kind: "thinking" });
-    window.setTimeout(() => {
+    window.setTimeout(async () => {
       const captured = capturePage(document, window.location);
-      const proposal = mockExtractScheduleItem(captured);
-      setPanel({ kind: "review", draft: proposal });
+      try {
+        const proposal = await extractScheduleItem({
+          capturedPage: captured,
+          projectName,
+          knownZones: zones,
+          knownCategories: DEFAULT_CATEGORIES
+        });
+        setPanel({ kind: "review", draft: proposal });
+      } catch (error) {
+        setPanel({ kind: "closed" });
+        showToast(error instanceof Error ? error.message : "Could not extract item.");
+      }
     }, 250);
   }
 

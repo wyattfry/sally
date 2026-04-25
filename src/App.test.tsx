@@ -2,9 +2,37 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ScheduleItem } from "./lib/types";
+import { extractScheduleItem } from "./lib/extractApi";
+
+vi.mock("./lib/extractApi", () => ({
+  extractScheduleItem: vi.fn()
+}));
+
 import App from "./App";
 
 const storageState: Record<string, unknown> = {};
+
+function extractedItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
+  return {
+    id: "draft-request-123",
+    capturedAt: "2026-04-24T18:30:00.000Z",
+    zone: "",
+    title: "Wall Faucet",
+    manufacturer: "Example Co.",
+    modelNumber: "WF-200",
+    category: "Faucet",
+    description: "Wall-mounted faucet.",
+    finish: "Polished Chrome",
+    requiredAddOns: ["Rough valve body"],
+    optionalCompanions: [],
+    sourceUrl: "https://example.com/products/wf-200",
+    sourceTitle: "Example Co. WF-200 Wall Faucet",
+    sourceImageUrl: "https://example.com/faucet.jpg",
+    sourcePdfLinks: ["https://example.com/spec-sheet.pdf"],
+    ...overrides
+  };
+}
 
 function installChromeStorageMock() {
   vi.stubGlobal("chrome", {
@@ -44,6 +72,7 @@ describe("App", () => {
       delete storageState[key];
     }
     installChromeStorageMock();
+    vi.mocked(extractScheduleItem).mockResolvedValue(extractedItem());
   });
 
   it("opens Sally, edits a proposal, saves it, and shows an accepted-item toast", async () => {
