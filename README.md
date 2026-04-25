@@ -42,7 +42,15 @@ cd server
 go run ./cmd/sally-server
 ```
 
-By default the server listens on `:8080`. Point the extension at `http://10.0.0.104:8080` when that machine is using `10.0.0.104` on your LAN.
+By default the server listens on `:8080`. For shared integration testing, point the extension at your development backend host with `VITE_SALLY_BACKEND_BASE_URL`.
+
+For local backend iteration on the current development machine, use Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+That local container path is separate from the shared development host used for integration testing.
 
 ## Development
 
@@ -58,7 +66,7 @@ Optional extension env config:
 cp .env.example .env
 ```
 
-- `VITE_SALLY_BACKEND_BASE_URL` defaults to `http://10.0.0.104:8080`
+- `VITE_SALLY_BACKEND_BASE_URL` should point at your shared development backend host, for example `http://<development-host>:8080`
 - `VITE_SALLY_ALLOW_MOCK_FALLBACK` defaults to `false`
 - mock fallback is intended for development only, must be enabled explicitly, and is only used for transport or unreachable-backend failures
 
@@ -86,12 +94,21 @@ Load the extension in Chrome:
 Quick backend check:
 
 ```bash
-curl -i http://10.0.0.104:8080/healthz
+curl -i http://localhost:8080/healthz
 ```
 
 Expected result:
 
 - `HTTP/1.1 200 OK`
 - body: `ok`
+
+## Dev Deployment Split
+
+- Local backend iteration: `docker compose up --build` on the current machine
+- Shared dev integration target: the backend URL configured in `VITE_SALLY_BACKEND_BASE_URL`
+- GitHub Actions on the self-hosted runner: test and build server artifacts in the repository `development` environment for the shared dev host
+- Real extractor runtime on the development host requires both `OPENAI_API_KEY` and `OPENAI_MODEL`
+
+See [docs/plans/2026-04-24-deployment-notes.md](/home/wyatt/sally/docs/plans/2026-04-24-deployment-notes.md) for the concise deployment notes.
 
 The extension stores accepted PoC items locally in the current Chrome profile through `chrome.storage.local`.

@@ -248,7 +248,7 @@ Expected: FAIL because fallback and error behavior are not implemented yet.
 
 **Step 3: Write minimal implementation**
 
-- Add extension config for backend base URL, defaulting to `http://10.0.0.104:<port>`
+- Add extension config for backend base URL, defaulting to the shared development backend host
 - add `host_permissions` in the manifest for the backend origin
 - allow mock fallback only behind explicit dev config
 - show a clear user-facing error state or toast when extraction fails without fallback
@@ -378,7 +378,7 @@ git commit -m "feat: add hosted extraction provider"
 
 Add exact run steps for:
 
-- starting the Go server on the shared dev host reachable at `10.0.0.104`
+- starting the Go server on the shared development host
 - loading the unpacked extension
 - confirming the extension calls the backend
 - confirming a real proposal appears in Sally
@@ -445,9 +445,9 @@ git commit -m "docs: add extraction backend setup and verification"
 Document the intended workflow:
 
 - local backend iteration happens on the current development machine via Docker Compose
-- the shared dev environment lives at `10.0.0.104`
-- the extension's normal dev/test target is `10.0.0.104`
-- GitHub Actions builds and deploys the server to `10.0.0.104`
+- the shared dev environment lives on a dedicated development host/container
+- the extension's normal dev/test target is that development host, configured via environment
+- GitHub Actions uses the repository `development` environment and prepares deployment for that development host
 
 Keep this split explicit so local fast iteration and shared integration testing do not get conflated.
 
@@ -458,17 +458,17 @@ Define the expected outputs:
 - build Go binary
 - build Docker image
 - support `docker compose up` for local backend development
-- make the server artifact available to the self-hosted dev environment at `10.0.0.104`
+- make the server artifact available to the self-hosted development environment
 
 **Step 3: Implement minimal local/dev deployment assets**
 
 - local `docker-compose.yml` for the backend service
 - multi-stage Dockerfile for the Go server
-- GitHub Actions workflow that runs on the self-hosted runner, executes `go test ./...`, builds the server artifact, and prepares deployment to `10.0.0.104`
+- GitHub Actions workflow that runs on the self-hosted runner, executes `go test ./...`, builds the server artifact, and prepares deployment to the development environment
 - docs describing:
   - local compose usage
   - expected env file handling
-  - how `10.0.0.104` differs from local compose
+  - how the shared development host differs from local compose
 
 Keep deployment simple. Do not automate production rollout yet.
 

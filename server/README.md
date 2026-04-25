@@ -23,7 +23,7 @@ Expected:
 For LAN access from another machine, use the host IP instead, for example:
 
 ```bash
-curl -i http://10.0.0.104:8080/healthz
+curl -i http://<development-host>:8080/healthz
 ```
 
 ## OpenAI Config
@@ -36,3 +36,30 @@ The real provider is selected only when both of these are set:
 If neither is set, the server uses the stub extractor.
 
 If only one is set, the server exits at startup.
+
+## Docker
+
+Build the image directly:
+
+```bash
+cd /home/wyatt/sally/server
+docker build -t sally-server .
+```
+
+Run the backend locally through Compose from the repo root:
+
+```bash
+cd /home/wyatt/sally
+docker compose up --build
+```
+
+Local Compose is for iteration on the current machine. The extension's normal shared dev target should be the backend URL configured in `VITE_SALLY_BACKEND_BASE_URL`.
+
+## GitHub Actions Development Environment
+
+The self-hosted workflow runs in the repository `development` environment.
+
+Store deployment-specific secrets there, including:
+
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`

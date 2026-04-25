@@ -1,0 +1,45 @@
+name: Server Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "docker-compose.yml"
+      - ".github/workflows/server-build.yml"
+  workflow_dispatch:
+
+jobs:
+  server-build:
+    runs-on: self-hosted
+    environment: development
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+
+      - name: Run Go tests
+        working-directory: server
+        run: go test ./...
+
+      - name: Build server binary
+        working-directory: server
+        run: |
+          mkdir -p ../artifacts
+          go build -o ../artifacts/sally-server ./cmd/sally-server
+
+      - name: Build server image
+        working-directory: server
+        run: docker build -t sally-server:dev .
+
+      - name: Save image tarball
+        run: docker save sally-server:dev -o artifacts/sally-server-dev.tar
+
+      - name: Upload server artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sally-server-dev
+          path: artifacts/

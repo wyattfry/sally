@@ -2,7 +2,7 @@
 
 ## Backend
 
-1. On the machine that hosts the backend, make sure the extension `.env` points at `http://10.0.0.104:8080`.
+1. On the machine that hosts the backend, make sure the extension `.env` points at your shared development backend host, for example `http://<development-host>:8080`.
 2. To verify the real provider path rather than the stub, make sure both `OPENAI_API_KEY` and `OPENAI_MODEL` are set before starting the server.
 3. Make sure `VITE_SALLY_ALLOW_MOCK_FALLBACK=false` for this check so the extension does not mask backend failures with local mock data.
 4. In `/home/wyatt/sally/server`, start the server:
@@ -11,11 +11,11 @@
    ```
 5. In another terminal, confirm health:
    ```bash
-   curl -i http://10.0.0.104:8080/healthz
+   curl -i http://<development-host>:8080/healthz
    ```
 6. Confirm the response is `200 OK` with body `ok`.
 
-The server listens on `:8080`, so it is reachable on the host's LAN IP. If the machine is not currently using `10.0.0.104`, update `.env` and reload the extension with the actual LAN IP.
+The server listens on `:8080`, so it is reachable on the host's LAN IP or container address. If the development backend host changes, update `.env` and reload the extension.
 
 ## Load The Extension
 
@@ -35,7 +35,7 @@ The server listens on `:8080`, so it is reachable on the host's LAN IP. If the m
 3. Confirm Sally opens on the right and briefly shows `Reading page`.
 4. Confirm an editable proposal appears.
 5. In Chrome DevTools, open `Network` and confirm a `POST` to:
-   - `http://10.0.0.104:8080/v1/extract-spec`
+   - `http://<development-host>:8080/v1/extract-spec`
 6. Confirm the response is `200` and the payload contains `status: "ok"`.
 7. Confirm the visible proposal fields in Sally match the `POST /v1/extract-spec` response body.
 8. Confirm no fallback toast appears during this check.
