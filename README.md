@@ -24,7 +24,9 @@ The repo also includes an early Go backend skeleton under `server/`.
 Current endpoints:
 
 - `GET /healthz`
-- `POST /v1/extract-spec` contract-valid stub response
+- `POST /v1/extract-spec` extraction response using the configured provider
+
+If `OPENAI_API_KEY` and `OPENAI_MODEL` are both configured, the server uses the hosted OpenAI extractor. If neither is configured, the server uses the stub extractor for local development.
 
 Run the backend tests:
 
@@ -32,6 +34,15 @@ Run the backend tests:
 cd server
 go test ./...
 ```
+
+Run the backend locally:
+
+```bash
+cd server
+go run ./cmd/sally-server
+```
+
+By default the server listens on `:8080`. Point the extension at `http://10.0.0.104:8080` when that machine is using `10.0.0.104` on your LAN.
 
 ## Development
 
@@ -71,5 +82,16 @@ Load the extension in Chrome:
 4. Select the generated `dist/` directory.
 5. Open or refresh a normal `http://` or `https://` webpage.
 6. Click the green `SPEC` button.
+
+Quick backend check:
+
+```bash
+curl -i http://10.0.0.104:8080/healthz
+```
+
+Expected result:
+
+- `HTTP/1.1 200 OK`
+- body: `ok`
 
 The extension stores accepted PoC items locally in the current Chrome profile through `chrome.storage.local`.

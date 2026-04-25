@@ -1,55 +1,62 @@
 # Manual Verification
 
-## Chrome Extension Load
+## Backend
 
-1. Run `npm run build`.
+1. On the machine that hosts the backend, make sure the extension `.env` points at `http://10.0.0.104:8080`.
+2. To verify the real provider path rather than the stub, make sure both `OPENAI_API_KEY` and `OPENAI_MODEL` are set before starting the server.
+3. Make sure `VITE_SALLY_ALLOW_MOCK_FALLBACK=false` for this check so the extension does not mask backend failures with local mock data.
+4. In `/home/wyatt/sally/server`, start the server:
+   ```bash
+   go run ./cmd/sally-server
+   ```
+5. In another terminal, confirm health:
+   ```bash
+   curl -i http://10.0.0.104:8080/healthz
+   ```
+6. Confirm the response is `200 OK` with body `ok`.
+
+The server listens on `:8080`, so it is reachable on the host's LAN IP. If the machine is not currently using `10.0.0.104`, update `.env` and reload the extension with the actual LAN IP.
+
+## Load The Extension
+
+1. In `/home/wyatt/sally`, build the extension:
+   ```bash
+   npm run build
+   ```
 2. Open `chrome://extensions`.
 3. Enable Developer mode.
-4. Click Load unpacked.
+4. Click `Load unpacked`.
 5. Select `/home/wyatt/sally/dist`.
-6. Open or refresh a normal `http://` or `https://` product page.
 
-## PoC Flow
+## Confirm Backend Extraction
 
-1. Confirm only the green `SPEC` button appears.
-2. Click `SPEC`.
-3. Confirm Sally opens as a right-side ride-along panel.
-4. Confirm the panel briefly shows `Reading page`.
-5. Confirm the panel header shows the project name, initially `My New Project`.
-6. Confirm editable proposal fields appear.
-7. Pick an existing `Zone`.
-8. Choose `Add new zone...`, add a new zone, and confirm the new zone is selected.
-9. Pick one of the default `Category` options.
-10. Edit at least `Title`.
-11. Press `Esc`.
-12. Confirm the panel minimizes and a `Restore Sally draft` button appears.
-13. Restore the draft and confirm edits remain.
-14. Click `OK`.
-15. Confirm the panel disappears, the `SPEC` button remains visually unchanged, and an `Item added` toast appears with a progress bar.
-16. Click `SPEC` again.
-17. Click `View Items` in the Sally panel.
-18. Confirm the add-item panel closes and the captured schedule drawer opens in front with the accepted item and a thumbnail.
-19. Confirm the project title shows a small edit affordance, click `My New Project`, rename it, and confirm the drawer title updates.
-20. Click `Print`.
-21. Confirm a new print tab/window opens with only the schedule, the renamed project title, and the browser print dialog opens.
-22. Confirm the preview is a clean schedule sheet without the original product page behind it.
-23. Close the print dialog and print tab/window.
-24. Hover the accepted item and click `Remove`.
-25. Confirm the item disappears and the viewer shows the empty state.
-26. Close the drawer.
-27. Refresh the page.
-28. Confirm the `SPEC` button still appears in its normal green resting state.
+1. Open or refresh a normal `http://` or `https://` product page.
+2. Click the green `SPEC` button.
+3. Confirm Sally opens on the right and briefly shows `Reading page`.
+4. Confirm an editable proposal appears.
+5. In Chrome DevTools, open `Network` and confirm a `POST` to:
+   - `http://10.0.0.104:8080/v1/extract-spec`
+6. Confirm the response is `200` and the payload contains `status: "ok"`.
+7. Confirm the visible proposal fields in Sally match the `POST /v1/extract-spec` response body.
+8. Confirm no fallback toast appears during this check.
 
-## Context Menu
+## Confirm Real Proposal Flow
 
-1. Right-click a normal webpage.
-2. Click `SPEC this page`.
-3. Confirm Sally opens and follows the same flow as clicking the green `SPEC` button.
+1. In Sally, confirm the header shows the project name, initially `My New Project`.
+2. Pick a `Zone`.
+3. Pick a `Category`.
+4. Edit at least `Title`.
+5. Click `OK`.
+6. Confirm the panel closes and an `Item added` toast appears.
+7. Click `SPEC` again, then `View Items`.
+8. Confirm the accepted item appears in the viewer with its thumbnail and source link.
 
-## Known PoC Limits
+## Confirm Failure Behavior
 
-- Extraction is mocked.
-- Capture quality varies by page.
-- Accepted items are local to the current Chrome profile and extension install.
-- There is no full Mothership dashboard yet.
-- There is no product-page detection yet.
+1. Stop the Go server.
+2. Refresh the product page.
+3. Click `SPEC`.
+4. Confirm Sally does not silently produce a proposal.
+5. Confirm a visible failure state appears with the backend error and `Retry extraction` / `Dismiss`.
+6. Confirm the same failure is also surfaced as a toast.
+7. If development fallback is explicitly enabled, confirm fallback only occurs for unreachable or timeout-style backend failures, not backend extraction errors.
