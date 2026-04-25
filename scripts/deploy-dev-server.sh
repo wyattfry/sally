@@ -3,7 +3,7 @@
 set -euo pipefail
 
 : "${DEPLOY_ROOT:=$HOME/.local/share/sally-dev}"
-: "${PORT:=40123}"
+: "${PORT:=8080}"
 : "${OPENAI_MODEL:=gpt-5-mini}"
 
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then

@@ -44,7 +44,7 @@ The `development` environment should hold the runtime config needed for the real
 
 - `OPENAI_API_KEY`
 - optional `OPENAI_MODEL` defaulting to `gpt-5-mini`
-- optional `SALLY_SERVER_PORT` defaulting to `40123`
+- optional `SALLY_SERVER_PORT` defaulting to `8080`
 - optional `SALLY_SERVER_DEPLOY_ROOT` defaulting to `~/.local/share/sally-dev`
 
 The direct deployment path is intended for hosts where Docker is inconvenient or unavailable, including Proxmox LXC guests affected by nested-container AppArmor restrictions.

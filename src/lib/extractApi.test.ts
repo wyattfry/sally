@@ -72,7 +72,7 @@ describe("extractScheduleItem", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("http://10.0.0.104:8080/v1/extract-spec");
+    expect(url).toBe("http://localhost:8080/v1/extract-spec");
     expect(init.method).toBe("POST");
     expect(init.signal).toBeInstanceOf(AbortSignal);
 

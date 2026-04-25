@@ -59,7 +59,7 @@ If the shared dev host is a Proxmox LXC and Docker cannot start nested container
 
 ```bash
 cd /home/wyatt/sally
-OPENAI_API_KEY=... OPENAI_MODEL=gpt-5-mini PORT=40123 ./scripts/deploy-dev-server.sh
+OPENAI_API_KEY=... OPENAI_MODEL=gpt-5-mini PORT=8080 ./scripts/deploy-dev-server.sh
 ```
 
 ## GitHub Actions Development Environment
@@ -73,5 +73,5 @@ Store deployment-specific secrets there, including:
 Optional environment variables:
 
 - `OPENAI_MODEL` default: `gpt-5-mini`
-- `SALLY_SERVER_PORT` default: `40123`
+- `SALLY_SERVER_PORT` default: `8080`
 - `SALLY_SERVER_DEPLOY_ROOT` default: `~/.local/share/sally-dev`
