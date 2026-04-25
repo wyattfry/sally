@@ -96,6 +96,7 @@ The extension should not call model providers directly. The backend owns:
 - `knownZones` and `knownCategories` help the model align proposals with the current project language.
 - `requestId` allows end-to-end tracing across extension logs and backend logs.
 - `options.includeDebug` allows the backend to include richer analysis metadata without changing the endpoint.
+- `structuredData` should be treated as an array of arbitrary JSON values copied from page-level structured product data when available.
 
 ## Response Contract
 
