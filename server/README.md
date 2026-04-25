@@ -55,11 +55,23 @@ docker compose up --build
 
 Local Compose is for iteration on the current machine. The extension's normal shared dev target should be the backend URL configured in `VITE_SALLY_BACKEND_BASE_URL`.
 
+If the shared dev host is a Proxmox LXC and Docker cannot start nested containers, run the Go binary directly instead:
+
+```bash
+cd /home/wyatt/sally
+OPENAI_API_KEY=... OPENAI_MODEL=gpt-5-mini PORT=40123 ./scripts/deploy-dev-server.sh
+```
+
 ## GitHub Actions Development Environment
 
-The self-hosted workflow runs in the repository `development` environment.
+The self-hosted workflow runs in the repository `development` environment and deploys the Go binary directly on the runner host.
 
 Store deployment-specific secrets there, including:
 
 - `OPENAI_API_KEY`
-- `OPENAI_MODEL`
+
+Optional environment variables:
+
+- `OPENAI_MODEL` default: `gpt-5-mini`
+- `SALLY_SERVER_PORT` default: `40123`
+- `SALLY_SERVER_DEPLOY_ROOT` default: `~/.local/share/sally-dev`

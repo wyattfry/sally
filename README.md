@@ -51,6 +51,7 @@ docker compose up --build
 ```
 
 That local container path is separate from the shared development host used for integration testing.
+If your shared development host is a Proxmox LXC, Docker-in-LXC may still fail because of host AppArmor policy. In that case, run the Go server directly on the host and use the self-hosted runner to deploy the binary.
 
 ## Development
 
@@ -106,8 +107,12 @@ Expected result:
 
 - Local backend iteration: `docker compose up --build` on the current machine
 - Shared dev integration target: the backend URL configured in `VITE_SALLY_BACKEND_BASE_URL`
-- GitHub Actions on the self-hosted runner: test and build server artifacts in the repository `development` environment for the shared dev host
-- Real extractor runtime on the development host requires both `OPENAI_API_KEY` and `OPENAI_MODEL`
+- GitHub Actions on the self-hosted runner: test, build, and directly deploy the Go server in the repository `development` environment; Docker image artifacts are optional and only built when Docker is usable on that host
+- Real extractor runtime on the development host requires `OPENAI_API_KEY`; `OPENAI_MODEL` defaults to `gpt-5-mini` if unset
+- Optional GitHub environment variables:
+  - `OPENAI_MODEL`
+  - `SALLY_SERVER_PORT`
+  - `SALLY_SERVER_DEPLOY_ROOT`
 
 See [docs/plans/2026-04-24-deployment-notes.md](/home/wyatt/sally/docs/plans/2026-04-24-deployment-notes.md) for the concise deployment notes.
 

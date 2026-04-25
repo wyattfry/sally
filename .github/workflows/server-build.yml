@@ -1,10 +1,11 @@
-name: Server Build
+name: Server Build And Deploy
 
 on:
   push:
     branches: [main]
     paths:
       - "server/**"
+      - "scripts/deploy-dev-server.sh"
       - "docker-compose.yml"
       - ".github/workflows/server-build.yml"
   workflow_dispatch:
@@ -31,11 +32,22 @@ jobs:
           mkdir -p ../artifacts
           go build -o ../artifacts/sally-server ./cmd/sally-server
 
+      - name: Detect Docker usability
+        id: docker
+        run: |
+          if docker run --rm hello-world >/dev/null 2>&1; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build server image
+        if: steps.docker.outputs.usable == 'true'
         working-directory: server
         run: docker build -t sally-server:dev .
 
       - name: Save image tarball
+        if: steps.docker.outputs.usable == 'true'
         run: docker save sally-server:dev -o artifacts/sally-server-dev.tar
 
       - name: Upload server artifacts
@@ -43,3 +55,13 @@ jobs:
         with:
           name: sally-server-dev
           path: artifacts/
+
+      - name: Deploy server directly on runner host
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          PORT: ${{ vars.SALLY_SERVER_PORT }}
+          DEPLOY_ROOT: ${{ vars.SALLY_SERVER_DEPLOY_ROOT }}
+        run: |
+          chmod +x scripts/deploy-dev-server.sh
+          ./scripts/deploy-dev-server.sh

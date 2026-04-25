@@ -447,7 +447,7 @@ Document the intended workflow:
 - local backend iteration happens on the current development machine via Docker Compose
 - the shared dev environment lives on a dedicated development host/container
 - the extension's normal dev/test target is that development host, configured via environment
-- GitHub Actions uses the repository `development` environment and prepares deployment for that development host
+- GitHub Actions uses the repository `development` environment and deploys directly to that development host when the self-hosted runner is on the same machine
 
 Keep this split explicit so local fast iteration and shared integration testing do not get conflated.
 
@@ -458,13 +458,13 @@ Define the expected outputs:
 - build Go binary
 - build Docker image
 - support `docker compose up` for local backend development
-- make the server artifact available to the self-hosted development environment
+- make the server artifact available to the self-hosted development environment and support direct binary deployment when Docker is unsuitable on that host
 
 **Step 3: Implement minimal local/dev deployment assets**
 
 - local `docker-compose.yml` for the backend service
 - multi-stage Dockerfile for the Go server
-- GitHub Actions workflow that runs on the self-hosted runner, executes `go test ./...`, builds the server artifact, and prepares deployment to the development environment
+- GitHub Actions workflow that runs on the self-hosted runner, executes `go test ./...`, builds the server artifact, and either prepares Docker artifacts when Docker is usable or deploys the binary directly to the development environment
 - docs describing:
   - local compose usage
   - expected env file handling
