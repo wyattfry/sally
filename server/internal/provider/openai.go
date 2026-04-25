@@ -325,6 +325,7 @@ func extractionSchema() map[string]any {
 			"category",
 			"description",
 			"finish",
+			"finishModelNumber",
 			"availableFinishes",
 			"finishModelMappings",
 			"requiredAddOns",
