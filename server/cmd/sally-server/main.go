@@ -46,6 +46,15 @@ func newExtractor(cfg config.Config) provider.Extractor {
 			cfg.OllamaBaseURL,
 			client,
 		)
+	case "chatcompletion":
+		validateChatCompletionConfig(cfg)
+		return provider.NewChatCompletionExtractor(
+			cfg.OpenAIAPIKey,
+			cfg.OpenAIModel,
+			cfg.OpenAIBaseURL,
+			cfg.ChatCompletionResponseFormat,
+			client,
+		)
 	default:
 		log.Fatalf("unsupported LLM_PROVIDER %q", cfg.LLMProvider)
 		return nil
@@ -61,5 +70,11 @@ func validateOpenAIConfig(cfg config.Config) {
 func validateOllamaConfig(cfg config.Config) {
 	if cfg.OllamaBaseURL == "" || cfg.OllamaModel == "" {
 		log.Fatal("LLM_PROVIDER=ollama requires OLLAMA_BASE_URL and OLLAMA_MODEL")
+	}
+}
+
+func validateChatCompletionConfig(cfg config.Config) {
+	if cfg.OpenAIAPIKey == "" || cfg.OpenAIModel == "" {
+		log.Fatal("LLM_PROVIDER=chatcompletion requires OPENAI_API_KEY and OPENAI_MODEL")
 	}
 }

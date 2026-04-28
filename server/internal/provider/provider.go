@@ -75,6 +75,20 @@ func firstOrDefault(values []string, fallback string) string {
 	return values[0]
 }
 
+func coalesceStrings(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+func coalesceFinishMappings(s []extract.FinishModelMapping) []extract.FinishModelMapping {
+	if s == nil {
+		return []extract.FinishModelMapping{}
+	}
+	return s
+}
+
 func truncateDescription(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {

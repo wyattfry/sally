@@ -5,17 +5,10 @@ services:
       dockerfile: Dockerfile
     container_name: sally-server
     env_file:
-      - path: ./server/.env
+      - path: .env
         required: false
-    environment:
-      PORT: ${PORT:-8080}
-      LLM_PROVIDER: ${LLM_PROVIDER:-stub}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      OPENAI_TIMEOUT_MS: ${OPENAI_TIMEOUT_MS:-}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      - path: server/.env
+        required: false
     ports:
       - "8080:8080"
     restart: unless-stopped

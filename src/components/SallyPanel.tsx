@@ -197,7 +197,7 @@ export function SallyPanel({
               <label htmlFor="sally-required-addons">Required Add-ons</label>
               <input
                 id="sally-required-addons"
-                value={draft?.requiredAddOns.join(", ") ?? ""}
+                value={(draft?.requiredAddOns ?? []).join(", ")}
                 onChange={(event) =>
                   updateField("requiredAddOns", splitList(event.target.value))
                 }
@@ -208,7 +208,7 @@ export function SallyPanel({
               <label htmlFor="sally-optional-companions">Optional Companions</label>
               <input
                 id="sally-optional-companions"
-                value={draft?.optionalCompanions.join(", ") ?? ""}
+                value={(draft?.optionalCompanions ?? []).join(", ")}
                 onChange={(event) =>
                   updateField("optionalCompanions", splitList(event.target.value))
                 }

@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 const DEFAULT_BACKEND_BASE_URL = "http://10.0.0.104:8080";
-export const EXTRACT_TIMEOUT_MS = 30_000;
+export const EXTRACT_TIMEOUT_MS = 180_000;
 const EXTRACT_PATH = "/v1/extract-spec";
 
 type ExtractionErrorKind = "transport" | "backend" | "invalid";
@@ -219,12 +219,12 @@ function toScheduleItem(response: ExtractSpecResponse, now: Date): ScheduleItem 
     description: proposal.description,
     finish: proposal.finish,
     finishModelNumber: proposal.finishModelNumber || undefined,
-    requiredAddOns: proposal.requiredAddOns,
-    optionalCompanions: proposal.optionalCompanions,
+    requiredAddOns: proposal.requiredAddOns ?? [],
+    optionalCompanions: proposal.optionalCompanions ?? [],
     sourceUrl: proposal.sourceUrl,
     sourceTitle: proposal.sourceTitle,
     sourceImageUrl: proposal.sourceImageUrl,
-    sourcePdfLinks: proposal.sourcePdfLinks
+    sourcePdfLinks: proposal.sourcePdfLinks ?? []
   };
 }
 

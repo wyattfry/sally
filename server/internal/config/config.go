@@ -12,15 +12,16 @@ const defaultOpenAIBaseURL = "https://api.openai.com/v1"
 const defaultOpenAITimeout = 15 * time.Second
 
 type Config struct {
-	Port              string
-	LLMProvider       string
-	OpenAIAPIKey      string
-	OpenAIModel       string
-	OpenAIBaseURL     string
-	OpenAITimeout     time.Duration
-	OllamaBaseURL     string
-	OllamaModel       string
-	AllowMockFallback bool
+	Port                        string
+	LLMProvider                 string
+	OpenAIAPIKey                string
+	OpenAIModel                 string
+	OpenAIBaseURL               string
+	OpenAITimeout               time.Duration
+	ChatCompletionResponseFormat string
+	OllamaBaseURL               string
+	OllamaModel                 string
+	AllowMockFallback           bool
 }
 
 func Load() Config {
@@ -35,8 +36,9 @@ func Load() Config {
 		OpenAIAPIKey:      strings.TrimSpace(os.Getenv("OPENAI_API_KEY")),
 		OpenAIModel:       strings.TrimSpace(os.Getenv("OPENAI_MODEL")),
 		OpenAIBaseURL:     firstNonEmpty(strings.TrimSpace(os.Getenv("OPENAI_BASE_URL")), defaultOpenAIBaseURL),
-		OpenAITimeout:     parseDurationMillisEnv("OPENAI_TIMEOUT_MS", defaultOpenAITimeout),
-		OllamaBaseURL:     strings.TrimSpace(os.Getenv("OLLAMA_BASE_URL")),
+		OpenAITimeout:               parseDurationMillisEnv("OPENAI_TIMEOUT_MS", defaultOpenAITimeout),
+		ChatCompletionResponseFormat: firstNonEmpty(strings.TrimSpace(os.Getenv("CHATCOMPLETION_RESPONSE_FORMAT")), "json_schema"),
+		OllamaBaseURL:               strings.TrimSpace(os.Getenv("OLLAMA_BASE_URL")),
 		OllamaModel:       strings.TrimSpace(os.Getenv("OLLAMA_MODEL")),
 		AllowMockFallback: parseBoolEnv("SALLY_ALLOW_MOCK_FALLBACK"),
 	}
