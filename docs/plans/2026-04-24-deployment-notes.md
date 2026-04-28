@@ -53,3 +53,9 @@ The `development` environment should hold the runtime config needed for the sele
 - optional `SALLY_SERVER_DEPLOY_ROOT` defaulting to `~/.local/share/sally-dev`
 
 The direct deployment path is intended for hosts where Docker is inconvenient or unavailable, including Proxmox LXC guests affected by nested-container AppArmor restrictions.
+
+The deploy script installs a user `systemd` service and manages it with `systemctl --user`. For boot-time startup, the target host must also have lingering enabled for that user, for example:
+
+```bash
+sudo loginctl enable-linger wyatt
+```

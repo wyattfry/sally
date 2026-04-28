@@ -77,6 +77,16 @@ cd /home/wyatt/sally
 LLM_PROVIDER=ollama OLLAMA_BASE_URL=http://10.0.0.200:11434 OLLAMA_MODEL=qwen2.5:7b PORT=8080 ./scripts/deploy-dev-server.sh
 ```
 
+`deploy-dev-server.sh` installs a user `systemd` service at `~/.config/systemd/user/sally-server.service` and starts it with `systemctl --user`.
+
+For boot-time startup, the host needs one root-side step:
+
+```bash
+sudo loginctl enable-linger wyatt
+```
+
+The script warns if lingering is still disabled.
+
 ## GitHub Actions Development Environment
 
 The self-hosted workflow runs in the repository `development` environment and deploys the Go binary directly on the runner host.
