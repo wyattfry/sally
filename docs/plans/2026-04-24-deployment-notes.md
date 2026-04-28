@@ -51,6 +51,8 @@ The `development` environment should hold the runtime config needed for the sele
   - `OLLAMA_MODEL`
 - optional `SALLY_SERVER_PORT` defaulting to `8080`
 - optional `SALLY_SERVER_DEPLOY_ROOT` defaulting to `~/.local/share/sally-dev`
+- `VITE_SALLY_BACKEND_BASE_URL` for the public backend URL, for example `https://dev.spexxtool.com`
+- optional `CLOUDFLARED_TUNNEL_NAME` defaulting to `sally-dev`
 
 The direct deployment path is intended for hosts where Docker is inconvenient or unavailable, including Proxmox LXC guests affected by nested-container AppArmor restrictions.
 
@@ -72,4 +74,10 @@ Instead of port forwarding, expose the dev backend with `cloudflared`.
   - `cloudflared tunnel create sally-dev`
   - `cloudflared tunnel route dns sally-dev dev.spexxtool.com`
   - `cloudflared tunnel token sally-dev`
-  - `CLOUDFLARED_TUNNEL_TOKEN=... ./scripts/deploy-cloudflared.sh`
+  - `CLOUDFLARED_TUNNEL_TOKEN=... CLOUDFLARED_PUBLIC_URL=https://dev.spexxtool.com ./scripts/deploy-cloudflared.sh`
+
+For named tunnels, `deploy-cloudflared.sh` now treats the public hostname as code:
+
+- it ensures the DNS route exists for the configured tunnel name
+- it pushes the ingress config for `CLOUDFLARED_PUBLIC_URL -> CLOUDFLARED_URL`
+- the GitHub Actions deployment then verifies `${VITE_SALLY_BACKEND_BASE_URL}/healthz` through the public tunnel before the job passes

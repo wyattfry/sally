@@ -27,6 +27,9 @@ jobs:
         working-directory: server
         run: go test ./...
 
+      - name: Run tunnel deploy script tests
+        run: bash scripts/test-deploy-cloudflared.sh
+
       - name: Build server binary
         working-directory: server
         run: |
@@ -73,6 +76,8 @@ jobs:
       - name: Ensure Cloudflare tunnel is running
         env:
           CLOUDFLARED_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARED_TUNNEL_TOKEN }}
+          CLOUDFLARED_TUNNEL_NAME: ${{ vars.CLOUDFLARED_TUNNEL_NAME }}
+          CLOUDFLARED_PUBLIC_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
         run: |
           if [ -n "$CLOUDFLARED_TUNNEL_TOKEN" ]; then
             chmod +x scripts/deploy-cloudflared.sh
@@ -80,3 +85,30 @@ jobs:
           else
             echo "CLOUDFLARED_TUNNEL_TOKEN is not configured; skipping tunnel deploy"
           fi
+
+      - name: Verify public tunnel health
+        env:
+          PUBLIC_BASE_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
+        run: |
+          if [ -z "$PUBLIC_BASE_URL" ]; then
+            echo "VITE_SALLY_BACKEND_BASE_URL is not configured in the development environment" >&2
+            exit 1
+          fi
+
+          health_url="${PUBLIC_BASE_URL%/}/healthz"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            body_file="$(mktemp)"
+            status_code="$(curl -sS -o "$body_file" -w '%{http_code}' "$health_url" || true)"
+            if [ "$status_code" = "200" ] && grep -qx 'ok' "$body_file"; then
+              echo "Verified tunnel health at $health_url"
+              rm -f "$body_file"
+              exit 0
+            fi
+            echo "Tunnel health check attempt $attempt failed for $health_url with status ${status_code:-curl-error}" >&2
+            cat "$body_file" >&2 || true
+            rm -f "$body_file"
+            sleep 3
+          done
+
+          echo "Timed out waiting for public tunnel health at $health_url" >&2
+          exit 1

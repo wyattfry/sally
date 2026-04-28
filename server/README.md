@@ -100,6 +100,8 @@ Store deployment-specific secrets and variables there as needed.
 - `OLLAMA_MODEL`
 - `SALLY_SERVER_PORT` default: `8080`
 - `SALLY_SERVER_DEPLOY_ROOT` default: `~/.local/share/sally-dev`
+- `VITE_SALLY_BACKEND_BASE_URL` for the public backend URL, for example `https://dev.spexxtool.com`
+- optional `CLOUDFLARED_TUNNEL_NAME` default: `sally-dev`
 
 ## Cloudflare Tunnel
 
@@ -138,5 +140,12 @@ For a durable hostname such as `dev.spexxtool.com`, use a named tunnel instead:
    ```
 5. Start the service with that token:
    ```bash
-   CLOUDFLARED_TUNNEL_TOKEN=... ./scripts/deploy-cloudflared.sh
+   CLOUDFLARED_TUNNEL_TOKEN=... CLOUDFLARED_PUBLIC_URL=https://dev.spexxtool.com ./scripts/deploy-cloudflared.sh
    ```
+
+When `CLOUDFLARED_PUBLIC_URL` is set, the deploy script also:
+
+- ensures the tunnel DNS route exists for that hostname
+- pushes the ingress config mapping that hostname to `CLOUDFLARED_URL`
+
+That captures the Cloudflare-side route in code instead of relying on a manual dashboard edit.
