@@ -3,6 +3,11 @@ name: Build and Release Chrome Extension
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "homepage/**"
+      - ".github/workflows/homepage-pages.yml"
+
+  workflow_dispatch:
 
 permissions:
   contents: write

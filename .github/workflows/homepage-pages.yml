@@ -1,0 +1,36 @@
+name: Deploy Homepage To Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "homepage/**"
+      - ".github/workflows/homepage-pages.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy-homepage:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Deploy homepage directory to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required" >&2
+            exit 1
+          fi
+
+          PROJECT_NAME="${CLOUDFLARE_PAGES_PROJECT:-spexxtool-homepage}"
+          npx wrangler@latest pages deploy homepage --project-name "$PROJECT_NAME"

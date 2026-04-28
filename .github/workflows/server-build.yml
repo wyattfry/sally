@@ -6,6 +6,7 @@ on:
     paths:
       - "server/**"
       - "scripts/deploy-dev-server.sh"
+      - "scripts/deploy-cloudflared.sh"
       - "docker-compose.yml"
       - ".github/workflows/server-build.yml"
   workflow_dispatch:
@@ -68,3 +69,14 @@ jobs:
         run: |
           chmod +x scripts/deploy-dev-server.sh
           ./scripts/deploy-dev-server.sh
+
+      - name: Ensure Cloudflare tunnel is running
+        env:
+          CLOUDFLARED_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARED_TUNNEL_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARED_TUNNEL_TOKEN" ]; then
+            chmod +x scripts/deploy-cloudflared.sh
+            ./scripts/deploy-cloudflared.sh
+          else
+            echo "CLOUDFLARED_TUNNEL_TOKEN is not configured; skipping tunnel deploy"
+          fi
