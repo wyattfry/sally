@@ -100,3 +100,43 @@ Store deployment-specific secrets and variables there as needed.
 - `OLLAMA_MODEL`
 - `SALLY_SERVER_PORT` default: `8080`
 - `SALLY_SERVER_DEPLOY_ROOT` default: `~/.local/share/sally-dev`
+
+## Cloudflare Tunnel
+
+For a stable public dev endpoint without port forwarding, run `cloudflared` as a user service on the same host:
+
+```bash
+cd /home/wyatt/sally
+CLOUDFLARED_QUICK_TUNNEL=true ./scripts/deploy-cloudflared.sh
+```
+
+That creates `~/.config/systemd/user/sally-cloudflared.service`.
+
+To read the temporary Quick Tunnel URL:
+
+```bash
+journalctl --user -u sally-cloudflared.service -n 50 --no-pager
+```
+
+For a durable hostname such as `dev.spexxtool.com`, use a named tunnel instead:
+
+1. One-time Cloudflare auth:
+   ```bash
+   cloudflared tunnel login
+   ```
+2. Create the tunnel:
+   ```bash
+   cloudflared tunnel create sally-dev
+   ```
+3. Route DNS:
+   ```bash
+   cloudflared tunnel route dns sally-dev dev.spexxtool.com
+   ```
+4. Get the tunnel token:
+   ```bash
+   cloudflared tunnel token sally-dev
+   ```
+5. Start the service with that token:
+   ```bash
+   CLOUDFLARED_TUNNEL_TOKEN=... ./scripts/deploy-cloudflared.sh
+   ```

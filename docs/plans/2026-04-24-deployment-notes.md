@@ -59,3 +59,17 @@ The deploy script installs a user `systemd` service and manages it with `systemc
 ```bash
 sudo loginctl enable-linger wyatt
 ```
+
+## Optional Public Dev Access
+
+Instead of port forwarding, expose the dev backend with `cloudflared`.
+
+- Quick test path:
+  - `CLOUDFLARED_QUICK_TUNNEL=true ./scripts/deploy-cloudflared.sh`
+  - read the temporary hostname from `journalctl --user -u sally-cloudflared.service`
+- Durable path:
+  - `cloudflared tunnel login`
+  - `cloudflared tunnel create sally-dev`
+  - `cloudflared tunnel route dns sally-dev dev.spexxtool.com`
+  - `cloudflared tunnel token sally-dev`
+  - `CLOUDFLARED_TUNNEL_TOKEN=... ./scripts/deploy-cloudflared.sh`
