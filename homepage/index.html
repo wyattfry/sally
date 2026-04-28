@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sally — Spec capture for architects</title>
+  <meta name="description" content="Sally is a Chrome extension that reads product pages, proposes structured spec schedule entries, and keeps you in charge of every decision. AI-assisted. Human-approved." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy-deep:   #0C1D30;
+      --navy:        #1B3358;
+      --navy-mid:    #1E3A5F;
+      --blue-primary:#2F6FBF;
+      --blue-light:  #5B9BD5;
+      --blue-muted:  #3E6E9E;
+      --blue-border: #2A4E7A;
+      --off-white:   #F0F4FA;
+      --white:       #FFFFFF;
+      --green:       #22C55E;
+      --green-dark:  #16A34A;
+      --text-dim:    #94B4CC;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--navy-deep);
+      color: var(--white);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(1.5rem, 5vw, 4rem);
+      height: 64px;
+      background: rgba(12, 29, 48, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(47, 111, 191, 0.2);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo svg { width: 32px; height: 32px; flex-shrink: 0; }
+
+    .nav-logo-text {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -0.02em;
+    }
+
+    .nav-domain {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue-muted);
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      background: var(--green);
+      color: var(--navy-deep);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .nav-cta:hover { background: var(--green-dark); color: var(--white); transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(5rem, 12vw, 9rem) clamp(1.5rem, 5vw, 4rem) clamp(4rem, 8vw, 7rem);
+      text-align: center;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(47, 111, 191, 0.18) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(42, 78, 122, 0.12) 39px, rgba(42, 78, 122, 0.12) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(42, 78, 122, 0.12) 39px, rgba(42, 78, 122, 0.12) 40px);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--blue-light);
+      background: rgba(47, 111, 191, 0.12);
+      border: 1px solid rgba(47, 111, 191, 0.3);
+      padding: 5px 14px;
+      border-radius: 100px;
+      margin-bottom: 1.8rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      max-width: 780px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--blue-light);
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.2vw, 1.2rem);
+      font-weight: 400;
+      line-height: 1.65;
+      color: var(--text-dim);
+      max-width: 560px;
+      margin: 0 auto 2.8rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: clamp(3rem, 7vw, 5rem);
+    }
+
+    .btn-spec {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: var(--green);
+      color: var(--navy-deep);
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 8px;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+      transition: background 0.15s, box-shadow 0.3s, transform 0.1s;
+      animation: pulse-green 2.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35); }
+      50%       { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+    }
+
+    .btn-spec:hover {
+      background: var(--green-dark);
+      color: var(--white);
+      transform: translateY(-2px);
+      animation: none;
+      box-shadow: 0 8px 24px rgba(34, 197, 94, 0.3);
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid rgba(47, 111, 191, 0.3);
+      border-radius: 8px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .btn-ghost:hover { border-color: var(--blue-light); color: var(--white); }
+
+    /* promo image */
+    .hero-visual {
+      position: relative;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .hero-visual img {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--blue-border);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(47,111,191,0.15);
+    }
+
+    .hero-visual::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 13px;
+      background: linear-gradient(180deg, rgba(47,111,191,0.25) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── SECTION COMMON ── */
+    section { padding: clamp(4rem, 8vw, 7rem) clamp(1.5rem, 5vw, 4rem); }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--blue-muted);
+      margin-bottom: 0.9rem;
+    }
+
+    .section-heading {
+      font-size: clamp(1.7rem, 3.5vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+
+    .section-sub {
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--text-dim);
+      max-width: 520px;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .how {
+      background: var(--navy);
+      border-top: 1px solid var(--blue-border);
+      border-bottom: 1px solid var(--blue-border);
+    }
+
+    .how-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .how-header { margin-bottom: 3.5rem; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5px;
+      background: var(--blue-border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .step {
+      background: var(--navy-mid);
+      padding: 2.2rem 2rem;
+      position: relative;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(47, 111, 191, 0.15);
+      border: 1px solid var(--blue-border);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--blue-light);
+      margin-bottom: 1.1rem;
+    }
+
+    .step-icon {
+      font-size: 1.4rem;
+      margin-bottom: 0.8rem;
+      display: block;
+    }
+
+    .step h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .step p {
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: var(--text-dim);
+    }
+
+    .step-spec-btn {
+      display: inline-block;
+      margin-top: 0.8rem;
+      padding: 5px 14px;
+      background: var(--green);
+      color: var(--navy-deep);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 5px;
+    }
+
+    /* ── FEATURES ── */
+    .features-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+
+    @media (max-width: 760px) {
+      .features-inner { grid-template-columns: 1fr; gap: 3rem; }
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .feature-card {
+      background: rgba(47, 111, 191, 0.07);
+      border: 1px solid rgba(47, 111, 191, 0.18);
+      border-radius: 10px;
+      padding: 1.3rem;
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(47, 111, 191, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.85rem;
+    }
+
+    .feature-icon svg { width: 18px; height: 18px; color: var(--blue-light); }
+
+    .feature-card h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .feature-card p {
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--text-dim);
+    }
+
+    /* small schedule mockup */
+    .schedule-mockup {
+      background: var(--off-white);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .schedule-bar {
+      background: var(--navy);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #FF5F57; }
+    .dot-y { background: #FFBD2E; }
+    .dot-g { background: #27C93F; }
+
+    .schedule-bar-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+    }
+
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      color: var(--navy-deep);
+    }
+
+    .schedule-table thead tr {
+      background: var(--navy-mid);
+      color: var(--off-white);
+    }
+
+    .schedule-table th {
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .schedule-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      color: #1a2e42;
+    }
+
+    .schedule-table tr:last-child td { border-bottom: none; }
+
+    .schedule-table .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      background: rgba(47,111,191,0.12);
+      color: var(--navy-mid);
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    .schedule-table .new-tag {
+      display: inline-block;
+      padding: 2px 7px;
+      background: rgba(34,197,94,0.15);
+      color: var(--green-dark);
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* ── PHILOSOPHY ── */
+    .philosophy {
+      background: var(--navy);
+      border-top: 1px solid var(--blue-border);
+      border-bottom: 1px solid var(--blue-border);
+      text-align: center;
+    }
+
+    .philosophy-inner {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .blockquote {
+      font-size: clamp(1.3rem, 2.8vw, 1.8rem);
+      font-weight: 700;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+      color: var(--white);
+    }
+
+    .blockquote em {
+      font-style: normal;
+      color: var(--blue-light);
+    }
+
+    .philosophy-sub {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--text-dim);
+      margin-bottom: 2.5rem;
+    }
+
+    .pill-row {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      padding: 7px 16px;
+      border: 1px solid var(--blue-border);
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+    }
+
+    .pill.active {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(34, 197, 94, 0.08);
+    }
+
+    /* ── WAITLIST ── */
+    .waitlist {
+      text-align: center;
+    }
+
+    .waitlist-inner {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .waitlist h2 {
+      font-size: clamp(1.7rem, 3.5vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.9rem;
+    }
+
+    .waitlist p {
+      font-size: 1rem;
+      line-height: 1.65;
+      color: var(--text-dim);
+      margin-bottom: 2rem;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+      max-width: 420px;
+      margin: 0 auto 1rem;
+    }
+
+    .form-row input {
+      flex: 1;
+      padding: 13px 16px;
+      background: rgba(47, 111, 191, 0.08);
+      border: 1px solid var(--blue-border);
+      border-radius: 8px;
+      color: var(--white);
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .form-row input::placeholder { color: var(--blue-muted); }
+    .form-row input:focus { border-color: var(--blue-primary); }
+
+    .form-row button {
+      padding: 13px 22px;
+      background: var(--green);
+      color: var(--navy-deep);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .form-row button:hover { background: var(--green-dark); color: var(--white); }
+
+    .waitlist-note {
+      font-size: 0.75rem;
+      color: var(--blue-muted);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--blue-border);
+      padding: 2rem clamp(1.5rem, 5vw, 4rem);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .footer-brand svg { width: 24px; height: 24px; }
+
+    .footer-brand-text {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    footer p {
+      font-size: 0.78rem;
+      color: var(--blue-muted);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .form-row { flex-direction: column; }
+      .form-row button { width: 100%; }
+      .feature-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="#">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+        <rect width="128" height="128" rx="22" fill="#1B3358"/>
+        <rect x="26" y="36" width="76" height="78" rx="7" fill="#F0F4FA"/>
+        <rect x="44" y="26" width="40" height="18" rx="5" fill="#2F6FBF"/>
+        <ellipse cx="64" cy="27" rx="9" ry="7" fill="#1B3358"/>
+        <rect x="38" y="58" width="52" height="5" rx="2.5" fill="#B8C8DC"/>
+        <rect x="38" y="71" width="38" height="5" rx="2.5" fill="#B8C8DC"/>
+        <rect x="38" y="84" width="44" height="5" rx="2.5" fill="#B8C8DC"/>
+        <polyline points="38,102 50,114 90,78" fill="none" stroke="#2F6FBF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="nav-logo-text">Sally</span>
+    </a>
+    <span class="nav-domain">spexxtool.com</span>
+    <a class="nav-cta" href="#waitlist">Request Access</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-eyebrow">For architects &amp; interior designers</div>
+    <h1>Build your spec schedule<br><em>while you browse</em></h1>
+    <p class="hero-sub">
+      Sally is a Chrome extension that reads product pages, proposes structured spec entries, and keeps you in charge of every decision. No more copy-paste marathons.
+    </p>
+    <div class="hero-actions">
+      <a class="btn-spec" href="#how-it-works">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        SPEC this page
+      </a>
+      <a class="btn-ghost" href="#waitlist">
+        Join the waitlist
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+
+    <div class="hero-visual">
+      <img src="../assets/promo-marquee.png" alt="Sally — Spec capture for architects" />
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how" id="how-it-works">
+    <div class="how-inner">
+      <div class="how-header">
+        <div class="section-label">How it works</div>
+        <h2 class="section-heading">Four steps from page to schedule</h2>
+        <p class="section-sub">Sally stays out of your way until you need it. One button, one click, and the work is done.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Browse a product page</h3>
+          <p>Find a fixture, finish, or fitting anywhere on the web — manufacturer site, distributor, spec sheet, or PDF catalog.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Click the green button</h3>
+          <p>Hit the always-visible <span class="step-spec-btn">SPEC</span> button (or right-click anywhere). Sally reads the full page — title, description, images, structured data, and linked spec sheets.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Review the AI draft</h3>
+          <p>Sally proposes a complete schedule row: manufacturer, model, finish, description, zone, and category — pre-filled and fully editable.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <h3>Accept and keep browsing</h3>
+          <p>One click adds the approved entry to your project schedule. Sally closes and you're back where you were — the button, nothing more.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section>
+    <div class="features-inner">
+      <div>
+        <div class="section-label">What Sally captures</div>
+        <h2 class="section-heading">Everything on the page, structured for your schedule</h2>
+        <p class="section-sub" style="margin-bottom: 2rem;">
+          Sally reads what a person would read — and a bit more. It inspects images, follows PDF links, and pulls machine-readable product data when it exists.
+        </p>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <h4>Product pages &amp; PDFs</h4>
+            <p>Works on any website. Follows spec sheet links automatically.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+              </svg>
+            </div>
+            <h4>Manufacturer &amp; model</h4>
+            <p>Extracts brand, model number, and SKU from structured data and visible text.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+              </svg>
+            </div>
+            <h4>Finish &amp; description</h4>
+            <p>Captures finish options, colors, and marketing descriptions for your schedule row.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+              </svg>
+            </div>
+            <h4>Product images</h4>
+            <p>Picks the best product image and stores it with your schedule entry.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schedule mockup -->
+      <div class="schedule-mockup">
+        <div class="schedule-bar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <div class="schedule-bar-title">Project Schedule — Kitchen Renovation</div>
+        </div>
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>Zone</th>
+              <th>Category</th>
+              <th>Manufacturer</th>
+              <th>Model</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag">Kitchen</span></td>
+              <td>Faucet</td>
+              <td>Kohler</td>
+              <td>Purist K-7505</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Kitchen</span></td>
+              <td>Lighting</td>
+              <td>Visual Comfort</td>
+              <td>Ellen 3-Arm</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Bath 1</span></td>
+              <td>Faucet</td>
+              <td>Watermark</td>
+              <td>Designs 22-1.0</td>
+            </tr>
+            <tr style="background: rgba(34,197,94,0.07)">
+              <td><span class="tag">Kitchen</span></td>
+              <td>Hardware</td>
+              <td>Rocky Mountain</td>
+              <td>T108 Pull</td>
+            </tr>
+            <tr style="background: rgba(34,197,94,0.07)">
+              <td colspan="4" style="padding: 8px 10px;">
+                <span class="new-tag">+ New via Sally</span>
+                <span style="font-size:0.7rem; color: #3E6E9E; margin-left: 8px;">just accepted — Undo available</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PHILOSOPHY -->
+  <section class="philosophy">
+    <div class="philosophy-inner">
+      <div class="section-label">Design philosophy</div>
+      <p class="blockquote">
+        "Sally doesn't do things <em>for</em> you.<br>Sally does things <em>with</em> you."
+      </p>
+      <p class="philosophy-sub">
+        The AI reads, culls, and proposes — but the architect decides. Every field stays editable. Every entry requires your approval. No mysterious saves, no silent decisions.
+      </p>
+      <div class="pill-row">
+        <div class="pill active">AI proposes</div>
+        <div class="pill active">Human approves</div>
+        <div class="pill">Always editable</div>
+        <div class="pill">Obvious undo</div>
+        <div class="pill">No save button needed</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WAITLIST -->
+  <section class="waitlist" id="waitlist">
+    <div class="waitlist-inner">
+      <div class="section-label">Early access</div>
+      <h2>Sally is in development</h2>
+      <p>
+        We're building Sally for architects and designers who are tired of manual spec entry. Leave your email and we'll reach out when early access opens.
+      </p>
+      <form class="form-row" onsubmit="handleSubmit(event)">
+        <input type="email" id="email-input" placeholder="your@studio.com" required autocomplete="email" />
+        <button type="submit">Notify me</button>
+      </form>
+      <p class="waitlist-note">No spam. Just a ping when it's ready.</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <a class="footer-brand" href="#">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+        <rect width="128" height="128" rx="22" fill="#1B3358"/>
+        <rect x="26" y="36" width="76" height="78" rx="7" fill="#F0F4FA"/>
+        <rect x="44" y="26" width="40" height="18" rx="5" fill="#2F6FBF"/>
+        <ellipse cx="64" cy="27" rx="9" ry="7" fill="#1B3358"/>
+        <rect x="38" y="58" width="52" height="5" rx="2.5" fill="#B8C8DC"/>
+        <rect x="38" y="71" width="38" height="5" rx="2.5" fill="#B8C8DC"/>
+        <rect x="38" y="84" width="44" height="5" rx="2.5" fill="#B8C8DC"/>
+        <polyline points="38,102 50,114 90,78" fill="none" stroke="#2F6FBF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="footer-brand-text">Sally</span>
+    </a>
+    <p>spexxtool.com &mdash; spec capture for architects</p>
+  </footer>
+
+  <script>
+    function handleSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('email-input');
+      const btn = e.target.querySelector('button');
+      btn.textContent = 'Got it!';
+      btn.style.background = '#16A34A';
+      btn.style.color = '#fff';
+      input.disabled = true;
+      btn.disabled = true;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,856 @@
+https://www.reddit.com/r/Architects/comments/13eqan8/schedules_what_software_does_your_office_use/
+
+TLDR:
+
+- Revit
+- Excel
+- Programa
+- Archicad
+
+
+Go to Architects
+r/Architects
+•
+3y ago
+taktokotkat
+
+Schedules - what software does your office use?
+General Practice Discussion
+What software do you use for architectural schedules (appliances, tapware, lighting etc.)? We produce drawings in Revit but do detailed shedules in Word. It’s either starting every schedule from scratch or copy and paste of table rows and columns from older schedules. A lot of items are repetitive between the projects. I would love to just pick them from a list and add to schedule. We often also include a photo of the actual item. Is there an easier way to do it than Word? We were considering MS Access but I would prefer something more intuitive and visual.
+
+
+Upvote
+7
+
+Downvote
+
+40
+Go to comments
+
+
+Share
+u/monday_com avatar
+monday_com
+•
+Promoted
+
+Jumping in here to say if you wanna cut timelines for projects, McDonald’s was able to reduce them by 25% with monday.com. Worth the free trial.
+Sign Up
+monday.com
+Thumbnail image: Jumping in here to say if you wanna cut timelines for projects, McDonald’s was able to reduce them by 25% with monday.com. Worth the free trial.
+Join the conversation
+Sort by:
+
+Best
+
+Search Comments
+Expand comment search
+Comments Section
+Tyrannosaurus_Rexxar
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+Why would you not do it in Revit? That sounds insane.
+
+
+
+Upvote
+37
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/twiceroadsfool avatar
+twiceroadsfool
+•
+3y ago
+This, times 1000.
+
+
+
+Upvote
+15
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/PatrickGSR94 avatar
+PatrickGSR94
+•
+3y ago
+Licensure Candidate/ Design Professional/ Associate
+emoji:pupper:
+times infinity.
+
+Model the objects, create the schedules. Once you learn how Revit scheduling works, it'll be WAY faster in the future, with far more accuracy.
+
+
+
+Upvote
+12
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/MoparShepherd avatar
+MoparShepherd
+•
+3y ago
++ if you make edits or changes you don’t need to go and update your Microsoft sheet now
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+Django117
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+And if you have to use an outside software literally why not just use Ideate to get to Excel???
+
+
+
+Upvote
+7
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+elbowskneesand
+•
+3y ago
+This is what I do when I have to make a quick and dirty schedule.
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Soupppdoggg avatar
+Soupppdoggg
+•
+3y ago
+Word!? I’d understand excel or Google Sheets; and, worth setting up in Revit - it’s one of the easier things to do in Revit. Just use a tap that looks similar and edit the info. If you need to add photos then export the schedules to CSV and import in Google sheets
+
+
+Upvote
+10
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+StatePsychological60
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+It has long annoyed me that Revit doesn’t have a straight-forward option for creating a generic table you can populate with your own data, which is something even AutoCAD can do. There are workarounds, but they are janky and should not be necessary in my opinion. Revit has so much capability and yet, also, lacks so many basic features.
+
+I know this is not helpful to your question, I just wanted to rant. Good luck!
+
+
+
+Upvote
+22
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Merusk avatar
+Merusk
+•
+3y ago
+Recovering Architect 
+emoji:snoo_joy:
+You're bimming wrong.
+
+
+
+Upvote
+7
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+StatePsychological60
+•
+3y ago
+•
+Edited 3y ago
+Architect 
+emoji:snoo_dealwithit:
+You’re not the boss of me
+
+(Edit: Apparently it wasn’t clear, but this comment was lighthearted ¯_(ツ)_/¯)
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+steinah6
+•
+3y ago
+Just link in a PDF at that point…
+
+
+
+Upvote
+3
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+StatePsychological60
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+I put that in the category of “janky workarounds.” Sure, you can do that, but it’s not really a replacement for the thing you actually want to do.
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/microsoft365 avatar
+u/microsoft365
+•
+Promoted
+
+Try Copilot in the apps you know. Start your one-month free trial today.
+Learn More
+m365copilot.com
+Thumbnail image: Try Copilot in the apps you know. Start your one-month free trial today.
+iddrinktothat
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+Combo of Revit and Excel. Once you learn how to work with datebases and schedules in revit and understand how to import and export data, the workflow become pretty easy.
+
+MSWord!!!??
+
+
+Upvote
+6
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+AnnoyedChihuahua
+•
+3y ago
+Excel and use CTC Software?
+
+
+Upvote
+6
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Duckbilledplatypi avatar
+Duckbilledplatypi
+Cake icon
+•
+3y ago
+We are on AutoCAD and use the table feature
+
+Personally I prefer excel
+
+
+
+Upvote
+4
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+2buggers
+•
+3y ago
+Try data links to be able to use Excel tables in AutoCAD
+
+
+
+Upvote
+3
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Duckbilledplatypi avatar
+Duckbilledplatypi
+Cake icon
+•
+3y ago
+Yep, that's what I like to do. Sadly my bosses dont
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/itsadryheat_ avatar
+itsadryheat_
+•
+3y ago
+We use programa which is a subscription website. It has a database of materials that you can add in to each project. The pre-made database is kinda useless (really high end and bespoke) so we just make our own as we go.
+
+The great thing is once you’ve added a material it’s saved to your database so next project you simply click “add to project’ and it’s added in. You can adjust notes to be project specific if necessary.
+
+It produces a really nice looking schedule and you can even link your client or builder to it.
+
+It’s about 20 AUD a month. Highly recommend
+
+
+
+Upvote
+3
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+sbk_2
+•
+2mo ago
+Architect 
+emoji:snoo_dealwithit:
+Are you still using this and finding it useful? The price has increased dramatically but thinking it would be pretty handy
+
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/itsadryheat_ avatar
+itsadryheat_
+•
+2mo ago
+Hey, nah I’m not but that’s mostly cause I’ve mothballed my practice. I’m working for another small practice and they’re stuck with excel. I find it pretty cumbersome and they’re into changing it.
+
+Still stand by the recommendation. I don’t know how expensive it is but less than an hour of your time a month surely. And your mad that back in saving time I reckon - especially when you’ve done a few projects and have built up a bit of a database
+
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+sbk_2
+•
+2mo ago
+Architect 
+emoji:snoo_dealwithit:
+Cool thanks! I’ll try it out
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/nytimes avatar
+u/nytimes
+•
+Promoted
+
+Save on six months of The Times: Unlimited ad-free puzzles, plus reporting, recipes and more. $1/wk.
+Learn More
+www.nytimes.com
+Clickable image which will reveal the video player: Save on six months of The Times: Unlimited ad-free puzzles, plus reporting, recipes and more. $1/wk.
+Collapse video player
+
+0:00 / 0:00
+
+
+
+
+u/jae343 avatar
+jae343
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+Ideate software plugin export schedule to excel
+
+
+Upvote
+3
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+sandyeggo89
+•
+3y ago
+We use Google sheets to coordinate with the client, and Revit schedules for our sheets. We have a very, very basic family that is literally just a box, with editable type parameters and dimensions, mark by instance. We just create a new type for different needs. And we do labs, so we end up with a lot of types - project I’m on is at 429 so far - but it works well for us. For other schedule items like plumbing fixtures, lights, doors, I just grab whatever family looks about right in plan/elevation and edit the properties to what I need the schedule to say.
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+Tex-Mechanicus
+•
+3y ago
+In my office we use archicad, not the best for modeling but amazing with things like schedules
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+ImaginaryClassroom65
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+We use Microsoft Access for cut sheets and sanitary schedules and finishes. Excel for door schedules
+
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+taktokotkat
+OP
+•
+3y ago
+Ha, I knew I would find someone using Access:) Do you find it efficient? What’s your process?
+
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+ImaginaryClassroom65
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+It’s mainly a data base which we populate while designing a project then as we create cut sheets for each room it’s populates and formats a schedule for publication. It’s all a bit Greek to me really, I’d draw with a quill if the practice allowed me.
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+taktokotkat
+OP
+•
+3y ago
+We don’t model all of the fixtures, it would take too much time. Most of the items we use don’t have manufacturer’s rfa file that we can download and place in our Revit file.
+
+
+
+Upvote
+3
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+AlfaHotelWhiskey
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+You will be best served by a database program. As others have stated, Revit could be your database with model objects injected with the proper metadata. The LOD of the objects just could be a labeled cube or a detailed model.
+
+You also mention wanting to have a photograph of the specified product. This is a problem similar to what a lot of interior designers face where they want BOTH the schedule and detailed project information cutsheets available in an easy to reference binder or pdf document.
+
+If this is the case you want to look at products like Gather (gatherit.co) and DesignSpec (designspec.com).
+
+I cannot speak to data interoperability with Revit. They might have it, they might not.
+
+
+
+Upvote
+5
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+taktokotkat
+OP
+•
+3y ago
+Thank you, I will look it up. That’s really helpful! I know Word is clunky but it takes us an hour to create half a dozen light fixtures entries in Word but would be a few days to model the complex ones in detail in Revit. I will consider using symbolic representation with a cube or similar and just hiding these models on the drawings. I will give it a go. Thank you AlfaHotelWhiskey and everyone else for your help!
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Jaredlong avatar
+Jaredlong
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+A Revit family can be as simple as a single line but contain all the schedulable parameters you'd want to add. Just make sure they're Shared parameters.
+
+
+Upvote
+5
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/megakratos avatar
+megakratos
+•
+3y ago
+You don’t have to model it to look good. Just make a generic model family of a small block for a tap for instance and give it the product name. Or download the bim object from the manufacturer’s website.
+
+For windows for instance we use a hidden level far below ground and a separate design option. There you can place all your windows in a row and the. put it on a drawing, but the extra window won’t be counted in the schedule since it’s in a design option. That’s a good way if you just want to use revit for bringing it all together but don’t want counting etc
+
+
+Upvote
+4
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/pencilneckco avatar
+pencilneckco
+•
+3y ago
+Architect 
+emoji:snoo_dealwithit:
+it would take too much time
+
+the irony
+
+
+
+Upvote
+6
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+AxFairy
+•
+3y ago
+"we can't implement time saving features, it takes too long!"
+
+
+Upvote
+5
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+steinah6
+•
+3y ago
+Autodesk has a huge built in library of all kinds of fixtures… they don’t need to be the exact spec unless you’re modeling to like LOD400+
+
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+taktokotkat
+OP
+•
+3y ago
+I work mostly in residential with individual clients. They get emotional about their own home and we want to get them excited. We provide our clients with sleek looking schedules with photos and links to manufacturers websites. I’m not sure if I can achieve that in Revit.
+
+
+
+Upvote
+2
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+steinah6
+•
+3y ago
+You can put links/URLs into a schedule. You can even add images. Then you can export the schedule as a .txt, bring it into excel and make it look however you want. The images won’t come through that way but I’m sure there’s a script/macro for excel can parse an image url and show the image.
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+u/Soupppdoggg avatar
+Soupppdoggg
+•
+3y ago
+Word!? I’d understand excel or Google Sheets; and, worth setting up in Revit - it’s one of the easier things to do in Revit.
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+wuzzup
+•
+3y ago
+Word?!?! Not even excel?? 😂
+
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+
+taktokotkat
+OP
+•
+3y ago
+Yup. My in-house interior designer is absolutely brilliant but a bit shy with computers.
+
+
+Upvote
+1
+
+Downvote
+
+Reply
+
+Award
+
+Share
+

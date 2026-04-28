@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1400 560" width="1400" height="560">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A5F"/>
+      <stop offset="100%" stop-color="#0C1D30"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2A4E7A" stroke-width="0.6"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="560" fill="url(#bg)"/>
+  <rect width="1400" height="560" fill="url(#grid)" opacity="0.2"/>
+
+  <!-- Top accent bar -->
+  <rect x="0" y="0" width="1400" height="5" fill="#2F6FBF"/>
+
+  <!-- Large faint "S" watermark -->
+  <text x="60" y="520"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="560"
+        font-weight="bold"
+        fill="#FFFFFF"
+        opacity="0.025">S</text>
+
+  <!-- Icon -->
+  <image href="file:///home/wyatt/sally/public/icon-128.png" x="120" y="130" width="200" height="200"/>
+
+  <!-- Sally -->
+  <text x="370" y="298"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="112"
+        font-weight="bold"
+        fill="#FFFFFF">Sally</text>
+
+  <!-- Tagline -->
+  <text x="374" y="348"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="26"
+        fill="#5B9BD5">Spec capture for architects</text>
+
+  <!-- Horizontal rule -->
+  <rect x="120" y="400" width="1160" height="1" fill="#2F6FBF" opacity="0.4"/>
+
+  <!-- Feature 1 -->
+  <polyline points="170,440 180,452 200,428" fill="none" stroke="#2F6FBF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="214" y="448"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="20"
+        font-weight="bold"
+        fill="#FFFFFF">Reads product pages instantly</text>
+  <text x="214" y="474"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="15"
+        fill="#3E6E9E">Point Sally at any listing or spec sheet</text>
+
+  <!-- Feature 2 -->
+  <polyline points="570,440 580,452 600,428" fill="none" stroke="#2F6FBF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="614" y="448"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="20"
+        font-weight="bold"
+        fill="#FFFFFF">Proposes structured spec rows</text>
+  <text x="614" y="474"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="15"
+        fill="#3E6E9E">AI drafts the entry, you refine it</text>
+
+  <!-- Feature 3 -->
+  <polyline points="970,440 980,452 1000,428" fill="none" stroke="#2F6FBF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1014" y="448"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="20"
+        font-weight="bold"
+        fill="#FFFFFF">You approve every step</text>
+  <text x="1014" y="474"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="15"
+        fill="#3E6E9E">AI-assisted, human-approved</text>
+</svg>

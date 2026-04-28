@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 440 280" width="440" height="280">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A5F"/>
+      <stop offset="100%" stop-color="#0F2135"/>
+    </linearGradient>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#2A4E7A" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="440" height="280" fill="url(#bg)"/>
+  <rect width="440" height="280" fill="url(#grid)" opacity="0.25"/>
+
+  <!-- Top accent bar -->
+  <rect x="0" y="0" width="440" height="4" fill="#2F6FBF"/>
+
+  <!-- Icon -->
+  <image href="file:///home/wyatt/sally/public/icon-128.png" x="26" y="76" width="128" height="128"/>
+
+  <!-- Vertical divider -->
+  <rect x="178" y="56" width="1" height="168" fill="#2F6FBF" opacity="0.35"/>
+
+  <!-- Sally -->
+  <text x="198" y="148"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="66"
+        font-weight="bold"
+        fill="#FFFFFF">Sally</text>
+
+  <!-- Tagline -->
+  <text x="200" y="177"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="16"
+        fill="#5B9BD5">Spec capture for architects</text>
+
+  <!-- Sub-tagline -->
+  <text x="200" y="202"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="12.5"
+        letter-spacing="0.4"
+        fill="#3E6E9E">AI-ASSISTED · HUMAN-APPROVED</text>
+</svg>
