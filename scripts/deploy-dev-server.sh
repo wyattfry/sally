@@ -16,6 +16,12 @@ case "${LLM_PROVIDER}" in
       exit 1
     fi
     ;;
+  chatcompletion)
+    if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+      echo "OPENAI_API_KEY is required when LLM_PROVIDER=chatcompletion" >&2
+      exit 1
+    fi
+    ;;
   ollama)
     if [[ -z "${OLLAMA_BASE_URL:-}" || -z "${OLLAMA_MODEL:-}" ]]; then
       echo "OLLAMA_BASE_URL and OLLAMA_MODEL are required when LLM_PROVIDER=ollama" >&2
@@ -109,6 +115,7 @@ popd >/dev/null
 cat >"${ENV_FILE}" <<EOF
 PORT=${PORT}
 LLM_PROVIDER=${LLM_PROVIDER}
+OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
 OPENAI_API_KEY=${OPENAI_API_KEY}
 OPENAI_MODEL=${OPENAI_MODEL}
 OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
