@@ -69,3 +69,4 @@ jobs:
           client-id: ${{ vars.CLIENT_ID }}
           client-secret: ${{ secrets.CLIENT_SECRET }}
           refresh-token: ${{ vars.REFRESH_TOKEN }}
+          glob: true
