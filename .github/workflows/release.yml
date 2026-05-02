@@ -30,6 +30,11 @@ jobs:
 
       - run: npm ci
 
+      - name: Configure git user
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "wyattfry@gmail.com"
+
       - run: npm run build && ./scripts/increment-manifest-version.js && git add ./public/manifest.json && git commit -m "Version update [skip actions]" && git push
 
       - name: Zip extension
