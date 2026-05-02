@@ -22,7 +22,11 @@ cat >"${BIN_DIR}/cloudflared" <<'EOF'
 set -euo pipefail
 printf 'cloudflared %s\n' "$*" >>"${TEST_LOG_DIR}/commands.log"
 if [[ "${1:-}" == "tunnel" && "${2:-}" == "list" ]]; then
-  printf '[{"id":"tunnel-123","name":"sally-dev"}]\n'
+  if grep -q "route dns" "${TEST_LOG_DIR}/commands.log" 2>/dev/null; then
+    printf '[{"id":"tunnel-123","name":"sally-dev"}]\n'
+  else
+    printf '[]\n'
+  fi
   exit 0
 fi
 exit 0
