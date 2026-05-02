@@ -30,7 +30,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build
+      - run: npm run build && ./scripts/increment-manifest-version.js && git add ./public/manifest.json && git commit -m "Version update [skip actions]" && git push
 
       - name: Zip extension
         run: |
@@ -55,3 +55,12 @@ jobs:
           6. The extension is installed — repeat steps 3-5 to update it" \
             --prerelease \
             "$FILENAME"
+
+      - name: Upload & release
+        uses: mnao305/chrome-extension-upload@v6.0.0
+        with:
+          file-path: sally-extension.zip
+          extension-id: cpjlofdhdfpmbcmjbpipdfjjhhiohcac
+          client-id: ${{ vars.CLIENT_ID }}
+          client-secret: ${{ secrets.CLIENT_SECRET }}
+          refresh-token: ${{ vars.REFRESH_TOKEN }}
