@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -xeuo pipefail
 
 : "${DEPLOY_ROOT:=$HOME/.local/share/sally-dev}"
 : "${PORT:=8080}"

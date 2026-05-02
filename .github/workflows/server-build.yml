@@ -70,9 +70,7 @@ jobs:
           OLLAMA_MODEL: ${{ vars.OLLAMA_MODEL }}
           PORT: ${{ vars.SALLY_SERVER_PORT }}
           DEPLOY_ROOT: ${{ vars.SALLY_SERVER_DEPLOY_ROOT }}
-        run: |
-          chmod +x scripts/deploy-dev-server.sh
-          ./scripts/deploy-dev-server.sh
+        run: bash ./scripts/deploy-dev-server.sh
 
       - name: Ensure Cloudflare tunnel is running
         env:
