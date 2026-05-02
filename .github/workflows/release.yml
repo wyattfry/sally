@@ -70,3 +70,4 @@ jobs:
           client-secret: ${{ secrets.CLIENT_SECRET }}
           refresh-token: ${{ vars.REFRESH_TOKEN }}
           glob: true
+          publish: false
