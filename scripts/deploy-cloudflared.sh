@@ -58,6 +58,12 @@ configure_named_tunnel() {
     exit 1
   fi
 
+  echo "Checking if the tunnel is already configured and running for ${public_hostname}..."
+  cloudflared tunnel list | grep -E "(${CLOUDFLARED_TUNNEL_NAME}|${public_hostname})" >/dev/null 2>&1 && {
+    echo "Tunnel ${CLOUDFLARED_TUNNEL_NAME} or hostname ${public_hostname} is already configured. Skipping tunnel creation." >&2
+    return 0
+  }
+
   cloudflared tunnel route dns "${CLOUDFLARED_TUNNEL_NAME}" "${public_hostname}"
 
   tunnel_list_json="$(cloudflared tunnel list -o json)"
