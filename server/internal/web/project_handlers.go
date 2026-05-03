@@ -872,7 +872,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <p class="muted">No items yet.</p>
     {{end}}
   {{else if eq .Kind "edit-schedule"}}
-    <p><a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
+    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
     <h1>Edit Schedule</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
       <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
@@ -883,7 +883,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <button type="submit">Delete Schedule</button>
     </form>
   {{else if eq .Kind "edit-item"}}
-    <p><a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
+    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
     <h1>Edit Item</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
       <label>Code <input name="code" value="{{.Item.Code}}"></label>
@@ -902,7 +902,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <button type="submit">Delete Item</button>
     </form>
   {{else if eq .Kind "share-manage"}}
-    <p><a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
+    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>Share</h1>
     {{if .PlainToken}}
       <p class="share-status">Sharing is <strong>enabled</strong>. Copy the link below and send it to your contractor or client.</p>

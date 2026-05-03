@@ -88,6 +88,73 @@ func TestSchedulePagesCreateAndShowSchedule(t *testing.T) {
 	}
 }
 
+func TestEditSchedulePageShowsFullBreadcrumb(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "schedule-breadcrumb-test@example.com",
+		Name:  "Schedule Breadcrumb Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Breadcrumb Project " + time.Now().Format("150405.000000"),
+		Address:     "24 School St.",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Bath",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "schedule-breadcrumb-test@example.com",
+		DevUserName:  "Schedule Breadcrumb Test",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/schedules/"+schedule.ID+"/edit", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.Code)
+	}
+	body := resp.Body.String()
+	if !strings.Contains(body, project.Name) {
+		t.Fatalf("expected edit-schedule breadcrumb to include project name %q, got:\n%s", project.Name, body)
+	}
+	if !strings.Contains(body, "Bath") {
+		t.Fatalf("expected edit-schedule breadcrumb to include schedule name, got:\n%s", body)
+	}
+	if !strings.Contains(body, `/projects"`) {
+		t.Fatalf("expected edit-schedule breadcrumb to include /projects link, got:\n%s", body)
+	}
+}
+
 func TestSchedulePagesUpdateAndDeleteSchedule(t *testing.T) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {

@@ -107,6 +107,93 @@ func TestItemPagesCreateAndListItem(t *testing.T) {
 	}
 }
 
+func TestEditItemPageShowsFullBreadcrumb(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "item-breadcrumb-test@example.com",
+		Name:  "Item Breadcrumb Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Item Breadcrumb Project " + time.Now().Format("150405.000000"),
+		Address:     "24 School St.",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Bath",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
+		ScheduleID:        schedule.ID,
+		Code:              "B-01",
+		Title:             "Wall Faucet",
+		Description:       "",
+		Manufacturer:      "Example Co.",
+		ModelNumber:       "WF-200",
+		Finish:            "Chrome",
+		FinishModelNumber: "",
+		Notes:             "",
+		SourceUrl:         "",
+		SourceTitle:       "",
+		SourceImageUrl:    "",
+		SourcePdfLinks:    []string{},
+		Position:          1,
+	})
+	if err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "item-breadcrumb-test@example.com",
+		DevUserName:  "Item Breadcrumb Test",
+	})
+
+	editPath := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items/" + item.ID + "/edit"
+	req := httptest.NewRequest(http.MethodGet, editPath, nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.Code)
+	}
+	body := resp.Body.String()
+	if !strings.Contains(body, project.Name) {
+		t.Fatalf("expected edit-item breadcrumb to include project name %q, got:\n%s", project.Name, body)
+	}
+	if !strings.Contains(body, "Bath") {
+		t.Fatalf("expected edit-item breadcrumb to include schedule name, got:\n%s", body)
+	}
+	if !strings.Contains(body, `/projects"`) {
+		t.Fatalf("expected edit-item breadcrumb to include /projects link, got:\n%s", body)
+	}
+}
+
 func TestItemPagesUpdateAndDeleteItem(t *testing.T) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
