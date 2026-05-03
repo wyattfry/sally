@@ -29,6 +29,8 @@ export type Project = {
   id: string;
   name: string;
   address: string;
+  description: string;
+  updatedAt: string;
 };
 
 export type Schedule = {

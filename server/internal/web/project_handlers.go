@@ -92,10 +92,22 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	items := make([]projectListItem, 0, len(projects))
+	for _, p := range projects {
+		imgs, _ := a.queries.GetProjectFirstItemImages(r.Context(), p.ID)
+		padded := make([]string, 4)
+		for i, u := range imgs {
+			if i < 4 {
+				padded[i] = u
+			}
+		}
+		items = append(items, projectListItem{Project: p, ThumbImages: padded})
+	}
+
 	render(w, projectsPage{
 		Kind:     "projects",
 		Title:    "Projects",
-		Projects: projects,
+		Projects: items,
 	})
 }
 
@@ -123,6 +135,7 @@ func (a app) createProject(w http.ResponseWriter, r *http.Request) {
 		OwnerUserID: user.ID,
 		Name:        name,
 		Address:     strings.TrimSpace(r.Form.Get("address")),
+		Description: strings.TrimSpace(r.Form.Get("description")),
 	})
 	if err != nil {
 		http.Error(w, "could not create project", http.StatusInternalServerError)
@@ -190,9 +203,11 @@ func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := a.queries.UpdateProject(r.Context(), queries.UpdateProjectParams{
-		ID:      projectID,
-		Name:    name,
-		Address: strings.TrimSpace(r.Form.Get("address")),
+		ID:           projectID,
+		Name:         name,
+		Address:      strings.TrimSpace(r.Form.Get("address")),
+		Description:  strings.TrimSpace(r.Form.Get("description")),
+		ThumbnailUrl: strings.TrimSpace(r.Form.Get("thumbnail_url")),
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		http.NotFound(w, r)
@@ -660,10 +675,15 @@ func (a app) requireUser(w http.ResponseWriter, r *http.Request) (queries.User, 
 	return user, true
 }
 
+type projectListItem struct {
+	Project     queries.Project
+	ThumbImages []string // up to 4, padded with empty strings for 2×2 grid
+}
+
 type projectsPage struct {
 	Kind     string
 	Title    string
-	Projects []queries.Project
+	Projects []projectListItem
 }
 
 type projectFormPage struct {
@@ -805,18 +825,31 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <h1>Projects</h1>
     <p class="actions"><a class="button" href="/projects/new">New Project</a></p>
     {{if .Projects}}
-      <table>
-        <thead><tr><th>Name</th><th>Address</th><th>Updated</th></tr></thead>
-        <tbody>
-          {{range .Projects}}
-            <tr>
-              <td><a href="/projects/{{.ID}}">{{.Name}}</a></td>
-              <td>{{.Address}}</td>
-              <td>{{.UpdatedAt.Format "2006-01-02"}}</td>
-            </tr>
-          {{end}}
-        </tbody>
-      </table>
+      <div class="project-cards">
+        {{range .Projects}}
+          <a class="project-card" href="/projects/{{.Project.ID}}">
+            <div class="project-thumb-wrap">
+              {{if .Project.ThumbnailUrl}}
+                <img src="{{.Project.ThumbnailUrl}}" alt="">
+              {{else if index .ThumbImages 0}}
+                <div class="project-thumb-grid">
+                  {{range .ThumbImages}}
+                    {{if .}}<img src="{{.}}" alt="">{{else}}<div class="project-thumb-cell"></div>{{end}}
+                  {{end}}
+                </div>
+              {{else}}
+                <div class="project-thumb-initial">{{printf "%.1s" .Project.Name}}</div>
+              {{end}}
+            </div>
+            <div class="project-card-body">
+              <h2>{{.Project.Name}}</h2>
+              {{if .Project.Address}}<p class="project-card-meta">{{.Project.Address}}</p>{{end}}
+              {{if .Project.Description}}<p class="project-card-description">{{.Project.Description}}</p>{{end}}
+              <p class="project-card-meta">Updated {{.Project.UpdatedAt.Format "2006-01-02"}}</p>
+            </div>
+          </a>
+        {{end}}
+      </div>
     {{else}}
       <p class="muted">No projects yet.</p>
     {{end}}
@@ -825,6 +858,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <form method="post" action="/projects">
       <label>Project Name <input name="name" required></label>
       <label>Address <input name="address"></label>
+      <label>Description <input name="description"></label>
       <button type="submit">Create Project</button>
     </form>
   {{else if eq .Kind "project"}}
@@ -889,6 +923,8 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <form method="post" action="/projects/{{.Project.ID}}/edit">
       <label>Project Name <input name="name" value="{{.Project.Name}}" required></label>
       <label>Address <input name="address" value="{{.Project.Address}}"></label>
+      <label>Description <input name="description" value="{{.Project.Description}}"></label>
+      <label>Thumbnail URL <input name="thumbnail_url" value="{{.Project.ThumbnailUrl}}" placeholder="https://… (leave blank to use item images)"></label>
       <button type="submit">Update Project</button>
     </form>
     <form method="post" action="/projects/{{.Project.ID}}/delete">

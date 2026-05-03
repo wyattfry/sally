@@ -10,25 +10,29 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-insert into projects (owner_user_id, name, address)
-values ($1, $2, $3)
-returning id, owner_user_id, name, address, created_at, updated_at
+insert into projects (owner_user_id, name, address, description, thumbnail_url)
+values ($1, $2, $3, $4, $5)
+returning id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at
 `
 
 type CreateProjectParams struct {
-	OwnerUserID string `json:"owner_user_id"`
-	Name        string `json:"name"`
-	Address     string `json:"address"`
+	OwnerUserID  string `json:"owner_user_id"`
+	Name         string `json:"name"`
+	Address      string `json:"address"`
+	Description  string `json:"description"`
+	ThumbnailUrl string `json:"thumbnail_url"`
 }
 
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
-	row := q.db.QueryRowContext(ctx, createProject, arg.OwnerUserID, arg.Name, arg.Address)
+	row := q.db.QueryRowContext(ctx, createProject, arg.OwnerUserID, arg.Name, arg.Address, arg.Description, arg.ThumbnailUrl)
 	var i Project
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerUserID,
 		&i.Name,
 		&i.Address,
+		&i.Description,
+		&i.ThumbnailUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -46,7 +50,7 @@ func (q *Queries) DeleteProject(ctx context.Context, id string) error {
 }
 
 const getProject = `-- name: GetProject :one
-select id, owner_user_id, name, address, created_at, updated_at
+select id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at
 from projects
 where id = $1
 `
@@ -59,6 +63,8 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.OwnerUserID,
 		&i.Name,
 		&i.Address,
+		&i.Description,
+		&i.ThumbnailUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -66,7 +72,7 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 }
 
 const listProjectsByOwner = `-- name: ListProjectsByOwner :many
-select id, owner_user_id, name, address, created_at, updated_at
+select id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at
 from projects
 where owner_user_id = $1
 order by updated_at desc, created_at desc
@@ -86,6 +92,8 @@ func (q *Queries) ListProjectsByOwner(ctx context.Context, ownerUserID string) (
 			&i.OwnerUserID,
 			&i.Name,
 			&i.Address,
+			&i.Description,
+			&i.ThumbnailUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -106,27 +114,63 @@ const updateProject = `-- name: UpdateProject :one
 update projects
 set name = $2,
     address = $3,
+    description = $4,
+    thumbnail_url = $5,
     updated_at = now()
 where id = $1
-returning id, owner_user_id, name, address, created_at, updated_at
+returning id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at
 `
 
 type UpdateProjectParams struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Address string `json:"address"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Address      string `json:"address"`
+	Description  string `json:"description"`
+	ThumbnailUrl string `json:"thumbnail_url"`
 }
 
 func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error) {
-	row := q.db.QueryRowContext(ctx, updateProject, arg.ID, arg.Name, arg.Address)
+	row := q.db.QueryRowContext(ctx, updateProject, arg.ID, arg.Name, arg.Address, arg.Description, arg.ThumbnailUrl)
 	var i Project
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerUserID,
 		&i.Name,
 		&i.Address,
+		&i.Description,
+		&i.ThumbnailUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getProjectFirstItemImages = `-- name: GetProjectFirstItemImages :many
+select si.source_image_url
+from schedule_items si
+join schedules s on s.id = si.schedule_id
+where s.project_id = $1
+  and si.source_image_url != ''
+order by s.position, si.position, si.created_at
+limit 4
+`
+
+func (q *Queries) GetProjectFirstItemImages(ctx context.Context, projectID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getProjectFirstItemImages, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var imageURL string
+		if err := rows.Scan(&imageURL); err != nil {
+			return nil, err
+		}
+		items = append(items, imageURL)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	return items, rows.Err()
 }

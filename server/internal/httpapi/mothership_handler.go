@@ -216,9 +216,11 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 }
 
 type projectResponse struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Address string `json:"address"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Address     string `json:"address"`
+	Description string `json:"description"`
+	UpdatedAt   string `json:"updatedAt"`
 }
 
 type scheduleResponse struct {
@@ -246,7 +248,13 @@ type scheduleItemResponse struct {
 }
 
 func toProjectResponse(project queries.Project) projectResponse {
-	return projectResponse{ID: project.ID, Name: project.Name, Address: project.Address}
+	return projectResponse{
+		ID:          project.ID,
+		Name:        project.Name,
+		Address:     project.Address,
+		Description: project.Description,
+		UpdatedAt:   project.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
 }
 
 func toScheduleResponse(schedule queries.Schedule) scheduleResponse {

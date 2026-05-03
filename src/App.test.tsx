@@ -98,7 +98,7 @@ describe("App", () => {
     vi.mocked(shouldAllowMockFallback).mockReturnValue(false);
     vi.mocked(shouldFallbackToMock).mockReturnValue(false);
     vi.mocked(listMothershipProjects).mockResolvedValue([
-      { id: "project-1", name: "Lake House", address: "24 School St." }
+      { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z" }
     ]);
     vi.mocked(listMothershipSchedules).mockResolvedValue([
       { id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }
@@ -142,8 +142,8 @@ describe("App", () => {
   it("lets the user choose a Mother Ship schedule before saving", async () => {
     const user = userEvent.setup();
     vi.mocked(listMothershipProjects).mockResolvedValue([
-      { id: "project-1", name: "Lake House", address: "24 School St." },
-      { id: "project-2", name: "Townhouse", address: "307 W38th St." }
+      { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z" },
+      { id: "project-2", name: "Townhouse", address: "307 W38th St.", description: "", updatedAt: "2026-01-01T00:00:00Z" }
     ]);
     vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
       projectId === "project-2"

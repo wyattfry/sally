@@ -10,12 +10,14 @@ import (
 )
 
 type Project struct {
-	ID          string    `json:"id"`
-	OwnerUserID string    `json:"owner_user_id"`
-	Name        string    `json:"name"`
-	Address     string    `json:"address"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	OwnerUserID  string    `json:"owner_user_id"`
+	Name         string    `json:"name"`
+	Address      string    `json:"address"`
+	Description  string    `json:"description"`
+	ThumbnailUrl string    `json:"thumbnail_url"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type ProjectShareLink struct {
