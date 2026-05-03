@@ -1,6 +1,6 @@
 -- name: CreateSchedule :one
-insert into schedules (project_id, name, position)
-values ($1, $2, $3)
+insert into schedules (project_id, name, notes, position)
+values ($1, $2, $3, $4)
 returning *;
 
 -- name: GetSchedule :one
@@ -17,7 +17,8 @@ order by position asc, created_at asc;
 -- name: UpdateSchedule :one
 update schedules
 set name = $2,
-    position = $3,
+    notes = $3,
+    position = $4,
     updated_at = now()
 where id = $1
 returning *;

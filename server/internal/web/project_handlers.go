@@ -259,6 +259,7 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 	schedule, err := a.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
 		ProjectID: projectID,
 		Name:      name,
+		Notes:     strings.TrimSpace(r.Form.Get("notes")),
 		Position:  int32(len(existingSchedules) + 1),
 	})
 	if err != nil {
@@ -328,6 +329,7 @@ func (a app) updateSchedule(w http.ResponseWriter, r *http.Request) {
 	_, err := a.queries.UpdateSchedule(r.Context(), queries.UpdateScheduleParams{
 		ID:       scheduleID,
 		Name:     name,
+		Notes:    strings.TrimSpace(r.Form.Get("notes")),
 		Position: parseInt32(r.Form.Get("position"), 1),
 	})
 	if err != nil {
@@ -868,6 +870,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/edit">Edit</a> <a class="button" href="/projects/{{.Project.ID}}/share">Share</a></p>
     <form method="post" action="/projects/{{.Project.ID}}/schedules">
       <label>New Schedule <input name="name" required></label>
+      <label>Notes <textarea name="notes" rows="2"></textarea></label>
       <button type="submit">Add Schedule</button>
     </form>
     {{if .Schedules}}
@@ -890,6 +893,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
               <div class="schedule-actions">
                 <a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/edit">Edit Schedule</a>
               </div>
+              {{if $s.Notes}}<p class="schedule-notes">{{$s.Notes}}</p>{{end}}
               {{if .Items}}
                 <table>
                   <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th></th></tr></thead>
@@ -935,6 +939,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <h1>Edit Schedule</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
       <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
+      <label>Notes <textarea name="notes" rows="3">{{.Schedule.Notes}}</textarea></label>
       <label>Position <input name="position" value="{{.Schedule.Position}}"></label>
       <button type="submit">Update Schedule</button>
     </form>
@@ -983,6 +988,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
     {{range .Schedules}}
       <h2>{{.Schedule.Name}}</h2>
+      {{if .Schedule.Notes}}<p class="schedule-notes">{{.Schedule.Notes}}</p>{{end}}
       {{if .Items}}
         <table>
           <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th>Source</th></tr></thead>

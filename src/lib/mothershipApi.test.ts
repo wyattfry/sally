@@ -53,7 +53,7 @@ describe("mothershipApi", () => {
   it("lists schedules for a project", async () => {
     vi.stubGlobal("__SALLY_CONFIG__", { backendBaseUrl: "http://localhost:8080" });
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify([{ id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }]), {
+      new Response(JSON.stringify([{ id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }]), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       })
@@ -61,7 +61,7 @@ describe("mothershipApi", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(listMothershipSchedules("project-1")).resolves.toEqual([
-      { id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }
+      { id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }
     ]);
     expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8080/api/v1/projects/project-1/schedules");
   });

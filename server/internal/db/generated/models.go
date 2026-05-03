@@ -36,6 +36,7 @@ type Schedule struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"project_id"`
 	Name      string    `json:"name"`
+	Notes     string    `json:"notes"`
 	Position  int32     `json:"position"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

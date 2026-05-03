@@ -141,6 +141,7 @@ func (api mothershipAPI) createSchedule(w http.ResponseWriter, r *http.Request) 
 	schedule, err := api.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
 		ProjectID: projectID,
 		Name:      req.Name,
+		Notes:     "",
 		Position:  int32(len(existingSchedules) + 1),
 	})
 	if err != nil {
@@ -227,6 +228,7 @@ type scheduleResponse struct {
 	ID        string `json:"id"`
 	ProjectID string `json:"projectId"`
 	Name      string `json:"name"`
+	Notes     string `json:"notes"`
 	Position  int32  `json:"position"`
 }
 
@@ -262,6 +264,7 @@ func toScheduleResponse(schedule queries.Schedule) scheduleResponse {
 		ID:        schedule.ID,
 		ProjectID: schedule.ProjectID,
 		Name:      schedule.Name,
+		Notes:     schedule.Notes,
 		Position:  schedule.Position,
 	}
 }

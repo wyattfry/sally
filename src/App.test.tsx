@@ -105,7 +105,7 @@ describe("App", () => {
       { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z" }
     ]);
     vi.mocked(listMothershipSchedules).mockResolvedValue([
-      { id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }
+      { id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }
     ]);
     vi.mocked(saveMothershipScheduleItem).mockResolvedValue(undefined);
     vi.mocked(getMothershipScheduleUrl).mockReturnValue(
@@ -151,8 +151,8 @@ describe("App", () => {
     ]);
     vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
       projectId === "project-2"
-        ? [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", position: 1 }]
-        : [{ id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }]
+        ? [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", notes: "", position: 1 }]
+        : [{ id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }]
     );
 
     render(<App />);

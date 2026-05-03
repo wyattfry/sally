@@ -37,6 +37,7 @@ export type Schedule = {
   id: string;
   projectId: string;
   name: string;
+  notes: string;
   position: number;
 };
 
