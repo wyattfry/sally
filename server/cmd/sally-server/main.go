@@ -92,6 +92,9 @@ func newExtractor(cfg config.Config) provider.Extractor {
 			cfg.ChatCompletionResponseFormat,
 			client,
 		)
+	case "anthropic":
+		validateAnthropicConfig(cfg)
+		return provider.NewAnthropicExtractor(cfg.AnthropicAPIKey, cfg.AnthropicModel, "", client)
 	default:
 		log.Fatalf("unsupported LLM_PROVIDER %q", cfg.LLMProvider)
 		return nil
@@ -113,5 +116,11 @@ func validateOllamaConfig(cfg config.Config) {
 func validateChatCompletionConfig(cfg config.Config) {
 	if cfg.OpenAIAPIKey == "" || cfg.OpenAIModel == "" {
 		log.Fatal("LLM_PROVIDER=chatcompletion requires OPENAI_API_KEY and OPENAI_MODEL")
+	}
+}
+
+func validateAnthropicConfig(cfg config.Config) {
+	if cfg.AnthropicAPIKey == "" || cfg.AnthropicModel == "" {
+		log.Fatal("LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY and ANTHROPIC_MODEL")
 	}
 }

@@ -1,238 +1,224 @@
-# Sally V1 — Developer Handoff
+# Sally — Agent Handoff
 
 ## What this is
 
-Sally V1 is a browser-based spec-capture concept for architects.
+Sally is a Chrome MV3 extension + Go server ("Mothership") that lets architects SPEC product pages
+into structured schedule items. Two user personas:
 
-The core idea:
+- **Architect** — uses the extension to capture items and the Mothership dashboard to manage projects/schedules
+- **Contractor** — receives a share link and views the read-only schedule to buy items
 
-- user is on a product page
-- clicks SPEC
-- an embedded AI assistant (Sally) reads the page and proposes a structured spec row
-- user edits the proposal
-- clicks OK
-- a returned schedule line appears for one more review
-- clicks OK again
-- the tool disappears and the user goes back to browsing
+Both paths must work end-to-end before the product is tested with real users.
 
-This is intentionally AI-with-human-custody, not AI replacing judgment.
+---
 
-## Current state
-
-The existing canvas code is a front-end behavior prototype.
-
-It currently demonstrates:
-
-resting state with only the green SPEC button
-temporary Sally panel
-short AI-thinking state
-editable Sally pass
-reciprocal finish/model behavior
-returned editable schedule line
-undo in Sally and in returned review
-return to browsing state after final OK
-
-It is not yet:
-
-a browser extension
-connected to a real AI API
-connected to a database
-connected to persistent projects/schedules
-
-## Product philosophy
-
-Sally should not do things for people.
-Sally should do things with people.
-
-Machine responsibilities:
-
-read messy product pages at scale
-cull useful technical information
-inspect images for clues
-suggest likely required add-on items
-propose a first draft
-
-Human responsibilities:
-
-judge
-correct
-fix intention
-take custody
-remain responsible
-
-## Intended real-world architecture
-
-1. Browser extension
-Two invocation methods:
-
-green SPEC toolbar button
-
-browser context menu: SPEC this page
-
-For V1, both do the exact same thing.
-
-2. Sally pass
-The extension captures page content and sends it to an AI extraction layer.
-
-3. Mother Ship
-Projects, schedules, editing, printing, and later spec-book output live here.
-
-## What SPEC should capture from a page
-
-V1 target payload:
-
-page title
-visible page text
-page URL
-main product image
-structured product data if available
-nearby cut-sheet/spec-sheet PDF links if found
-
-Sally should extract:
-
-item title
-manufacturer
-model number
-category
-description (AI synopsis favoring dimensions and installation constraints)
-available finishes
-finish-to-model mapping
-likely required add-ons
-likely optional companions
-
-Examples of likely required add-ons:
-
-toilet seat
-pressure-balance valve
-diverter
-drain assembly
-trap
-rough valve body
-
-## UX rules
-
-### Sally panel
-
-temporary
-narrow ride-along panel
-appears only when SPEC is invoked
-editable before confirmation
-visible Undo
-disappears on OK
-
-### Returned schedule review
-
-appears after Sally OK
-editable
-visible Undo
-disappears on OK
-
-### Resting state
-
-When the loop is done, user should see only:
-
-the product page
-the green SPEC button
-current project context
-
-## Mother Ship (next phase)
-
-Project Home should contain:
-
-project name
-address
-rooms/zones
-schedules
-print whole spec book on landing page
-print this schedule on schedule subpages
-
-Everything should remain hand-editable. No modes. No save button. Undo instead.
-
-## Output philosophy
-
-Printed output should be:
-
-clean
-bold
-highly legible on site
-still readable when dirty, folded, or slightly crumpled
-Not precious.
-Not over-designed.
-
-TODO find an actual or realistic schedule
-
-Swiss discipline is welcome, but field legibility matters more than graphic purity.
-
-## Suggested repo structure
-
-A reasonable first repo might look like this:
+## Repository layout
 
 ```
-sally-v1/
-  src/
-    App.jsx
+sally/
+  src/                   Chrome extension (React + TypeScript, built with Vite)
+    App.tsx              Root component — state machine, API calls, event wiring
     components/
-      SallyPanel.jsx
-      ReviewRow.jsx
-      ProductPageMock.jsx
-      UndoButton.jsx
+      SallyPanel.tsx     Capture/review panel (shown during SPEC flow)
+      SpecButton.tsx     Always-visible green SPEC button injected into pages
     lib/
-      finishMapping.js
-      productParsing.js
-  public/
-  package.json
-  README.md
+      extractApi.ts      Calls the Go extraction backend via chrome.runtime proxy
+      mothershipApi.ts   REST client for the Mothership Go server
+      storage.ts         chrome.storage.local helpers (active project/schedule context)
+      capturePage.ts     Captures visible text, images, JSON-LD, PDF links from DOM
+      types.ts           Shared TypeScript types
+  server/                Go server (Mothership dashboard + extraction API)
+    cmd/sally-server/
+      main.go            Entry point; reads env config; wires extractor + DB + HTTP
+    internal/
+      config/            Env-var config loader
+      db/
+        migrate.go       Runs goose migrations from server/migrations/
+        generated/       sqlc-generated Go types + query functions (hand-maintained,
+                         sqlc is NOT available in dev — see DB section below)
+        queries/         SQL source files (*.sql)
+      extract/           Shared request/response types for the extraction pipeline
+      httpapi/           HTTP handlers for the extraction API (/v1/extract-spec)
+      provider/          LLM provider implementations (stub, openai, ollama,
+                         chatcompletion, anthropic)
+      web/               Mothership server-side HTML (Go templates, net/http)
+        project_handlers.go  All route registration + HTML template (single file)
+        *_handlers_test.go   Integration tests (require DATABASE_URL)
+        static/app.css   Shared stylesheet
+  migrations/            goose SQL migration files (applied at server startup)
+  docs/                  Design notes and implementation plans
 ```
 
-If moving toward the real product:
+---
 
-```
-sally-v1/
-  extension/
-    manifest.json
-    background.js
-    contentScript.js
-  web/
-    src/
-      App.jsx
-      components/...
-  server/
-    api/...
+## Extension build
+
+```bash
+npm install
+npm run build   # outputs to dist/
+npm test        # vitest unit tests
 ```
 
-## What to build next
+Load unpacked from `dist/` in Chrome. The extension proxies all HTTP calls through
+`chrome.runtime.sendMessage` (PROXY_FETCH messages) to bypass CORS — this is why
+`mothershipApi.ts` never uses `fetch` directly.
 
-### Immediate next technical step
+Relevant env vars (set in `.env`, passed through Vite):
 
-Turn the current prototype into:
+| Variable | Default | Purpose |
+|---|---|---|
+| `VITE_SALLY_BACKEND_BASE_URL` | — | Extraction + Mothership API base URL |
+| `VITE_SALLY_ALLOW_MOCK_FALLBACK` | `false` | Enables mock extraction for transport failures |
 
-a clean React front end
-a browser extension wrapper
-a mocked AI extraction function
-simple local persistence for projects/schedules
+---
 
-After that
+## Go server
 
-replace mocked extraction with real model call
-store projects and schedules in backend
-build Mother Ship navigation and printing
+### Run locally
 
-## Important design constraints
+```bash
+cd server
+go run ./cmd/sally-server
+```
 
-Please preserve these:
+Or with Docker Compose from the repo root (starts server + Postgres):
 
-SPEC is the invocation term, not Pin
-green SPEC button
-no hover behavior required for V1
-right-click is just another way to invoke SPEC
-no extra modes
-no save button
-undo should be obvious
-everything user-facing remains editable
-AI proposes; human approves
+```bash
+docker compose up --build
+```
 
-## Note for developer
+### Environment variables
 
-The current canvas prototype is meant to communicate behavior and product feel, not final architecture.
+| Variable | Purpose |
+|---|---|
+| `PORT` | HTTP listen port (default `8080`) |
+| `DATABASE_URL` | Postgres DSN; server starts without DB if unset |
+| `LLM_PROVIDER` | `stub` \| `openai` \| `ollama` \| `chatcompletion` \| `anthropic` |
+| `OPENAI_API_KEY` | Required for `openai` and `chatcompletion` providers |
+| `OPENAI_MODEL` | Required for `openai` and `chatcompletion` providers |
+| `OPENAI_BASE_URL` | Override base URL for `openai`/`chatcompletion` (e.g. Groq) |
+| `OPENAI_TIMEOUT_MS` | Request timeout in milliseconds (default 15000) |
+| `CHATCOMPLETION_RESPONSE_FORMAT` | `json_schema` (default) or `json_object` |
+| `OLLAMA_BASE_URL` | Required for `ollama` provider |
+| `OLLAMA_MODEL` | Required for `ollama` provider |
+| `ANTHROPIC_API_KEY` | Required for `anthropic` provider |
+| `ANTHROPIC_MODEL` | Required for `anthropic` provider (e.g. `claude-sonnet-4-6`) |
 
-Please treat the current UI and flow as the source of truth for interaction, while improving structure and reliability under the hood.
+### LLM provider notes
+
+- **`stub`** — instant fake response, no API key needed, good for UI work
+- **`openai`** — uses the Responses API (`POST /responses`), supports structured output via `json_schema`
+- **`chatcompletion`** — OpenAI-compatible chat completions endpoint; works with Groq, Together, etc.
+  Use `CHATCOMPLETION_RESPONSE_FORMAT=json_object` for models that don't support `json_schema`
+  (e.g. Groq `llama-3.1-8b-instant`). Use a larger model (e.g. `llama-3.3-70b-versatile`) if
+  requests exceed the model's TPM limit.
+- **`anthropic`** — Anthropic Messages API with tool_use for guaranteed structured JSON.
+  Uses `POST /messages` with `x-api-key` + `anthropic-version: 2023-06-01` headers.
+  Forces `extract_spec` tool call so output is always structured.
+
+---
+
+## Database
+
+### Schema
+
+Postgres. Migrations use goose (applied automatically on startup via `db/migrate.go`).
+Migration files live in `server/migrations/`.
+
+Key tables: `users`, `projects`, `schedules`, `schedule_items`, `project_share_links`.
+
+`project_share_links` stores both `token_hash` (SHA-256 of the plain token, used to look
+up public share requests) and `token` (the plain token, stored so the manage page can
+always display the copyable URL without requiring the token in the URL query string).
+
+### Working without sqlc
+
+**sqlc is not available in this dev environment.** When adding or modifying SQL queries:
+
+1. Write the SQL in `server/internal/db/queries/<table>.sql`
+2. **Manually** add the corresponding Go function and types to
+   `server/internal/db/generated/<table>.sql.go`
+3. If the query returns rows, update the `Scan(...)` call to match all columns in SELECT order
+4. If adding a column, also update the struct in `server/internal/db/generated/models.go`
+
+The generated files have a `// Code generated by sqlc. DO NOT EDIT.` header — ignore it,
+we edit them by hand.
+
+### Local dev DB
+
+Docker Compose exposes Postgres at `localhost:5432`:
+
+```
+postgres://sally:sally_dev_password@localhost:5432/sally?sslmode=disable
+```
+
+Run server tests:
+
+```bash
+DATABASE_URL="postgres://sally:sally_dev_password@localhost:5432/sally" \
+  go test ./... -v
+```
+
+Tests that need the DB call `t.Skip` when `DATABASE_URL` is unset — safe to run without it.
+
+---
+
+## Mothership web (server-side rendered)
+
+Routes and the HTML template all live in `server/internal/web/project_handlers.go`.
+The entire UI is one `html/template` block at the bottom of that file, switching on `page.Kind`.
+
+**Template conventions:**
+- Each page kind passes a typed Go struct as template data
+- Breadcrumb chains follow the pattern: `Projects / Project Name / Schedule Name`
+- The `edit-schedule` and `edit-item` pages include a full breadcrumb back to the Projects list
+- `requestBaseURL(r)` builds `scheme://host` for share links (checks `X-Forwarded-Proto` first)
+
+**Share link flow:**
+1. Owner clicks "Enable sharing" → `POST /projects/{id}/share-links`
+2. Handler deactivates any existing active link, creates a new one, stores both hash and plain token
+3. Redirects to `GET /projects/{id}/share` (no token in URL)
+4. Manage page reads active link from DB and shows full copyable URL
+5. Public link: `GET /share/{token}` — looks up by SHA-256 hash, renders read-only view
+6. "Disable sharing" → `POST /projects/{id}/share-links/deactivate`
+
+---
+
+## Adding a new LLM provider
+
+1. Create `server/internal/provider/<name>.go` — implement `provider.Extractor` interface
+   (`Extract` + `Meta` methods). See `anthropic.go` for a clean example.
+2. Add config fields to `server/internal/config/config.go`
+3. Add a `case "<name>":` to `newExtractor()` in `server/cmd/sally-server/main.go`
+4. Add a `validate<Name>Config()` function in the same file
+5. Write unit tests in `server/internal/provider/<name>_test.go` using `httptest.NewServer`
+6. Document the new env vars in this file and in `README.md` / `server/README.md`
+
+Reusable helpers already in the package:
+- `extractionSchema()` — JSON schema for structured output / tool definitions
+- `buildUserPrompt(req)` — formats page content + project context into a user message
+- `openAIExtractionOutput` struct — target for unmarshalling model output
+- `coalesceStrings`, `coalesceFinishMappings` — nil-safe slice helpers
+- `isTimeoutError`, `summarizeUpstreamBody`, `truncate` — error/logging helpers
+
+---
+
+## Test strategy
+
+- **Extension**: Vitest unit tests in `src/`. Run with `npm test`. Note: ~12 tests are
+  currently failing due to a pre-existing mismatch between the test file and the current
+  component API (references to removed features like Zone, local viewer, toast). Do not
+  treat these as regressions from recent work.
+- **Server**: Standard `go test ./...`. DB-dependent tests skip when `DATABASE_URL` is unset.
+  Provider tests use `httptest.NewServer` and do not require API keys.
+
+---
+
+## Key product decisions
+
+- **SPEC is the verb** — not Pin, not Save, not Add
+- **AI proposes; human approves** — no silent writes
+- `onCreateProject` / `onCreateSchedule` callbacks in SallyPanel return `Promise<string | null>`
+  (null = success, string = error message shown inline). They must never call `setPanel` directly
+  — that would destroy the in-progress review draft.
+- Share tokens: only the SHA-256 hash is used for lookup; the plain token is stored for display

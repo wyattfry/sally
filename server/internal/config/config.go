@@ -21,6 +21,8 @@ type Config struct {
 	ChatCompletionResponseFormat string
 	OllamaBaseURL               string
 	OllamaModel                 string
+	AnthropicAPIKey             string
+	AnthropicModel              string
 	AllowMockFallback           bool
 	DatabaseURL                 string
 }
@@ -40,8 +42,10 @@ func Load() Config {
 		OpenAITimeout:               parseDurationMillisEnv("OPENAI_TIMEOUT_MS", defaultOpenAITimeout),
 		ChatCompletionResponseFormat: firstNonEmpty(strings.TrimSpace(os.Getenv("CHATCOMPLETION_RESPONSE_FORMAT")), "json_schema"),
 		OllamaBaseURL:               strings.TrimSpace(os.Getenv("OLLAMA_BASE_URL")),
-		OllamaModel:       strings.TrimSpace(os.Getenv("OLLAMA_MODEL")),
-		AllowMockFallback: parseBoolEnv("SALLY_ALLOW_MOCK_FALLBACK"),
+		OllamaModel:                 strings.TrimSpace(os.Getenv("OLLAMA_MODEL")),
+		AnthropicAPIKey:             strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")),
+		AnthropicModel:              strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL")),
+		AllowMockFallback:           parseBoolEnv("SALLY_ALLOW_MOCK_FALLBACK"),
 		DatabaseURL:       strings.TrimSpace(os.Getenv("DATABASE_URL")),
 	}
 }

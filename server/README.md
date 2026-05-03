@@ -46,6 +46,14 @@ Select the extractor with `LLM_PROVIDER`.
 - `OLLAMA_BASE_URL`
 - `OLLAMA_MODEL`
 
+### Anthropic (Claude)
+
+- `LLM_PROVIDER=anthropic`
+- `ANTHROPIC_API_KEY`
+- `ANTHROPIC_MODEL` (e.g. `claude-sonnet-4-6`)
+
+Uses the Messages API with tool_use to guarantee structured JSON output.
+
 Example:
 
 ```bash

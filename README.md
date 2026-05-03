@@ -78,6 +78,7 @@ cp .env.example .env
   - `LLM_PROVIDER=stub`
   - `LLM_PROVIDER=openai` with `OPENAI_API_KEY` and `OPENAI_MODEL`
   - `LLM_PROVIDER=ollama` with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
+  - `LLM_PROVIDER=anthropic` with `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL`
 
 Run tests:
 
