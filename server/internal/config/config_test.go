@@ -49,3 +49,13 @@ func TestLoadParsesLLMProviderAndOllamaSettings(t *testing.T) {
 		t.Fatalf("expected ollama model to parse, got %q", cfg.OllamaModel)
 	}
 }
+
+func TestLoadParsesDatabaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://sally:sally_dev_password@localhost:5432/sally?sslmode=disable")
+
+	cfg := Load()
+
+	if cfg.DatabaseURL != "postgres://sally:sally_dev_password@localhost:5432/sally?sslmode=disable" {
+		t.Fatalf("expected database url to parse, got %q", cfg.DatabaseURL)
+	}
+}

@@ -22,6 +22,7 @@ type Config struct {
 	OllamaBaseURL               string
 	OllamaModel                 string
 	AllowMockFallback           bool
+	DatabaseURL                 string
 }
 
 func Load() Config {
@@ -41,6 +42,7 @@ func Load() Config {
 		OllamaBaseURL:               strings.TrimSpace(os.Getenv("OLLAMA_BASE_URL")),
 		OllamaModel:       strings.TrimSpace(os.Getenv("OLLAMA_MODEL")),
 		AllowMockFallback: parseBoolEnv("SALLY_ALLOW_MOCK_FALLBACK"),
+		DatabaseURL:       strings.TrimSpace(os.Getenv("DATABASE_URL")),
 	}
 }
 

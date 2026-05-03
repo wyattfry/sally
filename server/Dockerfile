@@ -13,6 +13,7 @@ FROM alpine:3.22
 WORKDIR /app
 
 COPY --from=builder /out/sally-server /usr/local/bin/sally-server
+COPY --from=builder /app/migrations /app/migrations
 
 EXPOSE 8080
 
