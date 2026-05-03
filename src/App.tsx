@@ -5,6 +5,7 @@ import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
 import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
 import {
+  getMothershipScheduleUrl,
   listMothershipProjects,
   listMothershipSchedules,
   saveMothershipScheduleItem
@@ -233,6 +234,17 @@ export default function App() {
   }
 
   function handleViewItems() {
+    if (activeMothershipContext) {
+      window.open(
+        getMothershipScheduleUrl(
+          activeMothershipContext.projectId,
+          activeMothershipContext.scheduleId
+        ),
+        "_blank"
+      );
+      setPanel({ kind: "closed" });
+      return;
+    }
     setPanel({ kind: "closed" });
     setIsScheduleOpen(true);
   }
@@ -253,10 +265,7 @@ export default function App() {
       <SpecButton
         onClick={handleSpecClick}
         itemCount={scheduleItems.length}
-        onViewItems={() => {
-          setPanel({ kind: "closed" });
-          setIsScheduleOpen(true);
-        }}
+        onViewItems={handleViewItems}
       />
       {toast ? (
         <div className="toast" role="status">

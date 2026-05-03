@@ -38,6 +38,10 @@ export async function saveMothershipScheduleItem(
   });
 }
 
+export function getMothershipScheduleUrl(projectId: string, scheduleId: string): string {
+  return `${getBackendBaseUrl()}/projects/${encodeURIComponent(projectId)}/schedules/${encodeURIComponent(scheduleId)}`;
+}
+
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${getBackendBaseUrl()}${path}`, init);
   if (!response.ok) {

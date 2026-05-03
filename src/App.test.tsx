@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScheduleItem } from "./lib/types";
 import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
-import { listMothershipProjects, listMothershipSchedules, saveMothershipScheduleItem } from "./lib/mothershipApi";
+import {
+  getMothershipScheduleUrl,
+  listMothershipProjects,
+  listMothershipSchedules,
+  saveMothershipScheduleItem
+} from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 
 vi.mock("./lib/extractApi", () => ({
@@ -19,6 +24,7 @@ vi.mock("./lib/mockExtraction", () => ({
 }));
 
 vi.mock("./lib/mothershipApi", () => ({
+  getMothershipScheduleUrl: vi.fn(),
   listMothershipProjects: vi.fn(),
   listMothershipSchedules: vi.fn(),
   saveMothershipScheduleItem: vi.fn()
@@ -99,6 +105,9 @@ describe("App", () => {
       { id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }
     ]);
     vi.mocked(saveMothershipScheduleItem).mockResolvedValue(undefined);
+    vi.mocked(getMothershipScheduleUrl).mockReturnValue(
+      "http://localhost:8080/projects/project-1/schedules/schedule-1"
+    );
   });
 
   it("opens Sally, edits a proposal, saves it, and shows an accepted-item toast", async () => {
@@ -242,6 +251,8 @@ describe("App", () => {
       print: vi.fn()
     };
     const openSpy = vi.spyOn(window, "open").mockReturnValue(printWindow as unknown as Window);
+    vi.mocked(listMothershipProjects).mockResolvedValue([]);
+    vi.mocked(listMothershipSchedules).mockResolvedValue([]);
     storageState["sally.scheduleItems"] = [
       {
         id: "item-1",
@@ -304,8 +315,27 @@ describe("App", () => {
     expect(screen.queryByLabelText("Captured schedule")).not.toBeInTheDocument();
   });
 
+  it("opens the selected Mother Ship schedule from the Sally panel", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+    await screen.findByDisplayValue("Wall Faucet");
+    await user.click(screen.getByRole("button", { name: "View Items" }));
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "http://localhost:8080/projects/project-1/schedules/schedule-1",
+      "_blank"
+    );
+    expect(screen.queryByLabelText("Captured schedule")).not.toBeInTheDocument();
+  });
+
   it("removes only one duplicate item from the viewer", async () => {
     const user = userEvent.setup();
+    vi.mocked(listMothershipProjects).mockResolvedValue([]);
+    vi.mocked(listMothershipSchedules).mockResolvedValue([]);
     storageState["sally.scheduleItems"] = [
       {
         id: "item-1",

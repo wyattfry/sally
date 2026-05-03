@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { listMothershipProjects, listMothershipSchedules, saveMothershipScheduleItem } from "./mothershipApi";
+import {
+  getMothershipScheduleUrl,
+  listMothershipProjects,
+  listMothershipSchedules,
+  saveMothershipScheduleItem
+} from "./mothershipApi";
 import type { ScheduleItem } from "./types";
 
 afterEach(() => {
@@ -84,5 +89,13 @@ describe("mothershipApi", () => {
       finish: "Polished Chrome",
       sourcePdfLinks: ["https://example.com/spec-sheet.pdf"]
     });
+  });
+
+  it("builds Mother Ship schedule URLs", () => {
+    vi.stubGlobal("__SALLY_CONFIG__", { backendBaseUrl: "https://dev.spexxtool.com" });
+
+    expect(getMothershipScheduleUrl("project-1", "schedule-1")).toBe(
+      "https://dev.spexxtool.com/projects/project-1/schedules/schedule-1"
+    );
   });
 });
