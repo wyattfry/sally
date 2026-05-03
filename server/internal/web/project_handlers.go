@@ -864,7 +864,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
                       <tr>
                         <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
                         <td>{{.Code}}</td>
-                        <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted">{{.Description}}</span></td>
+                        <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
                         <td>{{.Manufacturer}} {{.ModelNumber}}</td>
                         <td>{{.Finish}}</td>
                         <td>{{.Notes}}</td>
@@ -955,7 +955,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
               <tr>
                 <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
                 <td>{{.Code}}</td>
-                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted">{{.Description}}</span></td>
+                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
                 <td>{{.Manufacturer}} {{.ModelNumber}}</td>
                 <td>{{.Finish}}</td>
                 <td>{{.Notes}}</td>

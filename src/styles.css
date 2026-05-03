@@ -139,6 +139,11 @@
   width: 100%;
 }
 
+.panel-context {
+  display: grid;
+  gap: 10px;
+}
+
 .panel-source {
   color: #51604e;
   font-size: 12px;

@@ -93,6 +93,7 @@ export function SallyPanel({
       <div className="panel-header">
         <div className="panel-context">
           <div className="field">
+            <label htmlFor="sally-project">Project</label>
             <select
               id="sally-project"
               value={isAddingProject ? ADD_NEW_VALUE : activeContext?.projectId ?? ""}
@@ -149,6 +150,7 @@ export function SallyPanel({
           ) : null}
 
           <div className="field">
+            <label htmlFor="sally-schedule">Schedule</label>
             <select
               id="sally-schedule"
               value={isAddingSchedule ? ADD_NEW_VALUE : activeContext?.scheduleId ?? ""}
