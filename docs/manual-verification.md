@@ -59,6 +59,28 @@ The server listens on `:8080`, so it is reachable on the host's LAN IP or contai
 12. Use `Share` on the project page, click `Get Link`, and open the generated `/share/...` path.
 13. Confirm the public share page shows project, schedule, item, and product source link without edit controls.
 
+## Confirm Extension To Mother Ship Save
+
+1. Start the local stack:
+   ```bash
+   docker compose up -d --build sally-server
+   ```
+2. Open `http://localhost:8080/projects`.
+3. Create a project and at least one schedule.
+4. Build and reload the extension:
+   ```bash
+   npm run build
+   ```
+5. Open or refresh a product page.
+6. Click `SPEC`.
+7. Confirm Sally shows `Mother Ship Project` and `Mother Ship Schedule` selectors.
+8. Choose the target project and schedule.
+9. Click `OK`.
+10. Open the selected schedule in Mother Ship.
+11. Confirm the accepted Sally item appears in the schedule table.
+12. Click `SPEC` again, then `View Items`.
+13. Confirm the selected Mother Ship schedule opens in a new tab.
+
 ## Confirm Real Proposal Flow
 
 1. In Sally, confirm the header shows the project name, initially `My New Project`.
