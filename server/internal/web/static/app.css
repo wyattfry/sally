@@ -1,0 +1,120 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  color: #161616;
+  background: #f7f7f4;
+}
+
+header {
+  background: #0f2f24;
+  color: white;
+  padding: 14px 24px;
+}
+
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+a {
+  color: #145f43;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th,
+td {
+  border-bottom: 1px solid #d8d8d2;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-size: 12px;
+  text-transform: uppercase;
+  background: #ecece6;
+}
+
+input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #aaa;
+}
+
+label {
+  display: block;
+  margin: 12px 0;
+  font-weight: 700;
+}
+
+button,
+.button {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px solid #145f43;
+  background: #b7f3c5;
+  color: #102015;
+  text-decoration: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.actions {
+  margin: 16px 0;
+}
+
+.muted {
+  color: #666;
+}
+
+@media print {
+  body {
+    background: white;
+    color: black;
+    font-size: 10pt;
+  }
+
+  header,
+  form,
+  .actions,
+  .button,
+  button {
+    display: none;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+  }
+
+  a {
+    color: black;
+    text-decoration: none;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th,
+  td {
+    border: 1px solid #222;
+    padding: 6px;
+  }
+
+  th {
+    background: white;
+    font-size: 9pt;
+  }
+}

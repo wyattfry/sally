@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"errors"
 	"html/template"
 	"net/http"
@@ -12,6 +13,9 @@ import (
 	queries "sally/server/internal/db/generated"
 	"sally/server/internal/share"
 )
+
+//go:embed static/app.css
+var appCSS string
 
 type Deps struct {
 	Queries      *queries.Queries
@@ -32,6 +36,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 		devUserName:  firstNonEmpty(deps.DevUserName, "Development User"),
 	}
 
+	mux.HandleFunc("GET /static/app.css", serveAppCSS)
 	mux.HandleFunc("GET /", a.redirectHome)
 	mux.HandleFunc("GET /projects", a.listProjects)
 	mux.HandleFunc("GET /projects/new", a.newProject)
@@ -43,6 +48,11 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
 	mux.HandleFunc("GET /share/{token}", a.showPublicShare)
+}
+
+func serveAppCSS(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	_, _ = w.Write([]byte(appCSS))
 }
 
 func (a app) redirectHome(w http.ResponseWriter, r *http.Request) {
@@ -487,20 +497,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}} - Sally</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; color: #161616; background: #f7f7f4; }
-    header { background: #0f2f24; color: white; padding: 14px 24px; }
-    main { max-width: 1120px; margin: 0 auto; padding: 24px; }
-    a { color: #145f43; }
-    table { width: 100%; border-collapse: collapse; background: white; }
-    th, td { border-bottom: 1px solid #d8d8d2; padding: 10px; text-align: left; vertical-align: top; }
-    th { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; background: #ecece6; }
-    input { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid #aaa; }
-    label { display: block; margin: 12px 0; font-weight: 700; }
-    button, .button { display: inline-block; padding: 8px 12px; border: 1px solid #145f43; background: #b7f3c5; color: #102015; text-decoration: none; border-radius: 4px; cursor: pointer; }
-    .actions { margin: 16px 0; }
-    .muted { color: #666; }
-  </style>
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
   <header><strong>Sally</strong></header>
