@@ -87,3 +87,84 @@ func TestSchedulePagesCreateAndShowSchedule(t *testing.T) {
 		t.Fatalf("expected schedule detail with empty item state, got %s", body)
 	}
 }
+
+func TestSchedulePagesUpdateAndDeleteSchedule(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "schedule-update-test@example.com",
+		Name:  "Schedule Update Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Schedule Update Project " + time.Now().Format("150405.000000"),
+		Address:     "24 School St.",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Bath",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "schedule-update-test@example.com",
+		DevUserName:  "Schedule Update Test",
+	})
+
+	form := url.Values{}
+	form.Set("name", "Primary Bath")
+	form.Set("position", "2")
+	updateReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/schedules/"+schedule.ID+"/edit", strings.NewReader(form.Encode()))
+	updateReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	updateResp := httptest.NewRecorder()
+	router.ServeHTTP(updateResp, updateReq)
+
+	if updateResp.Code != http.StatusSeeOther {
+		t.Fatalf("expected update to redirect with 303, got %d", updateResp.Code)
+	}
+
+	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/schedules/"+schedule.ID, nil)
+	showResp := httptest.NewRecorder()
+	router.ServeHTTP(showResp, showReq)
+	if !strings.Contains(showResp.Body.String(), "Primary Bath") {
+		t.Fatalf("expected updated schedule detail, got %s", showResp.Body.String())
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/schedules/"+schedule.ID+"/delete", nil)
+	deleteResp := httptest.NewRecorder()
+	router.ServeHTTP(deleteResp, deleteReq)
+	if deleteResp.Code != http.StatusSeeOther || deleteResp.Header().Get("Location") != "/projects/"+project.ID {
+		t.Fatalf("expected delete redirect to project, got status=%d location=%q", deleteResp.Code, deleteResp.Header().Get("Location"))
+	}
+
+	deletedResp := httptest.NewRecorder()
+	router.ServeHTTP(deletedResp, showReq)
+	if deletedResp.Code != http.StatusNotFound {
+		t.Fatalf("expected deleted schedule to return 404, got %d", deletedResp.Code)
+	}
+}

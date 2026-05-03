@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"errors"
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -47,6 +48,9 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/delete", a.deleteProject)
 	mux.HandleFunc("POST /projects/{projectID}/schedules", a.createSchedule)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}", a.showSchedule)
+	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/edit", a.editSchedule)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/edit", a.updateSchedule)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/delete", a.deleteSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items", a.createScheduleItem)
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
@@ -273,6 +277,63 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a app) editSchedule(w http.ResponseWriter, r *http.Request) {
+	loaded, ok := a.loadProjectSchedule(w, r, r.PathValue("projectID"), r.PathValue("scheduleID"))
+	if !ok {
+		return
+	}
+
+	render(w, scheduleEditPage{
+		Kind:     "edit-schedule",
+		Title:    "Edit " + loaded.schedule.Name,
+		Project:  loaded.project,
+		Schedule: loaded.schedule,
+	})
+}
+
+func (a app) updateSchedule(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	scheduleID := r.PathValue("scheduleID")
+	if _, ok := a.loadProjectSchedule(w, r, projectID, scheduleID); !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(r.Form.Get("name"))
+	if name == "" {
+		http.Error(w, "schedule name is required", http.StatusBadRequest)
+		return
+	}
+
+	_, err := a.queries.UpdateSchedule(r.Context(), queries.UpdateScheduleParams{
+		ID:       scheduleID,
+		Name:     name,
+		Position: parseInt32(r.Form.Get("position"), 1),
+	})
+	if err != nil {
+		http.Error(w, "could not update schedule", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
+}
+
+func (a app) deleteSchedule(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	scheduleID := r.PathValue("scheduleID")
+	if _, ok := a.loadProjectSchedule(w, r, projectID, scheduleID); !ok {
+		return
+	}
+	if err := a.queries.DeleteSchedule(r.Context(), scheduleID); err != nil {
+		http.Error(w, "could not delete schedule", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/projects/"+projectID, http.StatusSeeOther)
+}
+
 func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
 	scheduleID := r.PathValue("scheduleID")
@@ -495,6 +556,13 @@ type scheduleDetailPage struct {
 	Items    []queries.ScheduleItem
 }
 
+type scheduleEditPage struct {
+	Kind     string
+	Title    string
+	Project  queries.Project
+	Schedule queries.Schedule
+}
+
 type shareManagePage struct {
 	Kind       string
 	Title      string
@@ -555,6 +623,14 @@ func splitLines(value string) []string {
 		}
 	}
 	return result
+}
+
+func parseInt32(value string, fallback int32) int32 {
+	var parsed int
+	if _, err := fmt.Sscanf(strings.TrimSpace(value), "%d", &parsed); err != nil {
+		return fallback
+	}
+	return int32(parsed)
 }
 
 var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
@@ -636,6 +712,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
   {{else if eq .Kind "schedule"}}
     <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>{{.Schedule.Name}}</h1>
+    <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">Edit Schedule</a></p>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items">
       <h2>Add Item</h2>
       <label>Code <input name="code"></label>
@@ -668,6 +745,17 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     {{else}}
       <p class="muted">No items yet.</p>
     {{end}}
+  {{else if eq .Kind "edit-schedule"}}
+    <p><a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
+    <h1>Edit Schedule</h1>
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
+      <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
+      <label>Position <input name="position" value="{{.Schedule.Position}}"></label>
+      <button type="submit">Update Schedule</button>
+    </form>
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/delete">
+      <button type="submit">Delete Schedule</button>
+    </form>
   {{else if eq .Kind "share-manage"}}
     <p><a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>Share</h1>
