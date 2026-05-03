@@ -1,6 +1,6 @@
 -- name: CreateProjectShareLink :one
-insert into project_share_links (project_id, token_hash, label)
-values ($1, $2, $3)
+insert into project_share_links (project_id, token_hash, token, label)
+values ($1, $2, $3, $4)
 returning *;
 
 -- name: ListProjectShareLinks :many

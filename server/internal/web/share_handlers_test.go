@@ -63,6 +63,27 @@ func createShareTestProject(t *testing.T, q *queries.Queries) queries.Project {
 	return project
 }
 
+// extractShareToken parses the token out of the share URL shown in the manage
+// page's read-only input: value="http://host/share/TOKEN"
+func extractShareToken(t *testing.T, body string) string {
+	t.Helper()
+	const needle = "/share/"
+	idx := strings.Index(body, needle)
+	if idx == -1 {
+		t.Fatalf("could not find share URL in page body:\n%s", body)
+	}
+	rest := body[idx+len(needle):]
+	end := strings.IndexAny(rest, `"'& `)
+	if end == -1 {
+		end = len(rest)
+	}
+	token := rest[:end]
+	if token == "" {
+		t.Fatalf("extracted empty token from page body:\n%s", body)
+	}
+	return token
+}
+
 func TestProjectShareLinkRendersPublicProject(t *testing.T) {
 	q, router := newShareTestRouter(t)
 	project := createShareTestProject(t, q)
@@ -95,18 +116,26 @@ func TestProjectShareLinkRendersPublicProject(t *testing.T) {
 		t.Fatalf("create item: %v", err)
 	}
 
+	// Enable sharing
 	createReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
 	createResp := httptest.NewRecorder()
 	router.ServeHTTP(createResp, createReq)
-
 	if createResp.Code != http.StatusSeeOther {
 		t.Fatalf("expected share link create to redirect with 303, got %d", createResp.Code)
 	}
 	location := createResp.Header().Get("Location")
-	if !strings.HasPrefix(location, "/projects/"+project.ID+"/share?token=") {
-		t.Fatalf("expected redirect with share token, got %q", location)
+	if location != "/projects/"+project.ID+"/share" {
+		t.Fatalf("expected redirect to share manage page, got %q", location)
 	}
-	token := strings.TrimPrefix(location, "/projects/"+project.ID+"/share?token=")
+
+	// Get the token from the manage page
+	manageReq := httptest.NewRequest(http.MethodGet, location, nil)
+	manageResp := httptest.NewRecorder()
+	router.ServeHTTP(manageResp, manageReq)
+	if manageResp.Code != http.StatusOK {
+		t.Fatalf("expected manage page 200, got %d", manageResp.Code)
+	}
+	token := extractShareToken(t, manageResp.Body.String())
 
 	publicReq := httptest.NewRequest(http.MethodGet, "/share/"+token, nil)
 	publicResp := httptest.NewRecorder()
@@ -165,11 +194,15 @@ func TestShareManagePage_ShowsFullURLAfterCreation(t *testing.T) {
 	createReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
 	createResp := httptest.NewRecorder()
 	router.ServeHTTP(createResp, createReq)
+	if createResp.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 from create, got %d", createResp.Code)
+	}
+	if createResp.Header().Get("Location") != "/projects/"+project.ID+"/share" {
+		t.Fatalf("expected redirect to plain share manage page, got %q", createResp.Header().Get("Location"))
+	}
 
-	location := createResp.Header().Get("Location")
-	token := strings.TrimPrefix(location, "/projects/"+project.ID+"/share?token=")
-
-	pageReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share?token="+token, nil)
+	// Load the manage page without any query param — URL must be visible
+	pageReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share", nil)
 	pageReq.Host = "sally.example.com"
 	pageResp := httptest.NewRecorder()
 	router.ServeHTTP(pageResp, pageReq)
@@ -178,6 +211,7 @@ func TestShareManagePage_ShowsFullURLAfterCreation(t *testing.T) {
 		t.Fatalf("expected 200, got %d", pageResp.Code)
 	}
 	body := pageResp.Body.String()
+	token := extractShareToken(t, body)
 	expectedURL := "http://sally.example.com/share/" + token
 	if !strings.Contains(body, expectedURL) {
 		t.Fatalf("expected full share URL %q in page, got:\n%s", expectedURL, body)
@@ -202,8 +236,11 @@ func TestShareManagePage_DeactivateRemovesLink(t *testing.T) {
 		t.Fatalf("expected 303 from create, got %d", createResp.Code)
 	}
 
-	location := createResp.Header().Get("Location")
-	token := strings.TrimPrefix(location, "/projects/"+project.ID+"/share?token=")
+	// Get the token from the manage page
+	manageReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share", nil)
+	manageResp := httptest.NewRecorder()
+	router.ServeHTTP(manageResp, manageReq)
+	token := extractShareToken(t, manageResp.Body.String())
 
 	// Confirm the public link works
 	publicReq := httptest.NewRequest(http.MethodGet, "/share/"+token, nil)
@@ -243,17 +280,21 @@ func TestShareManagePage_ReEnableReplacesOldLink(t *testing.T) {
 	q, router := newShareTestRouter(t)
 	project := createShareTestProject(t, q)
 
-	// First enable
+	// First enable — get token from manage page
 	r1 := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
 	w1 := httptest.NewRecorder()
 	router.ServeHTTP(w1, r1)
-	token1 := strings.TrimPrefix(w1.Header().Get("Location"), "/projects/"+project.ID+"/share?token=")
+	m1 := httptest.NewRecorder()
+	router.ServeHTTP(m1, httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share", nil))
+	token1 := extractShareToken(t, m1.Body.String())
 
-	// Re-enable (replaces old token)
+	// Re-enable (replaces old token) — get new token from manage page
 	r2 := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
 	w2 := httptest.NewRecorder()
 	router.ServeHTTP(w2, r2)
-	token2 := strings.TrimPrefix(w2.Header().Get("Location"), "/projects/"+project.ID+"/share?token=")
+	m2 := httptest.NewRecorder()
+	router.ServeHTTP(m2, httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share", nil))
+	token2 := extractShareToken(t, m2.Body.String())
 
 	if token1 == token2 {
 		t.Fatal("expected new token to differ from old token after re-enable")

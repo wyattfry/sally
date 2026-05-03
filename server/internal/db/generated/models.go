@@ -22,6 +22,7 @@ type ProjectShareLink struct {
 	ID           string       `json:"id"`
 	ProjectID    string       `json:"project_id"`
 	TokenHash    string       `json:"token_hash"`
+	Token        string       `json:"token"`
 	Label        string       `json:"label"`
 	Active       bool         `json:"active"`
 	CreatedAt    time.Time    `json:"created_at"`

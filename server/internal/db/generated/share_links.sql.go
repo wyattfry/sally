@@ -10,24 +10,26 @@ import (
 )
 
 const createProjectShareLink = `-- name: CreateProjectShareLink :one
-insert into project_share_links (project_id, token_hash, label)
-values ($1, $2, $3)
-returning id, project_id, token_hash, label, active, created_at, updated_at, last_viewed_at
+insert into project_share_links (project_id, token_hash, token, label)
+values ($1, $2, $3, $4)
+returning id, project_id, token_hash, token, label, active, created_at, updated_at, last_viewed_at
 `
 
 type CreateProjectShareLinkParams struct {
 	ProjectID string `json:"project_id"`
 	TokenHash string `json:"token_hash"`
+	Token     string `json:"token"`
 	Label     string `json:"label"`
 }
 
 func (q *Queries) CreateProjectShareLink(ctx context.Context, arg CreateProjectShareLinkParams) (ProjectShareLink, error) {
-	row := q.db.QueryRowContext(ctx, createProjectShareLink, arg.ProjectID, arg.TokenHash, arg.Label)
+	row := q.db.QueryRowContext(ctx, createProjectShareLink, arg.ProjectID, arg.TokenHash, arg.Token, arg.Label)
 	var i ProjectShareLink
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
 		&i.TokenHash,
+		&i.Token,
 		&i.Label,
 		&i.Active,
 		&i.CreatedAt,
@@ -42,7 +44,7 @@ update project_share_links
 set active = false,
     updated_at = now()
 where id = $1
-returning id, project_id, token_hash, label, active, created_at, updated_at, last_viewed_at
+returning id, project_id, token_hash, token, label, active, created_at, updated_at, last_viewed_at
 `
 
 func (q *Queries) DeactivateProjectShareLink(ctx context.Context, id string) (ProjectShareLink, error) {
@@ -52,6 +54,7 @@ func (q *Queries) DeactivateProjectShareLink(ctx context.Context, id string) (Pr
 		&i.ID,
 		&i.ProjectID,
 		&i.TokenHash,
+		&i.Token,
 		&i.Label,
 		&i.Active,
 		&i.CreatedAt,
@@ -62,7 +65,7 @@ func (q *Queries) DeactivateProjectShareLink(ctx context.Context, id string) (Pr
 }
 
 const getActiveProjectShareLinkByHash = `-- name: GetActiveProjectShareLinkByHash :one
-select id, project_id, token_hash, label, active, created_at, updated_at, last_viewed_at
+select id, project_id, token_hash, token, label, active, created_at, updated_at, last_viewed_at
 from project_share_links
 where token_hash = $1 and active = true
 `
@@ -74,6 +77,7 @@ func (q *Queries) GetActiveProjectShareLinkByHash(ctx context.Context, tokenHash
 		&i.ID,
 		&i.ProjectID,
 		&i.TokenHash,
+		&i.Token,
 		&i.Label,
 		&i.Active,
 		&i.CreatedAt,
@@ -84,7 +88,7 @@ func (q *Queries) GetActiveProjectShareLinkByHash(ctx context.Context, tokenHash
 }
 
 const listProjectShareLinks = `-- name: ListProjectShareLinks :many
-select id, project_id, token_hash, label, active, created_at, updated_at, last_viewed_at
+select id, project_id, token_hash, token, label, active, created_at, updated_at, last_viewed_at
 from project_share_links
 where project_id = $1
 order by created_at desc
@@ -103,6 +107,7 @@ func (q *Queries) ListProjectShareLinks(ctx context.Context, projectID string) (
 			&i.ID,
 			&i.ProjectID,
 			&i.TokenHash,
+			&i.Token,
 			&i.Label,
 			&i.Active,
 			&i.CreatedAt,
@@ -123,7 +128,7 @@ func (q *Queries) ListProjectShareLinks(ctx context.Context, projectID string) (
 }
 
 const getActiveProjectShareLinkByProject = `-- name: GetActiveProjectShareLinkByProject :one
-select id, project_id, token_hash, label, active, created_at, updated_at, last_viewed_at
+select id, project_id, token_hash, token, label, active, created_at, updated_at, last_viewed_at
 from project_share_links
 where project_id = $1 and active = true
 order by created_at desc
@@ -137,6 +142,7 @@ func (q *Queries) GetActiveProjectShareLinkByProject(ctx context.Context, projec
 		&i.ID,
 		&i.ProjectID,
 		&i.TokenHash,
+		&i.Token,
 		&i.Label,
 		&i.Active,
 		&i.CreatedAt,

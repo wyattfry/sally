@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"net/url"
 	"strings"
 
 	queries "sally/server/internal/db/generated"
@@ -478,7 +477,6 @@ func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
 		Title:        "Share " + project.Name,
 		Project:      project,
 		ActiveLink:   activeLinkPtr,
-		PlainToken:   r.URL.Query().Get("token"),
 		ShareBaseURL: requestBaseURL(r),
 	})
 }
@@ -507,6 +505,7 @@ func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 	_, err = a.queries.CreateProjectShareLink(r.Context(), queries.CreateProjectShareLinkParams{
 		ProjectID: project.ID,
 		TokenHash: share.HashToken(token),
+		Token:     token,
 		Label:     "Project share",
 	})
 	if err != nil {
@@ -514,7 +513,7 @@ func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+project.ID+"/share?token="+url.QueryEscape(token), http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+project.ID+"/share", http.StatusSeeOther)
 }
 
 func (a app) deactivateProjectShareLinks(w http.ResponseWriter, r *http.Request) {
@@ -695,7 +694,6 @@ type shareManagePage struct {
 	Title        string
 	Project      queries.Project
 	ActiveLink   *queries.ProjectShareLink
-	PlainToken   string
 	ShareBaseURL string
 }
 
@@ -904,18 +902,12 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
   {{else if eq .Kind "share-manage"}}
     <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>Share</h1>
-    {{if .PlainToken}}
+    {{if .ActiveLink}}
       <p class="share-status">Sharing is <strong>enabled</strong>. Copy the link below and send it to your contractor or client.</p>
       <div class="share-url-row">
-        <input id="share-url-input" class="share-url-input" type="text" readonly value="{{.ShareBaseURL}}/share/{{.PlainToken}}">
+        <input id="share-url-input" class="share-url-input" type="text" readonly value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}">
         <button type="button" class="copy-button" onclick="(function(){var i=document.getElementById('share-url-input');i.select();navigator.clipboard.writeText(i.value).catch(function(){document.execCommand('copy')});})()">Copy</button>
       </div>
-      <form method="post" action="/projects/{{.Project.ID}}/share-links/deactivate" class="share-action-form">
-        <button type="submit" class="button-danger">Disable sharing</button>
-      </form>
-    {{else if .ActiveLink}}
-      <p class="share-status">Sharing is <strong>enabled</strong>.</p>
-      <p class="muted">To get a copyable link, disable sharing and re-enable it.</p>
       <form method="post" action="/projects/{{.Project.ID}}/share-links/deactivate" class="share-action-form">
         <button type="submit" class="button-danger">Disable sharing</button>
       </form>
