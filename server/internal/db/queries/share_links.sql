@@ -1,0 +1,27 @@
+-- name: CreateProjectShareLink :one
+insert into project_share_links (project_id, token_hash, label)
+values ($1, $2, $3)
+returning *;
+
+-- name: ListProjectShareLinks :many
+select *
+from project_share_links
+where project_id = $1
+order by created_at desc;
+
+-- name: GetActiveProjectShareLinkByHash :one
+select *
+from project_share_links
+where token_hash = $1 and active = true;
+
+-- name: DeactivateProjectShareLink :one
+update project_share_links
+set active = false,
+    updated_at = now()
+where id = $1
+returning *;
+
+-- name: MarkProjectShareLinkViewed :exec
+update project_share_links
+set last_viewed_at = now()
+where id = $1;
