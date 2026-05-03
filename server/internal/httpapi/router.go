@@ -22,6 +22,7 @@ func NewRouterWithDeps(cfg config.Config, extractor provider.Extractor, webDeps 
 
 	if webDeps.Queries != nil {
 		web.RegisterRoutes(mux, webDeps)
+		registerMothershipAPI(mux, webDeps)
 	}
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
