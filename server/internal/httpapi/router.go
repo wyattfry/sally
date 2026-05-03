@@ -6,6 +6,7 @@ import (
 
 	"sally/server/internal/config"
 	"sally/server/internal/provider"
+	"sally/server/internal/web"
 )
 
 func NewRouter(cfg config.Config) http.Handler {
@@ -13,7 +14,15 @@ func NewRouter(cfg config.Config) http.Handler {
 }
 
 func NewRouterWithExtractor(cfg config.Config, extractor provider.Extractor) http.Handler {
+	return NewRouterWithDeps(cfg, extractor, web.Deps{})
+}
+
+func NewRouterWithDeps(cfg config.Config, extractor provider.Extractor, webDeps web.Deps) http.Handler {
 	mux := http.NewServeMux()
+
+	if webDeps.Queries != nil {
+		web.RegisterRoutes(mux, webDeps)
+	}
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

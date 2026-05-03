@@ -8,8 +8,10 @@ import (
 
 	"sally/server/internal/config"
 	appdb "sally/server/internal/db"
+	queries "sally/server/internal/db/generated"
 	"sally/server/internal/httpapi"
 	"sally/server/internal/provider"
+	"sally/server/internal/web"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -25,12 +27,21 @@ func main() {
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: httpapi.NewRouterWithExtractor(cfg, extractor),
+		Handler: httpapi.NewRouterWithDeps(cfg, extractor, webDeps(database)),
 	}
 
 	log.Printf("sally server listening on %s provider=%s timeout=%s", addr, cfg.LLMProvider, cfg.OpenAITimeout)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
+	}
+}
+
+func webDeps(database *sql.DB) web.Deps {
+	if database == nil {
+		return web.Deps{}
+	}
+	return web.Deps{
+		Queries: queries.New(database),
 	}
 }
 
