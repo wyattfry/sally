@@ -163,11 +163,25 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var firstItemImage string
+	for _, sw := range schedules {
+		for _, item := range sw.Items {
+			if item.SourceImageUrl != "" {
+				firstItemImage = item.SourceImageUrl
+				break
+			}
+		}
+		if firstItemImage != "" {
+			break
+		}
+	}
+
 	render(w, projectDetailPage{
-		Kind:      "project",
-		Title:     project.Name,
-		Project:   project,
-		Schedules: schedules,
+		Kind:           "project",
+		Title:          project.Name,
+		Project:        project,
+		Schedules:      schedules,
+		FirstItemImage: firstItemImage,
 	})
 }
 
@@ -694,10 +708,11 @@ type projectFormPage struct {
 }
 
 type projectDetailPage struct {
-	Kind      string
-	Title     string
-	Project   queries.Project
-	Schedules []scheduleWithItems
+	Kind           string
+	Title          string
+	Project        queries.Project
+	Schedules      []scheduleWithItems
+	FirstItemImage string
 }
 
 type projectEditPage struct {
@@ -865,7 +880,8 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     </form>
   {{else if eq .Kind "project"}}
     <p><a href="/projects">Projects</a></p>
-    {{if .Project.ThumbnailUrl}}<img src="{{.Project.ThumbnailUrl}}" alt="" style="max-width:320px;display:block;margin-bottom:12px;border-radius:4px;">{{end}}
+    {{if .Project.ThumbnailUrl}}<img src="{{.Project.ThumbnailUrl}}" alt="" style="max-width:320px;display:block;margin-bottom:12px;border-radius:4px;">
+    {{else if .FirstItemImage}}<img src="{{.FirstItemImage}}" alt="" style="max-width:320px;display:block;margin-bottom:12px;border-radius:4px;">{{end}}
     <h1>{{.Project.Name}}</h1>
     {{if .Project.Address}}<p class="muted">{{.Project.Address}}</p>{{end}}
     {{if .Project.Description}}<p>{{.Project.Description}}</p>{{end}}
