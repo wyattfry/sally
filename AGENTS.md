@@ -103,6 +103,10 @@ docker compose up --build
 | `OLLAMA_MODEL` | Required for `ollama` provider |
 | `ANTHROPIC_API_KEY` | Required for `anthropic` provider |
 | `ANTHROPIC_MODEL` | Required for `anthropic` provider (e.g. `claude-sonnet-4-6`) |
+| `GOOGLE_CLIENT_ID` | Required for Google OAuth; omit to run in dev mode (no auth) |
+| `GOOGLE_CLIENT_SECRET` | Required for Google OAuth |
+| `GOOGLE_REDIRECT_URL` | OAuth callback URL (e.g. `https://dev.spexxtool.com/auth/callback`) |
+| `SESSION_SECRET` | HMAC-SHA256 signing key for session cookies; any non-empty string |
 
 ### LLM provider notes
 
@@ -166,13 +170,33 @@ Tests that need the DB call `t.Skip` when `DATABASE_URL` is unset — safe to ru
 ## Mothership web (server-side rendered)
 
 Routes and the HTML template all live in `server/internal/web/project_handlers.go`.
-The entire UI is one `html/template` block at the bottom of that file, switching on `page.Kind`.
+Auth handlers live in `server/internal/web/auth_handlers.go`.
+Session cookie helpers live in `server/internal/web/session.go`.
+The entire UI is one `html/template` block at the bottom of `project_handlers.go`, switching on `page.Kind`.
 
 **Template conventions:**
 - Each page kind passes a typed Go struct as template data
 - Breadcrumb chains follow the pattern: `Projects / Project Name / Schedule Name`
 - The `edit-schedule` and `edit-item` pages include a full breadcrumb back to the Projects list
 - `requestBaseURL(r)` builds `scheme://host` for share links (checks `X-Forwarded-Proto` first)
+- `$.Project.ID` (dollar-sign) accesses the outer template context inside nested `range` blocks
+- Capture loop variables before inner `range`: `{{$s := .Schedule}}` then use `$s.ID` in item rows
+
+**Project page layout:**
+- All schedules shown on the project detail page as collapsible `<details>` sections
+- Sticky sidebar nav (`schedule-nav`) with anchor links (`#schedule-{id}`) for quick-jumping
+- Item titles link to `SourceUrl` when present; `SourceImageUrl` renders as a 56×56px thumbnail
+- `GET /projects/{id}/schedules/{scheduleID}` (old per-schedule URL) redirects 303 to `#schedule-{id}`
+- All post-action redirects (create/update/delete item or schedule) go to the project page with anchor
+
+**Auth flow (Google OAuth):**
+1. When `GOOGLE_CLIENT_ID` is set, all protected routes call `requireUser` which checks `sally_session` cookie
+2. Unauthenticated → redirect to `GET /login` which renders the sign-in page
+3. User clicks "Sign in with Google" → `GET /auth/google` → sets state cookie, redirects to Google
+4. Google → `GET /auth/callback?code=...&state=...` → exchanges code, upserts user, sets signed session cookie
+5. `POST /logout` → clears cookie, redirects to `/login`
+6. Session cookie value is `email|base64(HMAC-SHA256(secret, email))` — tamper-evident, verified on every request
+7. When `GOOGLE_CLIENT_ID` is unset (dev mode), `requireUser` upserts the `DevUserEmail` dev user instead
 
 **Share link flow:**
 1. Owner clicks "Enable sharing" → `POST /projects/{id}/share-links`
