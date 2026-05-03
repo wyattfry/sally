@@ -6,9 +6,11 @@ import (
 	"errors"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 
 	queries "sally/server/internal/db/generated"
+	"sally/server/internal/share"
 )
 
 type Deps struct {
@@ -38,6 +40,9 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules", a.createSchedule)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}", a.showSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items", a.createScheduleItem)
+	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
+	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
+	mux.HandleFunc("GET /share/{token}", a.showPublicShare)
 }
 
 func (a app) redirectHome(w http.ResponseWriter, r *http.Request) {
@@ -245,6 +250,103 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
 }
 
+func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
+	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return
+	}
+
+	links, err := a.queries.ListProjectShareLinks(r.Context(), project.ID)
+	if err != nil {
+		http.Error(w, "could not load share links", http.StatusInternalServerError)
+		return
+	}
+
+	render(w, shareManagePage{
+		Kind:       "share-manage",
+		Title:      "Share " + project.Name,
+		Project:    project,
+		Links:      links,
+		PlainToken: r.URL.Query().Get("token"),
+	})
+}
+
+func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
+	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return
+	}
+
+	token, err := share.NewToken()
+	if err != nil {
+		http.Error(w, "could not create share token", http.StatusInternalServerError)
+		return
+	}
+	_, err = a.queries.CreateProjectShareLink(r.Context(), queries.CreateProjectShareLinkParams{
+		ProjectID:  project.ID,
+		TokenHash:  share.HashToken(token),
+		Label:      "Project share",
+	})
+	if err != nil {
+		http.Error(w, "could not create share link", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+project.ID+"/share?token="+url.QueryEscape(token), http.StatusSeeOther)
+}
+
+func (a app) showPublicShare(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimSpace(r.PathValue("token"))
+	if token == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	link, err := a.queries.GetActiveProjectShareLinkByHash(r.Context(), share.HashToken(token))
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load share link", http.StatusInternalServerError)
+		return
+	}
+	_ = a.queries.MarkProjectShareLinkViewed(r.Context(), link.ID)
+
+	project, err := a.queries.GetProject(r.Context(), link.ProjectID)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return
+	}
+
+	schedules, err := a.schedulesWithItems(r.Context(), project.ID)
+	if err != nil {
+		http.Error(w, "could not load schedules", http.StatusInternalServerError)
+		return
+	}
+
+	render(w, publicSharePage{
+		Kind:      "public-share",
+		Title:     project.Name,
+		Project:   project,
+		Schedules: schedules,
+	})
+}
+
 type projectSchedule struct {
 	project  queries.Project
 	schedule queries.Schedule
@@ -315,6 +417,42 @@ type scheduleDetailPage struct {
 	Project  queries.Project
 	Schedule queries.Schedule
 	Items    []queries.ScheduleItem
+}
+
+type shareManagePage struct {
+	Kind       string
+	Title      string
+	Project    queries.Project
+	Links      []queries.ProjectShareLink
+	PlainToken string
+}
+
+type publicSharePage struct {
+	Kind      string
+	Title     string
+	Project   queries.Project
+	Schedules []scheduleWithItems
+}
+
+type scheduleWithItems struct {
+	Schedule queries.Schedule
+	Items    []queries.ScheduleItem
+}
+
+func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]scheduleWithItems, error) {
+	schedules, err := a.queries.ListSchedulesByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]scheduleWithItems, 0, len(schedules))
+	for _, schedule := range schedules {
+		items, err := a.queries.ListScheduleItems(ctx, schedule.ID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, scheduleWithItems{Schedule: schedule, Items: items})
+	}
+	return result, nil
 }
 
 func render(w http.ResponseWriter, data any) {
@@ -403,6 +541,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <p><a href="/projects">Projects</a></p>
     <h1>{{.Project.Name}}</h1>
     {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
+    <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/share">Share</a></p>
     <form method="post" action="/projects/{{.Project.ID}}/schedules">
       <label>New Schedule <input name="name" required></label>
       <button type="submit">Add Schedule</button>
@@ -454,6 +593,52 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       </table>
     {{else}}
       <p class="muted">No items yet.</p>
+    {{end}}
+  {{else if eq .Kind "share-manage"}}
+    <p><a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
+    <h1>Share</h1>
+    <form method="post" action="/projects/{{.Project.ID}}/share-links">
+      <button type="submit">Get Link</button>
+    </form>
+    {{if .PlainToken}}
+      <p><strong>Share link:</strong> <code>/share/{{.PlainToken}}</code></p>
+    {{end}}
+    {{if .Links}}
+      <table>
+        <thead><tr><th>Label</th><th>Active</th><th>Created</th></tr></thead>
+        <tbody>
+          {{range .Links}}
+            <tr><td>{{.Label}}</td><td>{{.Active}}</td><td>{{.CreatedAt.Format "2006-01-02"}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    {{else}}
+      <p class="muted">No share links yet.</p>
+    {{end}}
+  {{else if eq .Kind "public-share"}}
+    <h1>{{.Project.Name}}</h1>
+    {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
+    {{range .Schedules}}
+      <h2>{{.Schedule.Name}}</h2>
+      {{if .Items}}
+        <table>
+          <thead><tr><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th>Source</th></tr></thead>
+          <tbody>
+            {{range .Items}}
+              <tr>
+                <td>{{.Code}}</td>
+                <td>{{.Title}}<br><span class="muted">{{.Description}}</span></td>
+                <td>{{.Manufacturer}} {{.ModelNumber}}</td>
+                <td>{{.Finish}}</td>
+                <td>{{.Notes}}</td>
+                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">Product Page</a><br><span class="muted">{{.SourceUrl}}</span>{{end}}</td>
+              </tr>
+            {{end}}
+          </tbody>
+        </table>
+      {{else}}
+        <p class="muted">No items.</p>
+      {{end}}
     {{end}}
   {{end}}
 {{end}}`))
