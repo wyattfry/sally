@@ -865,8 +865,10 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     </form>
   {{else if eq .Kind "project"}}
     <p><a href="/projects">Projects</a></p>
+    {{if .Project.ThumbnailUrl}}<img src="{{.Project.ThumbnailUrl}}" alt="" style="max-width:320px;display:block;margin-bottom:12px;border-radius:4px;">{{end}}
     <h1>{{.Project.Name}}</h1>
-    {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
+    {{if .Project.Address}}<p class="muted">{{.Project.Address}}</p>{{end}}
+    {{if .Project.Description}}<p>{{.Project.Description}}</p>{{end}}
     <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/edit">Edit</a> <a class="button" href="/projects/{{.Project.ID}}/share">Share</a></p>
     <form method="post" action="/projects/{{.Project.ID}}/schedules">
       <label>New Schedule <input name="name" required></label>
@@ -938,9 +940,9 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
     <h1>Edit Schedule</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
+      <input type="hidden" name="position" value="{{.Schedule.Position}}">
       <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
       <label>Notes <textarea name="notes" rows="3">{{.Schedule.Notes}}</textarea></label>
-      <label>Position <input name="position" value="{{.Schedule.Position}}"></label>
       <button type="submit">Update Schedule</button>
     </form>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/delete">
