@@ -37,6 +37,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /projects/{projectID}", a.showProject)
 	mux.HandleFunc("POST /projects/{projectID}/schedules", a.createSchedule)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}", a.showSchedule)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items", a.createScheduleItem)
 }
 
 func (a app) redirectHome(w http.ResponseWriter, r *http.Request) {
@@ -197,6 +198,82 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	scheduleID := r.PathValue("scheduleID")
+	if _, ok := a.loadProjectSchedule(w, r, projectID, scheduleID); !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	title := strings.TrimSpace(r.Form.Get("title"))
+	if title == "" {
+		http.Error(w, "item title is required", http.StatusBadRequest)
+		return
+	}
+
+	existingItems, err := a.queries.ListScheduleItems(r.Context(), scheduleID)
+	if err != nil {
+		http.Error(w, "could not load items", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
+		ScheduleID:        scheduleID,
+		Code:              strings.TrimSpace(r.Form.Get("code")),
+		Title:             title,
+		Description:       strings.TrimSpace(r.Form.Get("description")),
+		Manufacturer:      strings.TrimSpace(r.Form.Get("manufacturer")),
+		ModelNumber:       strings.TrimSpace(r.Form.Get("model_number")),
+		Finish:            strings.TrimSpace(r.Form.Get("finish")),
+		FinishModelNumber: strings.TrimSpace(r.Form.Get("finish_model_number")),
+		Notes:             strings.TrimSpace(r.Form.Get("notes")),
+		SourceUrl:         strings.TrimSpace(r.Form.Get("source_url")),
+		SourceTitle:       strings.TrimSpace(r.Form.Get("source_title")),
+		SourceImageUrl:    strings.TrimSpace(r.Form.Get("source_image_url")),
+		SourcePdfLinks:    splitLines(r.Form.Get("source_pdf_links")),
+		Position:          int32(len(existingItems) + 1),
+	})
+	if err != nil {
+		http.Error(w, "could not create item", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
+}
+
+type projectSchedule struct {
+	project  queries.Project
+	schedule queries.Schedule
+}
+
+func (a app) loadProjectSchedule(w http.ResponseWriter, r *http.Request, projectID string, scheduleID string) (projectSchedule, bool) {
+	project, err := a.queries.GetProject(r.Context(), projectID)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return projectSchedule{}, false
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return projectSchedule{}, false
+	}
+
+	schedule, err := a.queries.GetSchedule(r.Context(), scheduleID)
+	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
+		http.NotFound(w, r)
+		return projectSchedule{}, false
+	}
+	if err != nil {
+		http.Error(w, "could not load schedule", http.StatusInternalServerError)
+		return projectSchedule{}, false
+	}
+
+	return projectSchedule{project: project, schedule: schedule}, true
+}
+
 func (a app) requireDevUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
 	if a.queries == nil {
 		http.Error(w, "database is unavailable", http.StatusServiceUnavailable)
@@ -252,6 +329,18 @@ func firstNonEmpty(value string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func splitLines(value string) []string {
+	lines := strings.Split(value, "\n")
+	result := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
@@ -334,6 +423,19 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
   {{else if eq .Kind "schedule"}}
     <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>{{.Schedule.Name}}</h1>
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items">
+      <h2>Add Item</h2>
+      <label>Code <input name="code"></label>
+      <label>Title <input name="title" required></label>
+      <label>Description <input name="description"></label>
+      <label>Manufacturer <input name="manufacturer"></label>
+      <label>Model Number <input name="model_number"></label>
+      <label>Finish <input name="finish"></label>
+      <label>Finish Model Number <input name="finish_model_number"></label>
+      <label>Notes <input name="notes"></label>
+      <label>Source URL <input name="source_url"></label>
+      <button type="submit">Add Item</button>
+    </form>
     <h2>Items</h2>
     {{if .Items}}
       <table>
