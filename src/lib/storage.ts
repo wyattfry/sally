@@ -1,8 +1,9 @@
-import type { ScheduleItem } from "./types";
+import type { ActiveMothershipContext, ScheduleItem } from "./types";
 
 const STORAGE_KEY = "sally.scheduleItems";
 const ZONES_KEY = "sally.zones";
 const PROJECT_NAME_KEY = "sally.projectName";
+const ACTIVE_MOTHERSHIP_CONTEXT_KEY = "sally.activeMothershipContext";
 const DEFAULT_PROJECT_NAME = "My New Project";
 
 const DEFAULT_ZONES = [
@@ -57,6 +58,21 @@ export async function saveProjectName(projectName: string): Promise<string> {
   return trimmedName;
 }
 
+export async function getActiveMothershipContext(): Promise<ActiveMothershipContext | null> {
+  const result = await chromeStorage().get(ACTIVE_MOTHERSHIP_CONTEXT_KEY);
+  const context = result[ACTIVE_MOTHERSHIP_CONTEXT_KEY];
+  if (!isActiveMothershipContext(context)) {
+    return null;
+  }
+  return context;
+}
+
+export async function saveActiveMothershipContext(
+  context: ActiveMothershipContext
+): Promise<void> {
+  await chromeStorage().set({ [ACTIVE_MOTHERSHIP_CONTEXT_KEY]: context });
+}
+
 export async function listZones(): Promise<string[]> {
   const result = await chromeStorage().get(ZONES_KEY);
   const storedZones = result[ZONES_KEY];
@@ -101,4 +117,17 @@ function withUniqueId(item: ScheduleItem, existingItems: ScheduleItem[]): Schedu
   }
 
   return { ...item, id: nextId };
+}
+
+function isActiveMothershipContext(value: unknown): value is ActiveMothershipContext {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "projectId" in value &&
+    typeof value.projectId === "string" &&
+    value.projectId.trim() !== "" &&
+    "scheduleId" in value &&
+    typeof value.scheduleId === "string" &&
+    value.scheduleId.trim() !== ""
+  );
 }

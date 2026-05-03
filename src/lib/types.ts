@@ -26,6 +26,24 @@ export type ScheduleItem = {
   sourcePdfLinks: string[];
 };
 
+export type MothershipProject = {
+  id: string;
+  name: string;
+  address: string;
+};
+
+export type MothershipSchedule = {
+  id: string;
+  projectId: string;
+  name: string;
+  position: number;
+};
+
+export type ActiveMothershipContext = {
+  projectId: string;
+  scheduleId: string;
+};
+
 export type ExtractSpecRequest = {
   requestId: string;
   sentAt: string;

@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  getActiveMothershipContext,
   clearScheduleItems,
   listScheduleItems,
   listZones,
   removeScheduleItem,
+  saveActiveMothershipContext,
   saveScheduleItem,
   saveZone
 } from "./storage";
@@ -116,5 +118,16 @@ describe("schedule item storage", () => {
 
     await expect(listZones()).resolves.toContain("Guest Bath");
     expect((await listZones()).filter((zone) => zone === "Guest Bath")).toHaveLength(1);
+  });
+
+  it("stores the active Mother Ship project and schedule", async () => {
+    await expect(getActiveMothershipContext()).resolves.toBeNull();
+
+    await saveActiveMothershipContext({ projectId: "project-1", scheduleId: "schedule-1" });
+
+    await expect(getActiveMothershipContext()).resolves.toEqual({
+      projectId: "project-1",
+      scheduleId: "schedule-1"
+    });
   });
 });
