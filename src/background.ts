@@ -111,4 +111,22 @@ function parseSSEBuffer(buffer: string): {
   return { events, remaining };
 }
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "PROXY_FETCH") {
+    fetch(message.url, message.init)
+      .then(async (response) => {
+        const text = await response.text();
+        sendResponse({
+          ok: response.ok,
+          status: response.status,
+          text: text
+        });
+      })
+      .catch((error) => {
+        sendResponse({ error: error.message });
+      });
+    return true; // Keep the message channel open for the async response
+  }
+});
+
 export {};

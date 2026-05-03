@@ -43,7 +43,32 @@ export function getMothershipScheduleUrl(projectId: string, scheduleId: string):
 }
 
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${getBackendBaseUrl()}${path}`, init);
+  const url = `${getBackendBaseUrl()}${path}`;
+
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+    const response = await new Promise<any>((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: "PROXY_FETCH", url, init },
+        (result) => {
+          if (chrome.runtime.lastError) {
+            return reject(new Error(chrome.runtime.lastError.message));
+          }
+          if (result.error) {
+            return reject(new Error(result.error));
+          }
+          resolve(result);
+        }
+      );
+    });
+
+    if (!response.ok) {
+      const message = response.text?.trim() || "Mother Ship request failed.";
+      throw new Error(message);
+    }
+  }
+
+  // Fallback for non-extension environment
+  const response = await fetch(url, init);
   if (!response.ok) {
     const message = (await response.text()).trim() || "Mother Ship request failed.";
     throw new Error(message);
