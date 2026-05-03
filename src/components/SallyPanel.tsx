@@ -17,8 +17,8 @@ type SallyPanelProps = {
   onChange: (draft: ScheduleItem) => void;
   onSelectProject: (projectId: string) => void;
   onSelectSchedule: (scheduleId: string) => void;
-  onCreateProject: (name: string) => void;
-  onCreateSchedule: (name: string) => void;
+  onCreateProject: (name: string) => Promise<string | null>;
+  onCreateSchedule: (name: string) => Promise<string | null>;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
   onViewItems: () => void;
@@ -60,8 +60,10 @@ export function SallyPanel({
   const draft = panel.kind === "review" ? panel.draft : undefined;
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [projectCreateError, setProjectCreateError] = useState<string | null>(null);
   const [isAddingSchedule, setIsAddingSchedule] = useState(false);
   const [newScheduleName, setNewScheduleName] = useState("");
+  const [scheduleCreateError, setScheduleCreateError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_TIMEOUT_SECONDS);
   const intervalRef = useRef<number | null>(null);
 
@@ -118,20 +120,31 @@ export function SallyPanel({
                 id="sally-new-project"
                 placeholder="Project name"
                 value={newProjectName}
-                onChange={(event) => setNewProjectName(event.target.value)}
+                onChange={(event) => {
+                  setNewProjectName(event.target.value);
+                  setProjectCreateError(null);
+                }}
               />
               <button
                 className="action-button secondary"
                 disabled={!newProjectName.trim()}
                 type="button"
-                onClick={() => {
-                  onCreateProject(newProjectName);
-                  setNewProjectName("");
-                  setIsAddingProject(false);
+                onClick={async () => {
+                  const error = await onCreateProject(newProjectName.trim());
+                  if (error) {
+                    setProjectCreateError(error);
+                  } else {
+                    setNewProjectName("");
+                    setIsAddingProject(false);
+                    setProjectCreateError(null);
+                  }
                 }}
               >
                 Add
               </button>
+              {projectCreateError ? (
+                <span className="inline-add-error">{projectCreateError}</span>
+              ) : null}
             </div>
           ) : null}
 
@@ -163,20 +176,31 @@ export function SallyPanel({
                 id="sally-new-schedule"
                 placeholder="Schedule name"
                 value={newScheduleName}
-                onChange={(event) => setNewScheduleName(event.target.value)}
+                onChange={(event) => {
+                  setNewScheduleName(event.target.value);
+                  setScheduleCreateError(null);
+                }}
               />
               <button
                 className="action-button secondary"
                 disabled={!newScheduleName.trim()}
                 type="button"
-                onClick={() => {
-                  onCreateSchedule(newScheduleName);
-                  setNewScheduleName("");
-                  setIsAddingSchedule(false);
+                onClick={async () => {
+                  const error = await onCreateSchedule(newScheduleName.trim());
+                  if (error) {
+                    setScheduleCreateError(error);
+                  } else {
+                    setNewScheduleName("");
+                    setIsAddingSchedule(false);
+                    setScheduleCreateError(null);
+                  }
                 }}
               >
                 Add
               </button>
+              {scheduleCreateError ? (
+                <span className="inline-add-error">{scheduleCreateError}</span>
+              ) : null}
             </div>
           ) : null}
         </div>

@@ -153,12 +153,16 @@ export default function App() {
 
   async function handleSelectProject(projectId: string) {
     if (projectId === "__add_new__") return;
-    const fetchedSchedules = await listMothershipSchedules(projectId);
-    setSchedules(fetchedSchedules);
-    const schedule = fetchedSchedules[0];
-    const context = { projectId, scheduleId: schedule?.id ?? "" };
-    setActiveContext(context);
-    await saveActiveContext(context);
+    try {
+      const fetchedSchedules = await listMothershipSchedules(projectId);
+      setSchedules(fetchedSchedules);
+      const schedule = fetchedSchedules[0];
+      const context = { projectId, scheduleId: schedule?.id ?? "" };
+      setActiveContext(context);
+      await saveActiveContext(context);
+    } catch {
+      // selection failure is non-fatal; context stays as-is
+    }
   }
 
   async function handleSelectSchedule(scheduleId: string) {
@@ -168,24 +172,28 @@ export default function App() {
     await saveActiveContext(context);
   }
 
-  async function handleCreateProject(name: string) {
+  async function handleCreateProject(name: string): Promise<string | null> {
     try {
       const project = await createMothershipProject(name);
-      setProjects([...projects, project]);
+      setProjects((prev) => [...prev, project]);
       await handleSelectProject(project.id);
+      return null;
     } catch (error) {
-      setPanel({ kind: "error", message: "Could not create project." });
+      return error instanceof Error ? error.message : "Could not create project.";
     }
   }
 
-  async function handleCreateSchedule(name: string) {
-    if (!activeContext?.projectId) return;
+  async function handleCreateSchedule(name: string): Promise<string | null> {
+    if (!activeContext?.projectId) {
+      return "Select a project first.";
+    }
     try {
       const schedule = await createMothershipSchedule(activeContext.projectId, name);
-      setSchedules([...schedules, schedule]);
+      setSchedules((prev) => [...prev, schedule]);
       await handleSelectSchedule(schedule.id);
+      return null;
     } catch (error) {
-      setPanel({ kind: "error", message: "Could not create schedule." });
+      return error instanceof Error ? error.message : "Could not create schedule.";
     }
   }
 
