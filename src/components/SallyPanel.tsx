@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { EXTRACT_TIMEOUT_MS } from "../lib/extractApi";
-import type { ScheduleItem } from "../lib/types";
+import type { ActiveMothershipContext, MothershipProject, MothershipSchedule, ScheduleItem } from "../lib/types";
 
 const TOTAL_TIMEOUT_SECONDS = Math.ceil(EXTRACT_TIMEOUT_MS / 1000);
 
@@ -11,9 +11,14 @@ type PanelState =
 type SallyPanelProps = {
   panel: PanelState;
   projectName: string;
+  mothershipProjects: MothershipProject[];
+  mothershipSchedules: MothershipSchedule[];
+  activeMothershipContext: ActiveMothershipContext | null;
   zones: string[];
   onChange: (draft: ScheduleItem) => void;
   onAddZone: (zone: string) => void;
+  onSelectMothershipProject: (projectId: string) => void;
+  onSelectMothershipSchedule: (scheduleId: string) => void;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
   onViewItems: () => void;
@@ -41,9 +46,14 @@ const DEFAULT_CATEGORIES = [
 export function SallyPanel({
   panel,
   projectName,
+  mothershipProjects,
+  mothershipSchedules,
+  activeMothershipContext,
   zones,
   onChange,
   onAddZone,
+  onSelectMothershipProject,
+  onSelectMothershipSchedule,
   onAccept,
   onCancel,
   onViewItems
@@ -100,6 +110,40 @@ export function SallyPanel({
           <>
             {draft?.sourceImageUrl ? (
               <img className="image-preview" src={draft.sourceImageUrl} alt="" />
+            ) : null}
+
+            {mothershipProjects.length ? (
+              <>
+                <div className="field">
+                  <label htmlFor="sally-mothership-project">Mother Ship Project</label>
+                  <select
+                    id="sally-mothership-project"
+                    value={activeMothershipContext?.projectId ?? ""}
+                    onChange={(event) => onSelectMothershipProject(event.target.value)}
+                  >
+                    {mothershipProjects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="sally-mothership-schedule">Mother Ship Schedule</label>
+                  <select
+                    id="sally-mothership-schedule"
+                    value={activeMothershipContext?.scheduleId ?? ""}
+                    onChange={(event) => onSelectMothershipSchedule(event.target.value)}
+                  >
+                    {mothershipSchedules.map((schedule) => (
+                      <option key={schedule.id} value={schedule.id}>
+                        {schedule.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
             ) : null}
 
             <div className="field">

@@ -4,17 +4,24 @@ import { ScheduleViewer } from "./components/ScheduleViewer";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
 import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
+import {
+  listMothershipProjects,
+  listMothershipSchedules,
+  saveMothershipScheduleItem
+} from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 import {
+  getActiveMothershipContext,
   getProjectName,
   listScheduleItems,
   listZones,
   removeScheduleItem,
+  saveActiveMothershipContext,
   saveProjectName,
   saveScheduleItem,
   saveZone
 } from "./lib/storage";
-import type { ScheduleItem } from "./lib/types";
+import type { ActiveMothershipContext, MothershipProject, MothershipSchedule, ScheduleItem } from "./lib/types";
 
 type PanelState =
   | { kind: "closed" }
@@ -39,6 +46,10 @@ export default function App() {
   const [projectName, setProjectName] = useState("My New Project");
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
   const [zones, setZones] = useState<string[]>([]);
+  const [mothershipProjects, setMothershipProjects] = useState<MothershipProject[]>([]);
+  const [mothershipSchedules, setMothershipSchedules] = useState<MothershipSchedule[]>([]);
+  const [activeMothershipContext, setActiveMothershipContext] =
+    useState<ActiveMothershipContext | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
@@ -46,6 +57,7 @@ export default function App() {
     refreshItemCount();
     refreshProjectName();
     refreshZones();
+    refreshMothershipContext();
   }, []);
 
   useEffect(() => {
@@ -99,6 +111,40 @@ export default function App() {
     setProjectName(await getProjectName());
   }
 
+  async function refreshMothershipContext() {
+    try {
+      const [projects, storedContext] = await Promise.all([
+        listMothershipProjects(),
+        getActiveMothershipContext()
+      ]);
+      setMothershipProjects(projects);
+      const project =
+        projects.find((candidate) => candidate.id === storedContext?.projectId) ?? projects[0];
+      if (!project) {
+        setMothershipSchedules([]);
+        setActiveMothershipContext(null);
+        return;
+      }
+
+      const schedules = await listMothershipSchedules(project.id);
+      setMothershipSchedules(schedules);
+      const schedule =
+        schedules.find((candidate) => candidate.id === storedContext?.scheduleId) ?? schedules[0];
+      if (!schedule) {
+        setActiveMothershipContext(null);
+        return;
+      }
+
+      const context = { projectId: project.id, scheduleId: schedule.id };
+      setActiveMothershipContext(context);
+      await saveActiveMothershipContext(context);
+    } catch {
+      setMothershipProjects([]);
+      setMothershipSchedules([]);
+      setActiveMothershipContext(null);
+    }
+  }
+
   function handleSpecClick() {
     setPanel({ kind: "thinking", tokenCount: 0 });
     window.setTimeout(async () => {
@@ -142,10 +188,39 @@ export default function App() {
   }
 
   async function handleAccept(item: ScheduleItem) {
+    if (activeMothershipContext?.scheduleId) {
+      try {
+        await saveMothershipScheduleItem(activeMothershipContext.scheduleId, item);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not save item.";
+        showToast(message);
+        return;
+      }
+    }
     await saveScheduleItem(item);
     await refreshItemCount();
     setPanel({ kind: "closed" });
     showToast("Item added");
+  }
+
+  async function handleSelectMothershipProject(projectId: string) {
+    const schedules = await listMothershipSchedules(projectId);
+    setMothershipSchedules(schedules);
+    const schedule = schedules[0];
+    const context = schedule ? { projectId, scheduleId: schedule.id } : null;
+    setActiveMothershipContext(context);
+    if (context) {
+      await saveActiveMothershipContext(context);
+    }
+  }
+
+  async function handleSelectMothershipSchedule(scheduleId: string) {
+    if (!activeMothershipContext) {
+      return;
+    }
+    const context = { ...activeMothershipContext, scheduleId };
+    setActiveMothershipContext(context);
+    await saveActiveMothershipContext(context);
   }
 
   async function handleRenameProject(nextProjectName: string) {
@@ -224,12 +299,17 @@ export default function App() {
         <SallyPanel
           panel={panel}
           projectName={projectName}
+          mothershipProjects={mothershipProjects}
+          mothershipSchedules={mothershipSchedules}
+          activeMothershipContext={activeMothershipContext}
           zones={zones}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
             panel.kind === "review" ? setPanel({ ...panel, draft }) : undefined
           }
           onAddZone={handleAddZone}
+          onSelectMothershipProject={handleSelectMothershipProject}
+          onSelectMothershipSchedule={handleSelectMothershipSchedule}
           onAccept={handleAccept}
           onViewItems={handleViewItems}
         />

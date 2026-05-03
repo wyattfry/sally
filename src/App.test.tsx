@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScheduleItem } from "./lib/types";
 import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
+import { listMothershipProjects, listMothershipSchedules, saveMothershipScheduleItem } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 
 vi.mock("./lib/extractApi", () => ({
@@ -15,6 +16,12 @@ vi.mock("./lib/extractApi", () => ({
 
 vi.mock("./lib/mockExtraction", () => ({
   mockExtractScheduleItem: vi.fn()
+}));
+
+vi.mock("./lib/mothershipApi", () => ({
+  listMothershipProjects: vi.fn(),
+  listMothershipSchedules: vi.fn(),
+  saveMothershipScheduleItem: vi.fn()
 }));
 
 import App from "./App";
@@ -85,6 +92,13 @@ describe("App", () => {
     vi.mocked(mockExtractScheduleItem).mockReturnValue(extractedItem({ id: "mock-draft-123" }));
     vi.mocked(shouldAllowMockFallback).mockReturnValue(false);
     vi.mocked(shouldFallbackToMock).mockReturnValue(false);
+    vi.mocked(listMothershipProjects).mockResolvedValue([
+      { id: "project-1", name: "Lake House", address: "24 School St." }
+    ]);
+    vi.mocked(listMothershipSchedules).mockResolvedValue([
+      { id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }
+    ]);
+    vi.mocked(saveMothershipScheduleItem).mockResolvedValue(undefined);
   });
 
   it("opens Sally, edits a proposal, saves it, and shows an accepted-item toast", async () => {
@@ -99,6 +113,8 @@ describe("App", () => {
     expect(screen.getByText("Reading page")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("Wall Faucet")).toBeInTheDocument();
     expect(screen.getByText("My New Project")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mother Ship Project")).toHaveValue("project-1");
+    expect(screen.getByLabelText("Mother Ship Schedule")).toHaveValue("schedule-1");
 
     await user.selectOptions(screen.getByLabelText("Zone"), "Primary Bath");
     await user.selectOptions(screen.getByLabelText("Category"), "Plumbing Fixture");
@@ -107,8 +123,39 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "OK" }));
 
     await waitFor(() => expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument());
+    expect(saveMothershipScheduleItem).toHaveBeenCalledWith(
+      "schedule-1",
+      expect.objectContaining({ title: "Wall faucet revised" })
+    );
     expect(screen.getByText("Item added")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "SPEC" })).not.toHaveClass("spec-button--specd");
+  });
+
+  it("lets the user choose a Mother Ship schedule before saving", async () => {
+    const user = userEvent.setup();
+    vi.mocked(listMothershipProjects).mockResolvedValue([
+      { id: "project-1", name: "Lake House", address: "24 School St." },
+      { id: "project-2", name: "Townhouse", address: "307 W38th St." }
+    ]);
+    vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
+      projectId === "project-2"
+        ? [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", position: 1 }]
+        : [{ id: "schedule-1", projectId: "project-1", name: "Bath", position: 1 }]
+    );
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+    await screen.findByDisplayValue("Wall Faucet");
+
+    await user.selectOptions(screen.getByLabelText("Mother Ship Project"), "project-2");
+
+    await waitFor(() => expect(screen.getByLabelText("Mother Ship Schedule")).toHaveValue("schedule-2"));
+    await user.click(screen.getByRole("button", { name: "OK" }));
+
+    expect(saveMothershipScheduleItem).toHaveBeenCalledWith(
+      "schedule-2",
+      expect.objectContaining({ title: "Wall Faucet" })
+    );
   });
 
   it("does not show undo while creating a new proposal", async () => {
