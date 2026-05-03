@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"sally/server/internal/config"
 	appdb "sally/server/internal/db"
 	queries "sally/server/internal/db/generated"
@@ -27,7 +29,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: httpapi.NewRouterWithDeps(cfg, extractor, webDeps(database)),
+		Handler: httpapi.NewRouterWithDeps(cfg, extractor, webDeps(cfg, database)),
 	}
 
 	log.Printf("sally server listening on %s provider=%s timeout=%s", addr, cfg.LLMProvider, cfg.OpenAITimeout)
@@ -36,13 +38,24 @@ func main() {
 	}
 }
 
-func webDeps(database *sql.DB) web.Deps {
-	if database == nil {
-		return web.Deps{}
+func webDeps(cfg config.Config, database *sql.DB) web.Deps {
+	deps := web.Deps{}
+	if database != nil {
+		deps.Queries = queries.New(database)
 	}
-	return web.Deps{
-		Queries: queries.New(database),
+	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
+		deps.OAuthConfig = &oauth2.Config{
+			ClientID:     cfg.GoogleClientID,
+			ClientSecret: cfg.GoogleClientSecret,
+			RedirectURL:  cfg.GoogleRedirectURL,
+			Scopes:       []string{"openid", "email", "profile"},
+			Endpoint:     google.Endpoint,
+		}
 	}
+	if cfg.SessionSecret != "" {
+		deps.SessionSecret = []byte(cfg.SessionSecret)
+	}
+	return deps
 }
 
 func openDatabase(cfg config.Config) *sql.DB {

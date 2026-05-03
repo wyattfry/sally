@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/oauth2"
 	queries "sally/server/internal/db/generated"
 	"sally/server/internal/share"
 )
@@ -18,25 +19,35 @@ import (
 var appCSS string
 
 type Deps struct {
-	Queries      *queries.Queries
-	DevUserEmail string
-	DevUserName  string
+	Queries       *queries.Queries
+	DevUserEmail  string
+	DevUserName   string
+	OAuthConfig   *oauth2.Config
+	SessionSecret []byte
 }
 
 type app struct {
-	queries      *queries.Queries
-	devUserEmail string
-	devUserName  string
+	queries       *queries.Queries
+	devUserEmail  string
+	devUserName   string
+	oauthConfig   *oauth2.Config
+	sessionSecret []byte
 }
 
 func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	a := app{
-		queries:      deps.Queries,
-		devUserEmail: firstNonEmpty(deps.DevUserEmail, "dev@spexxtool.local"),
-		devUserName:  firstNonEmpty(deps.DevUserName, "Development User"),
+		queries:       deps.Queries,
+		devUserEmail:  firstNonEmpty(deps.DevUserEmail, "dev@spexxtool.local"),
+		devUserName:   firstNonEmpty(deps.DevUserName, "Development User"),
+		oauthConfig:   deps.OAuthConfig,
+		sessionSecret: deps.SessionSecret,
 	}
 
 	mux.HandleFunc("GET /static/app.css", serveAppCSS)
+	mux.HandleFunc("GET /login", a.loginPage)
+	mux.HandleFunc("GET /auth/google", a.startGoogleOAuth)
+	mux.HandleFunc("GET /auth/callback", a.oauthCallback)
+	mux.HandleFunc("POST /logout", a.logout)
 	mux.HandleFunc("GET /", a.redirectHome)
 	mux.HandleFunc("GET /projects", a.listProjects)
 	mux.HandleFunc("GET /projects/new", a.newProject)
@@ -70,7 +81,7 @@ func (a app) redirectHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
-	user, ok := a.requireDevUser(w, r)
+	user, ok := a.requireUser(w, r)
 	if !ok {
 		return
 	}
@@ -93,7 +104,7 @@ func (a app) newProject(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a app) createProject(w http.ResponseWriter, r *http.Request) {
-	user, ok := a.requireDevUser(w, r)
+	user, ok := a.requireUser(w, r)
 	if !ok {
 		return
 	}
@@ -613,10 +624,29 @@ func (a app) loadProjectScheduleItem(w http.ResponseWriter, r *http.Request) (pr
 	return loaded, item, true
 }
 
-func (a app) requireDevUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
+func (a app) requireUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
 	if a.queries == nil {
 		http.Error(w, "database is unavailable", http.StatusServiceUnavailable)
 		return queries.User{}, false
+	}
+
+	if a.oauthConfig != nil {
+		email, ok := getSessionEmail(r, a.sessionSecret)
+		if !ok {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return queries.User{}, false
+		}
+		user, err := a.queries.GetUserByEmail(r.Context(), email)
+		if errors.Is(err, sql.ErrNoRows) {
+			clearSessionCookie(w)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return queries.User{}, false
+		}
+		if err != nil {
+			http.Error(w, "could not load user", http.StatusInternalServerError)
+			return queries.User{}, false
+		}
+		return user, true
 	}
 
 	user, err := a.queries.CreateUser(context.Background(), queries.CreateUserParams{
@@ -675,6 +705,11 @@ type shareManagePage struct {
 	Project      queries.Project
 	ActiveLink   *queries.ProjectShareLink
 	ShareBaseURL string
+}
+
+type signInPage struct {
+	Kind  string
+	Title string
 }
 
 type publicSharePage struct {
@@ -933,5 +968,11 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
         <p class="muted">No items.</p>
       {{end}}
     {{end}}
+  {{else if eq .Kind "login"}}
+    <div class="login-page">
+      <h1>Sally</h1>
+      <p>Sign in to manage your projects and schedules.</p>
+      <a class="button" href="/auth/google">Sign in with Google</a>
+    </div>
   {{end}}
 {{end}}`))

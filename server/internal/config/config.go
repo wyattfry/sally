@@ -25,6 +25,10 @@ type Config struct {
 	AnthropicModel              string
 	AllowMockFallback           bool
 	DatabaseURL                 string
+	GoogleClientID              string
+	GoogleClientSecret          string
+	GoogleRedirectURL           string
+	SessionSecret               string
 }
 
 func Load() Config {
@@ -46,7 +50,11 @@ func Load() Config {
 		AnthropicAPIKey:             strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")),
 		AnthropicModel:              strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL")),
 		AllowMockFallback:           parseBoolEnv("SALLY_ALLOW_MOCK_FALLBACK"),
-		DatabaseURL:       strings.TrimSpace(os.Getenv("DATABASE_URL")),
+		DatabaseURL:                 strings.TrimSpace(os.Getenv("DATABASE_URL")),
+		GoogleClientID:              strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret:          strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleRedirectURL:           strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URL")),
+		SessionSecret:               strings.TrimSpace(os.Getenv("SESSION_SECRET")),
 	}
 }
 
