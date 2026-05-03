@@ -68,7 +68,24 @@ cd /home/wyatt/sally
 docker compose up --build
 ```
 
-Local Compose is for iteration on the current machine. The extension's normal shared dev target should be the backend URL configured in `VITE_SALLY_BACKEND_BASE_URL`.
+Local Compose is for iteration on the current machine. It starts:
+
+- `sally-server` on `http://localhost:8080`
+- `postgres` on `localhost:5432`
+
+The Compose database URL used by the app container is:
+
+```text
+postgres://sally:sally_dev_password@postgres:5432/sally?sslmode=disable
+```
+
+From the host machine, use:
+
+```text
+postgres://sally:sally_dev_password@localhost:5432/sally?sslmode=disable
+```
+
+The extension's normal shared dev target should be the backend URL configured in `VITE_SALLY_BACKEND_BASE_URL`.
 
 If the shared dev host is a Proxmox LXC and Docker cannot start nested containers, run the Go binary directly instead:
 
