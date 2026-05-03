@@ -123,3 +123,77 @@ func TestProjectIndexListsProjects(t *testing.T) {
 		t.Fatalf("expected response to include project name, got %s", resp.Body.String())
 	}
 }
+
+func TestProjectPagesUpdateAndDeleteProject(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "project-update-test@example.com",
+		Name:  "Project Update Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Original Project " + time.Now().Format("150405.000000"),
+		Address:     "Old Address",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "project-update-test@example.com",
+		DevUserName:  "Project Update Test",
+	})
+
+	updateForm := url.Values{}
+	updateForm.Set("name", "Updated Project")
+	updateForm.Set("address", "New Address")
+	updateReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/edit", strings.NewReader(updateForm.Encode()))
+	updateReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	updateResp := httptest.NewRecorder()
+
+	router.ServeHTTP(updateResp, updateReq)
+
+	if updateResp.Code != http.StatusSeeOther {
+		t.Fatalf("expected update to redirect with 303, got %d", updateResp.Code)
+	}
+
+	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
+	showResp := httptest.NewRecorder()
+	router.ServeHTTP(showResp, showReq)
+	if !strings.Contains(showResp.Body.String(), "Updated Project") || !strings.Contains(showResp.Body.String(), "New Address") {
+		t.Fatalf("expected updated project detail, got %s", showResp.Body.String())
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/delete", nil)
+	deleteResp := httptest.NewRecorder()
+	router.ServeHTTP(deleteResp, deleteReq)
+	if deleteResp.Code != http.StatusSeeOther || deleteResp.Header().Get("Location") != "/projects" {
+		t.Fatalf("expected delete redirect to projects, got status=%d location=%q", deleteResp.Code, deleteResp.Header().Get("Location"))
+	}
+
+	deletedResp := httptest.NewRecorder()
+	router.ServeHTTP(deletedResp, showReq)
+	if deletedResp.Code != http.StatusNotFound {
+		t.Fatalf("expected deleted project to return 404, got %d", deletedResp.Code)
+	}
+}

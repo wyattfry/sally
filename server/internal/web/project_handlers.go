@@ -42,6 +42,9 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /projects/new", a.newProject)
 	mux.HandleFunc("POST /projects", a.createProject)
 	mux.HandleFunc("GET /projects/{projectID}", a.showProject)
+	mux.HandleFunc("GET /projects/{projectID}/edit", a.editProject)
+	mux.HandleFunc("POST /projects/{projectID}/edit", a.updateProject)
+	mux.HandleFunc("POST /projects/{projectID}/delete", a.deleteProject)
 	mux.HandleFunc("POST /projects/{projectID}/schedules", a.createSchedule)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}", a.showSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items", a.createScheduleItem)
@@ -135,6 +138,63 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 		Project:   project,
 		Schedules: schedules,
 	})
+}
+
+func (a app) editProject(w http.ResponseWriter, r *http.Request) {
+	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return
+	}
+
+	render(w, projectEditPage{
+		Kind:    "edit-project",
+		Title:   "Edit " + project.Name,
+		Project: project,
+	})
+}
+
+func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(r.Form.Get("name"))
+	if name == "" {
+		http.Error(w, "project name is required", http.StatusBadRequest)
+		return
+	}
+
+	_, err := a.queries.UpdateProject(r.Context(), queries.UpdateProjectParams{
+		ID:      projectID,
+		Name:    name,
+		Address: strings.TrimSpace(r.Form.Get("address")),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not update project", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+projectID, http.StatusSeeOther)
+}
+
+func (a app) deleteProject(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	if err := a.queries.DeleteProject(r.Context(), projectID); err != nil {
+		http.Error(w, "could not delete project", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/projects", http.StatusSeeOther)
 }
 
 func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
@@ -421,6 +481,12 @@ type projectDetailPage struct {
 	Schedules []queries.Schedule
 }
 
+type projectEditPage struct {
+	Kind    string
+	Title   string
+	Project queries.Project
+}
+
 type scheduleDetailPage struct {
 	Kind     string
 	Title    string
@@ -538,7 +604,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <p><a href="/projects">Projects</a></p>
     <h1>{{.Project.Name}}</h1>
     {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
-    <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/share">Share</a></p>
+    <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/edit">Edit</a> <a class="button" href="/projects/{{.Project.ID}}/share">Share</a></p>
     <form method="post" action="/projects/{{.Project.ID}}/schedules">
       <label>New Schedule <input name="name" required></label>
       <button type="submit">Add Schedule</button>
@@ -556,6 +622,17 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     {{else}}
       <p class="muted">No schedules yet.</p>
     {{end}}
+  {{else if eq .Kind "edit-project"}}
+    <p><a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
+    <h1>Edit Project</h1>
+    <form method="post" action="/projects/{{.Project.ID}}/edit">
+      <label>Project Name <input name="name" value="{{.Project.Name}}" required></label>
+      <label>Address <input name="address" value="{{.Project.Address}}"></label>
+      <button type="submit">Update Project</button>
+    </form>
+    <form method="post" action="/projects/{{.Project.ID}}/delete">
+      <button type="submit">Delete Project</button>
+    </form>
   {{else if eq .Kind "schedule"}}
     <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>{{.Schedule.Name}}</h1>
