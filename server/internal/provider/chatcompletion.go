@@ -107,22 +107,23 @@ func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.Extrac
 		RequestID: req.RequestID,
 		Status:    "ok",
 		Proposal: &extract.Proposal{
-			Title:               output.Title,
-			Manufacturer:        output.Manufacturer,
-			ModelNumber:         output.ModelNumber,
-			Category:            output.Category,
-			Description:         output.Description,
-			Finish:              output.Finish,
-			FinishModelNumber:   output.FinishModelNumber,
-			AvailableFinishes:   coalesceStrings(output.AvailableFinishes),
-			FinishModelMappings: coalesceFinishMappings(output.FinishModelMappings),
-			RequiredAddOns:      coalesceStrings(output.RequiredAddOns),
-			OptionalCompanions:  coalesceStrings(output.OptionalCompanions),
-			Zone:                output.Zone,
-			SourceURL:           req.Page.URL,
-			SourceTitle:         req.Page.Title,
-			SourceImageURL:      req.Page.MainImageURL,
-			SourcePDFLinks:      req.Page.PDFLinks,
+			Title:                 output.Title,
+			Manufacturer:          output.Manufacturer,
+			ModelNumber:           output.ModelNumber,
+			Category:              output.Category,
+			Description:           output.Description,
+			Finish:                output.Finish,
+			FinishModelNumber:     output.FinishModelNumber,
+			AvailableFinishes:     coalesceStrings(output.AvailableFinishes),
+			FinishModelMappings:   coalesceFinishMappings(output.FinishModelMappings),
+			RequiredAddOns:        coalesceStrings(output.RequiredAddOns),
+			OptionalCompanions:    coalesceStrings(output.OptionalCompanions),
+			Zone:                  output.Zone,
+			SuggestedScheduleName: output.SuggestedScheduleName,
+			SourceURL:             req.Page.URL,
+			SourceTitle:           req.Page.Title,
+			SourceImageURL:        req.Page.MainImageURL,
+			SourcePDFLinks:        req.Page.PDFLinks,
 		},
 		Analysis: output.Analysis,
 		Meta:     meta,
@@ -149,7 +150,7 @@ func buildChatCompletionRequest(req extract.ExtractSpecRequest, model, responseF
 			`{"title":"string","manufacturer":"string","modelNumber":"string","category":"string",` +
 			`"description":"string","finish":"string","finishModelNumber":"string",` +
 			`"availableFinishes":["string"],"finishModelMappings":[{"finish":"string","modelNumber":"string"}],` +
-			`"requiredAddOns":["string"],"optionalCompanions":["string"],"zone":"string",` +
+			`"requiredAddOns":["string"],"optionalCompanions":["string"],"zone":"string","suggestedScheduleName":"string",` +
 			`"analysis":{"missingFields":["string"],"warnings":["string"],` +
 			`"confidence":{"overall":0,"title":0,"manufacturer":0,"modelNumber":0,"category":0,"description":0,"finish":0,"requiredAddOns":0}}}`
 	}

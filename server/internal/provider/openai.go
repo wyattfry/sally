@@ -103,22 +103,23 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 		RequestID: req.RequestID,
 		Status:    "ok",
 		Proposal: &extract.Proposal{
-			Title:               output.Title,
-			Manufacturer:        output.Manufacturer,
-			ModelNumber:         output.ModelNumber,
-			Category:            output.Category,
-			Description:         output.Description,
-			Finish:              output.Finish,
-			FinishModelNumber:   output.FinishModelNumber,
-			AvailableFinishes:   output.AvailableFinishes,
-			FinishModelMappings: output.FinishModelMappings,
-			RequiredAddOns:      output.RequiredAddOns,
-			OptionalCompanions:  output.OptionalCompanions,
-			Zone:                output.Zone,
-			SourceURL:           req.Page.URL,
-			SourceTitle:         req.Page.Title,
-			SourceImageURL:      req.Page.MainImageURL,
-			SourcePDFLinks:      req.Page.PDFLinks,
+			Title:                 output.Title,
+			Manufacturer:          output.Manufacturer,
+			ModelNumber:           output.ModelNumber,
+			Category:              output.Category,
+			Description:           output.Description,
+			Finish:                output.Finish,
+			FinishModelNumber:     output.FinishModelNumber,
+			AvailableFinishes:     output.AvailableFinishes,
+			FinishModelMappings:   output.FinishModelMappings,
+			RequiredAddOns:        output.RequiredAddOns,
+			OptionalCompanions:    output.OptionalCompanions,
+			Zone:                  output.Zone,
+			SuggestedScheduleName: output.SuggestedScheduleName,
+			SourceURL:             req.Page.URL,
+			SourceTitle:           req.Page.Title,
+			SourceImageURL:        req.Page.MainImageURL,
+			SourcePDFLinks:        req.Page.PDFLinks,
 		},
 		Analysis: output.Analysis,
 		Meta:     meta,
@@ -178,19 +179,20 @@ func (r openAIResponse) OutputText() string {
 }
 
 type openAIExtractionOutput struct {
-	Title               string                       `json:"title"`
-	Manufacturer        string                       `json:"manufacturer"`
-	ModelNumber         string                       `json:"modelNumber"`
-	Category            string                       `json:"category"`
-	Description         string                       `json:"description"`
-	Finish              string                       `json:"finish"`
-	FinishModelNumber   string                       `json:"finishModelNumber"`
-	AvailableFinishes   []string                     `json:"availableFinishes"`
-	FinishModelMappings []extract.FinishModelMapping `json:"finishModelMappings"`
-	RequiredAddOns      []string                     `json:"requiredAddOns"`
-	OptionalCompanions  []string                     `json:"optionalCompanions"`
-	Zone                string                       `json:"zone"`
-	Analysis            *extract.Analysis            `json:"analysis"`
+	Title                 string                       `json:"title"`
+	Manufacturer          string                       `json:"manufacturer"`
+	ModelNumber           string                       `json:"modelNumber"`
+	Category              string                       `json:"category"`
+	Description           string                       `json:"description"`
+	Finish                string                       `json:"finish"`
+	FinishModelNumber     string                       `json:"finishModelNumber"`
+	AvailableFinishes     []string                     `json:"availableFinishes"`
+	FinishModelMappings   []extract.FinishModelMapping `json:"finishModelMappings"`
+	RequiredAddOns        []string                     `json:"requiredAddOns"`
+	OptionalCompanions    []string                     `json:"optionalCompanions"`
+	Zone                  string                       `json:"zone"`
+	SuggestedScheduleName string                       `json:"suggestedScheduleName"`
+	Analysis              *extract.Analysis            `json:"analysis"`
 }
 
 func buildOpenAIRequest(req extract.ExtractSpecRequest, model string) openAIRequest {
@@ -238,11 +240,13 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 	pdfLinks, _ := json.Marshal(req.Page.PDFLinks)
 	knownZones, _ := json.Marshal(req.ProjectContext.KnownZones)
 	knownCategories, _ := json.Marshal(req.ProjectContext.KnownCategories)
+	knownScheduleNames, _ := json.Marshal(req.ProjectContext.KnownScheduleNames)
 
 	return strings.Join([]string{
 		"Project: " + req.ProjectContext.ProjectName,
 		"Known zones: " + string(knownZones),
 		"Known categories: " + string(knownCategories),
+		"Known schedule names: " + string(knownScheduleNames) + " — pick the best match for suggestedScheduleName, or propose a new descriptive name if none fit.",
 		"Page title: " + req.Page.Title,
 		"Page URL: " + req.Page.URL,
 		"Visible text: " + req.Page.VisibleText,
@@ -275,9 +279,10 @@ func extractionSchema() map[string]any {
 					"additionalProperties": false,
 				},
 			},
-			"requiredAddOns":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-			"optionalCompanions": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-			"zone":               map[string]any{"type": "string"},
+			"requiredAddOns":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+			"optionalCompanions":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+			"zone":                  map[string]any{"type": "string"},
+			"suggestedScheduleName": map[string]any{"type": "string"},
 			"analysis": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -331,6 +336,7 @@ func extractionSchema() map[string]any {
 			"requiredAddOns",
 			"optionalCompanions",
 			"zone",
+			"suggestedScheduleName",
 			"analysis",
 		},
 		"additionalProperties": false,

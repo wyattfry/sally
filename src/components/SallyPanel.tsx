@@ -14,6 +14,7 @@ type SallyPanelProps = {
   projects: Project[];
   schedules: Schedule[];
   activeContext: ActiveContext | null;
+  suggestedNewScheduleName?: string;
   onChange: (draft: ScheduleItem) => void;
   onSelectProject: (projectId: string) => void;
   onSelectSchedule: (scheduleId: string) => void;
@@ -48,6 +49,7 @@ export function SallyPanel({
   projects,
   schedules,
   activeContext,
+  suggestedNewScheduleName,
   onChange,
   onSelectProject,
   onSelectSchedule,
@@ -64,6 +66,13 @@ export function SallyPanel({
   const [isAddingSchedule, setIsAddingSchedule] = useState(false);
   const [newScheduleName, setNewScheduleName] = useState("");
   const [scheduleCreateError, setScheduleCreateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (suggestedNewScheduleName) {
+      setIsAddingSchedule(true);
+      setNewScheduleName(suggestedNewScheduleName);
+    }
+  }, [suggestedNewScheduleName]);
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_TIMEOUT_SECONDS);
   const intervalRef = useRef<number | null>(null);
 

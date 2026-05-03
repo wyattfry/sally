@@ -63,6 +63,7 @@ export type ClientInfo = {
 export type ProjectContext = {
   projectName: string;
   knownCategories: string[];
+  knownScheduleNames: string[];
 };
 
 export type ExtractSpecOptions = {
@@ -91,6 +92,7 @@ export type ExtractedProposal = {
   finishModelMappings: FinishModelMapping[];
   requiredAddOns: string[];
   optionalCompanions: string[];
+  suggestedScheduleName?: string;
   sourceUrl: string;
   sourceTitle: string;
   sourceImageUrl?: string;

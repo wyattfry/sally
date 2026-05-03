@@ -27,9 +27,10 @@ type PagePayload struct {
 }
 
 type ProjectContext struct {
-	ProjectName     string   `json:"projectName"`
-	KnownZones      []string `json:"knownZones"`
-	KnownCategories []string `json:"knownCategories"`
+	ProjectName        string   `json:"projectName"`
+	KnownZones         []string `json:"knownZones"`
+	KnownCategories    []string `json:"knownCategories"`
+	KnownScheduleNames []string `json:"knownScheduleNames"`
 }
 
 type ExtractSpecOptions struct {
@@ -58,8 +59,9 @@ type Proposal struct {
 	FinishModelMappings []FinishModelMapping `json:"finishModelMappings"`
 	RequiredAddOns      []string             `json:"requiredAddOns"`
 	OptionalCompanions  []string             `json:"optionalCompanions"`
-	Zone                string               `json:"zone"`
-	SourceURL           string               `json:"sourceUrl"`
+	Zone                    string               `json:"zone"`
+	SuggestedScheduleName   string               `json:"suggestedScheduleName"`
+	SourceURL               string               `json:"sourceUrl"`
 	SourceTitle         string               `json:"sourceTitle"`
 	SourceImageURL      string               `json:"sourceImageUrl,omitempty"`
 	SourcePDFLinks      []string             `json:"sourcePdfLinks"`

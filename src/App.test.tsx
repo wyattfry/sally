@@ -34,6 +34,10 @@ import App from "./App";
 
 const storageState: Record<string, unknown> = {};
 
+function extractedResult(overrides: Partial<ScheduleItem> = {}) {
+  return { item: extractedItem(overrides) };
+}
+
 function extractedItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
     id: "draft-request-123",
@@ -93,7 +97,7 @@ describe("App", () => {
       delete storageState[key];
     }
     installChromeStorageMock();
-    vi.mocked(extractScheduleItem).mockResolvedValue(extractedItem());
+    vi.mocked(extractScheduleItem).mockResolvedValue(extractedResult());
     vi.mocked(mockExtractScheduleItem).mockReturnValue(extractedItem({ id: "mock-draft-123" }));
     vi.mocked(shouldAllowMockFallback).mockReturnValue(false);
     vi.mocked(shouldFallbackToMock).mockReturnValue(false);
@@ -436,7 +440,7 @@ describe("App", () => {
     const user = userEvent.setup();
     vi.mocked(extractScheduleItem)
       .mockRejectedValueOnce(new Error("Backend unavailable"))
-      .mockResolvedValueOnce(extractedItem({ title: "Recovered faucet" }));
+      .mockResolvedValueOnce(extractedResult({ title: "Recovered faucet" }));
     vi.mocked(shouldFallbackToMock).mockReturnValue(false);
 
     render(<App />);

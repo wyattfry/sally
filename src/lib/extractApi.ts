@@ -30,19 +30,27 @@ export class ExtractionError extends Error {
 type ExtractScheduleItemArgs = {
   capturedPage: CapturedPage;
   knownCategories: string[];
+  knownScheduleNames?: string[];
   now?: Date;
   onProgress?: (tokenCount: number) => void;
+};
+
+type ExtractScheduleItemResult = {
+  item: ScheduleItem;
+  suggestedScheduleName?: string;
 };
 
 export async function extractScheduleItem({
   capturedPage,
   knownCategories,
+  knownScheduleNames = [],
   now = new Date(),
   onProgress
-}: ExtractScheduleItemArgs): Promise<ScheduleItem> {
+}: ExtractScheduleItemArgs): Promise<ExtractScheduleItemResult> {
   const request = buildExtractSpecRequest({
     capturedPage,
     knownCategories,
+    knownScheduleNames,
     now
   });
 
@@ -77,7 +85,7 @@ export async function extractScheduleItem({
             }
             resolved = true;
             cleanup();
-            resolve(toScheduleItem(payload, now));
+            resolve(toExtractResult(payload, now));
           } else if (event === "error") {
             const payload = JSON.parse(data) as ExtractSpecResponse;
             cleanup();
@@ -156,7 +164,7 @@ export async function extractScheduleItem({
           if (!payload.proposal) {
             throw new ExtractionError("invalid", "Extraction response was missing a proposal.");
           }
-          return toScheduleItem(payload, now);
+          return toExtractResult(payload, now);
         } else if (event === "error") {
           const payload = JSON.parse(data) as ExtractSpecResponse;
           throw new ExtractionError("backend", payload?.error?.message || "Extraction request failed.");
@@ -238,6 +246,7 @@ function getRuntimeConfig(): Required<SallyRuntimeConfig> {
 function buildExtractSpecRequest({
   capturedPage,
   knownCategories,
+  knownScheduleNames,
   now
 }: Required<Omit<ExtractScheduleItemArgs, "onProgress">> & { now: Date }): ExtractSpecRequest {
   return {
@@ -251,7 +260,8 @@ function buildExtractSpecRequest({
     page: capturedPage,
     projectContext: {
       projectName: "",
-      knownCategories
+      knownCategories,
+      knownScheduleNames
     },
     options: {
       includeDebug: true,
@@ -260,28 +270,31 @@ function buildExtractSpecRequest({
   };
 }
 
-function toScheduleItem(response: ExtractSpecResponse, now: Date): ScheduleItem {
+function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractScheduleItemResult {
   const proposal = response.proposal;
   if (!proposal) {
     throw new ExtractionError("invalid", "Extraction response was missing a proposal.");
   }
 
   return {
-    id: `draft-${response.requestId}`,
-    capturedAt: now.toISOString(),
-    title: proposal.title,
-    manufacturer: proposal.manufacturer,
-    modelNumber: proposal.modelNumber,
-    category: proposal.category,
-    description: proposal.description,
-    finish: proposal.finish,
-    finishModelNumber: proposal.finishModelNumber || undefined,
-    requiredAddOns: proposal.requiredAddOns ?? [],
-    optionalCompanions: proposal.optionalCompanions ?? [],
-    sourceUrl: proposal.sourceUrl,
-    sourceTitle: proposal.sourceTitle,
-    sourceImageUrl: proposal.sourceImageUrl,
-    sourcePdfLinks: proposal.sourcePdfLinks ?? []
+    item: {
+      id: `draft-${response.requestId}`,
+      capturedAt: now.toISOString(),
+      title: proposal.title,
+      manufacturer: proposal.manufacturer,
+      modelNumber: proposal.modelNumber,
+      category: proposal.category,
+      description: proposal.description,
+      finish: proposal.finish,
+      finishModelNumber: proposal.finishModelNumber || undefined,
+      requiredAddOns: proposal.requiredAddOns ?? [],
+      optionalCompanions: proposal.optionalCompanions ?? [],
+      sourceUrl: proposal.sourceUrl,
+      sourceTitle: proposal.sourceTitle,
+      sourceImageUrl: proposal.sourceImageUrl,
+      sourcePdfLinks: proposal.sourcePdfLinks ?? []
+    },
+    suggestedScheduleName: proposal.suggestedScheduleName || undefined
   };
 }
 

@@ -88,7 +88,8 @@ describe("extractScheduleItem", () => {
     });
     expect(body.projectContext).toEqual({
       projectName: "",
-      knownCategories: ["Plumbing Fixture", "Lighting"]
+      knownCategories: ["Plumbing Fixture", "Lighting"],
+      knownScheduleNames: []
     });
     expect(body.options).toEqual({
       includeDebug: true,
@@ -109,7 +110,7 @@ describe("extractScheduleItem", () => {
       )
     );
 
-    const item = await extractScheduleItem({
+    const { item } = await extractScheduleItem({
       capturedPage: capturedPage(),
       knownCategories: ["Plumbing Fixture"],
       now: FIXED_NOW

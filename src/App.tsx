@@ -21,7 +21,7 @@ import type { ActiveContext, Project, Schedule, ScheduleItem } from "./lib/types
 type PanelState =
   | { kind: "closed" }
   | { kind: "thinking"; tokenCount: number }
-  | { kind: "review"; draft: ScheduleItem }
+  | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string }
   | { kind: "minimized"; draft: ScheduleItem }
   | { kind: "error"; message: string };
 
@@ -33,6 +33,20 @@ const DEFAULT_CATEGORIES = [
   "Finish",
   "Furniture",
   "Accessory"
+];
+
+const SUGGESTED_SCHEDULE_NAMES = [
+  "Appliance Schedule",
+  "Cabinet Pulls",
+  "Door Hardware Schedule",
+  "Door Schedule",
+  "Electrical Device Schedule",
+  "Electrical Fixture Schedule",
+  "Insulation Schedule",
+  "Miscellaneous Devices",
+  "Paint Schedule",
+  "Specialties",
+  "Window Schedule"
 ];
 
 export default function App() {
@@ -110,21 +124,37 @@ export default function App() {
     setPanel({ kind: "thinking", tokenCount: 0 });
     window.setTimeout(async () => {
       const captured = capturePage(document, window.location);
+      const knownScheduleNames = [
+        ...SUGGESTED_SCHEDULE_NAMES,
+        ...schedules.map((s) => s.name).filter((n) => !SUGGESTED_SCHEDULE_NAMES.includes(n))
+      ];
       try {
-        const proposal = await extractScheduleItem({
+        const { item, suggestedScheduleName } = await extractScheduleItem({
           capturedPage: captured,
           knownCategories: DEFAULT_CATEGORIES,
+          knownScheduleNames,
           onProgress: (tokenCount) => {
             setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
           }
         });
-        setPanel({ kind: "review", draft: proposal });
+        const matchingSchedule = suggestedScheduleName
+          ? schedules.find((s) => s.name.toLowerCase() === suggestedScheduleName.toLowerCase())
+          : undefined;
+        if (matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId) {
+          await handleSelectSchedule(matchingSchedule.id);
+        }
+        setPanel({
+          kind: "review",
+          draft: item,
+          suggestedNewScheduleName:
+            suggestedScheduleName && !matchingSchedule ? suggestedScheduleName : undefined
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Could not extract item.";
         if (shouldAllowMockFallback() && shouldFallbackToMock(error)) {
           try {
-            const proposal = mockExtractScheduleItem(captured);
-            setPanel({ kind: "review", draft: proposal });
+            const item = mockExtractScheduleItem(captured);
+            setPanel({ kind: "review", draft: item });
             return;
           } catch {
             // fall through to visible error state
@@ -232,6 +262,7 @@ export default function App() {
           projects={projects}
           schedules={schedules}
           activeContext={activeContext}
+          suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
             panel.kind === "review" ? setPanel({ ...panel, draft }) : undefined
