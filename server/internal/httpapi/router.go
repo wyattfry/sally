@@ -20,7 +20,9 @@ func NewRouterWithExtractor(cfg config.Config, extractor provider.Extractor) htt
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	mux.HandleFunc("POST /v1/extract-spec", NewExtractHandler(extractor))
+	extractHandler := NewExtractHandler(extractor)
+	mux.HandleFunc("POST /api/v1/extract-spec", extractHandler)
+	mux.HandleFunc("POST /v1/extract-spec", extractHandler)
 
 	_ = cfg
 

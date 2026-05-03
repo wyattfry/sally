@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CapturedPage, ExtractSpecResponse, ScheduleItem } from "./types";
-import { extractScheduleItem } from "./extractApi";
+import { EXTRACT_TIMEOUT_MS, extractScheduleItem } from "./extractApi";
 
 const FIXED_NOW = new Date("2026-04-24T18:30:00.000Z");
 
@@ -50,14 +50,20 @@ function successResponse(overrides: Partial<ExtractSpecResponse> = {}): ExtractS
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("extractScheduleItem", () => {
   it("builds the request from captured page plus project context", async () => {
+    vi.stubGlobal("__SALLY_CONFIG__", {
+      backendBaseUrl: "http://localhost:8080",
+      allowMockFallback: false,
+      developmentMode: false
+    });
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(successResponse()), {
+      new Response(sseDone(successResponse()), {
         status: 200,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "text/event-stream" }
       })
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -72,7 +78,7 @@ describe("extractScheduleItem", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("http://localhost:8080/v1/extract-spec");
+    expect(url).toBe("http://localhost:8080/api/v1/extract-spec");
     expect(init.method).toBe("POST");
     expect(init.signal).toBeInstanceOf(AbortSignal);
 
@@ -100,9 +106,9 @@ describe("extractScheduleItem", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(successResponse()), {
+        new Response(sseDone(successResponse()), {
           status: 200,
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "text/event-stream" }
         })
       )
     );
@@ -187,7 +193,7 @@ describe("extractScheduleItem", () => {
     });
     const rejection = expect(promise).rejects.toThrow("Extraction request timed out.");
 
-    await vi.advanceTimersByTimeAsync(18_000);
+    await vi.advanceTimersByTimeAsync(EXTRACT_TIMEOUT_MS);
 
     await rejection;
     vi.useRealTimers();
@@ -215,3 +221,7 @@ describe("extractScheduleItem", () => {
     ).rejects.toThrow("Extraction request failed.");
   });
 });
+
+function sseDone(response: ExtractSpecResponse): string {
+  return `event: done\ndata: ${JSON.stringify(response)}\n\n`;
+}

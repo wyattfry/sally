@@ -7,6 +7,7 @@ import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } fr
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 
 vi.mock("./lib/extractApi", () => ({
+  EXTRACT_TIMEOUT_MS: 180_000,
   extractScheduleItem: vi.fn(),
   shouldAllowMockFallback: vi.fn(),
   shouldFallbackToMock: vi.fn()

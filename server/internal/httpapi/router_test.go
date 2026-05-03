@@ -24,6 +24,19 @@ func TestRouterHealthzReturnsOK(t *testing.T) {
 func TestRouterExtractSpecReturnsBadRequestForMissingBody(t *testing.T) {
 	router := NewRouter(config.Config{})
 
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/extract-spec", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rr.Code)
+	}
+}
+
+func TestRouterExtractSpecKeepsLegacyPathAlias(t *testing.T) {
+	router := NewRouter(config.Config{})
+
 	req := httptest.NewRequest(http.MethodPost, "/v1/extract-spec", nil)
 	rr := httptest.NewRecorder()
 
@@ -37,7 +50,7 @@ func TestRouterExtractSpecReturnsBadRequestForMissingBody(t *testing.T) {
 func TestRouterExtractSpecHandlesCORSPreflight(t *testing.T) {
 	router := NewRouter(config.Config{})
 
-	req := httptest.NewRequest(http.MethodOptions, "/v1/extract-spec", nil)
+	req := httptest.NewRequest(http.MethodOptions, "/api/v1/extract-spec", nil)
 	req.Header.Set("Origin", "https://www.voltagerestaurantsupply.com")
 	req.Header.Set("Access-Control-Request-Headers", "content-type")
 	rr := httptest.NewRecorder()

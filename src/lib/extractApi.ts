@@ -7,7 +7,7 @@ import type {
 
 const DEFAULT_BACKEND_BASE_URL = "http://10.0.0.104:8080";
 export const EXTRACT_TIMEOUT_MS = 180_000;
-const EXTRACT_PATH = "/v1/extract-spec";
+const EXTRACT_PATH = "/api/v1/extract-spec";
 
 type ExtractionErrorKind = "transport" | "backend" | "invalid";
 
