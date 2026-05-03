@@ -1,0 +1,12 @@
+root = "."
+tmp_dir = "/tmp/air"
+
+[build]
+  cmd = "go build -o /tmp/air/sally-server ./cmd/sally-server"
+  bin = "/tmp/air/sally-server"
+  include_ext = ["go", "html", "css", "sql"]
+  exclude_dir = ["vendor"]
+  delay = 200
+
+[log]
+  time = false

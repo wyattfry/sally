@@ -1,0 +1,10 @@
+services:
+  sally-server:
+    build:
+      target: dev
+    volumes:
+      - ./server:/app
+      - go-mod-cache:/root/go/pkg/mod
+
+volumes:
+  go-mod-cache:

@@ -1,3 +1,17 @@
+# ── dev target: air live-reload (used via docker-compose.override.yml) ────────
+FROM golang:1.25-alpine AS dev
+
+WORKDIR /app
+
+RUN go install github.com/air-verse/air@latest
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+EXPOSE 8080
+CMD ["air"]
+
+# ── production build ───────────────────────────────────────────────────────────
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
