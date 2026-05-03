@@ -35,6 +35,8 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /projects/new", a.newProject)
 	mux.HandleFunc("POST /projects", a.createProject)
 	mux.HandleFunc("GET /projects/{projectID}", a.showProject)
+	mux.HandleFunc("POST /projects/{projectID}/schedules", a.createSchedule)
+	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}", a.showSchedule)
 }
 
 func (a app) redirectHome(w http.ResponseWriter, r *http.Request) {
@@ -54,13 +56,14 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render(w, projectsPage{
+		Kind:     "projects",
 		Title:    "Projects",
 		Projects: projects,
 	})
 }
 
 func (a app) newProject(w http.ResponseWriter, _ *http.Request) {
-	render(w, projectFormPage{Title: "New Project"})
+	render(w, projectFormPage{Kind: "new-project", Title: "New Project"})
 }
 
 func (a app) createProject(w http.ResponseWriter, r *http.Request) {
@@ -111,9 +114,86 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render(w, projectDetailPage{
+		Kind:      "project",
 		Title:     project.Name,
 		Project:   project,
 		Schedules: schedules,
+	})
+}
+
+func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	if _, err := a.queries.GetProject(r.Context(), projectID); errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	name := strings.TrimSpace(r.Form.Get("name"))
+	if name == "" {
+		http.Error(w, "schedule name is required", http.StatusBadRequest)
+		return
+	}
+
+	existingSchedules, err := a.queries.ListSchedulesByProject(r.Context(), projectID)
+	if err != nil {
+		http.Error(w, "could not load schedules", http.StatusInternalServerError)
+		return
+	}
+
+	schedule, err := a.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
+		ProjectID: projectID,
+		Name:      name,
+		Position:  int32(len(existingSchedules) + 1),
+	})
+	if err != nil {
+		http.Error(w, "could not create schedule", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+schedule.ID, http.StatusSeeOther)
+}
+
+func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	project, err := a.queries.GetProject(r.Context(), projectID)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return
+	}
+
+	schedule, err := a.queries.GetSchedule(r.Context(), r.PathValue("scheduleID"))
+	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load schedule", http.StatusInternalServerError)
+		return
+	}
+
+	items, err := a.queries.ListScheduleItems(r.Context(), schedule.ID)
+	if err != nil {
+		http.Error(w, "could not load items", http.StatusInternalServerError)
+		return
+	}
+
+	render(w, scheduleDetailPage{
+		Kind:     "schedule",
+		Title:    schedule.Name,
+		Project:  project,
+		Schedule: schedule,
+		Items:    items,
 	})
 }
 
@@ -135,18 +215,29 @@ func (a app) requireDevUser(w http.ResponseWriter, r *http.Request) (queries.Use
 }
 
 type projectsPage struct {
+	Kind     string
 	Title    string
 	Projects []queries.Project
 }
 
 type projectFormPage struct {
+	Kind  string
 	Title string
 }
 
 type projectDetailPage struct {
+	Kind      string
 	Title     string
 	Project   queries.Project
 	Schedules []queries.Schedule
+}
+
+type scheduleDetailPage struct {
+	Kind     string
+	Title    string
+	Project  queries.Project
+	Schedule queries.Schedule
+	Items    []queries.ScheduleItem
 }
 
 func render(w http.ResponseWriter, data any) {
@@ -193,7 +284,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
 </html>
 
 {{define "content"}}
-  {{if eq .Title "Projects"}}
+  {{if eq .Kind "projects"}}
     <h1>Projects</h1>
     <p class="actions"><a class="button" href="/projects/new">New Project</a></p>
     {{if .Projects}}
@@ -212,29 +303,55 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     {{else}}
       <p class="muted">No projects yet.</p>
     {{end}}
-  {{else if eq .Title "New Project"}}
+  {{else if eq .Kind "new-project"}}
     <h1>New Project</h1>
     <form method="post" action="/projects">
       <label>Project Name <input name="name" required></label>
       <label>Address <input name="address"></label>
       <button type="submit">Create Project</button>
     </form>
-  {{else}}
+  {{else if eq .Kind "project"}}
     <p><a href="/projects">Projects</a></p>
     <h1>{{.Project.Name}}</h1>
     {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
+    <form method="post" action="/projects/{{.Project.ID}}/schedules">
+      <label>New Schedule <input name="name" required></label>
+      <button type="submit">Add Schedule</button>
+    </form>
     <h2>Schedules</h2>
     {{if .Schedules}}
       <table>
         <thead><tr><th>Name</th><th>Updated</th></tr></thead>
         <tbody>
           {{range .Schedules}}
-            <tr><td>{{.Name}}</td><td>{{.UpdatedAt.Format "2006-01-02"}}</td></tr>
+            <tr><td><a href="/projects/{{$.Project.ID}}/schedules/{{.ID}}">{{.Name}}</a></td><td>{{.UpdatedAt.Format "2006-01-02"}}</td></tr>
           {{end}}
         </tbody>
       </table>
     {{else}}
       <p class="muted">No schedules yet.</p>
+    {{end}}
+  {{else if eq .Kind "schedule"}}
+    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
+    <h1>{{.Schedule.Name}}</h1>
+    <h2>Items</h2>
+    {{if .Items}}
+      <table>
+        <thead><tr><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th></tr></thead>
+        <tbody>
+          {{range .Items}}
+            <tr>
+              <td>{{.Code}}</td>
+              <td>{{.Title}}<br><span class="muted">{{.Description}}</span></td>
+              <td>{{.Manufacturer}} {{.ModelNumber}}</td>
+              <td>{{.Finish}}</td>
+              <td>{{.Notes}}</td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    {{else}}
+      <p class="muted">No items yet.</p>
     {{end}}
   {{end}}
 {{end}}`))
