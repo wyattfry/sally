@@ -52,6 +52,9 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/edit", a.updateSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/delete", a.deleteSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items", a.createScheduleItem)
+	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.editScheduleItem)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.updateScheduleItem)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/delete", a.deleteScheduleItem)
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
 	mux.HandleFunc("GET /share/{token}", a.showPublicShare)
@@ -381,6 +384,73 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
 }
 
+func (a app) editScheduleItem(w http.ResponseWriter, r *http.Request) {
+	loaded, item, ok := a.loadProjectScheduleItem(w, r)
+	if !ok {
+		return
+	}
+
+	render(w, itemEditPage{
+		Kind:     "edit-item",
+		Title:    "Edit " + item.Title,
+		Project:  loaded.project,
+		Schedule: loaded.schedule,
+		Item:     item,
+	})
+}
+
+func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
+	loaded, item, ok := a.loadProjectScheduleItem(w, r)
+	if !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+
+	title := strings.TrimSpace(r.Form.Get("title"))
+	if title == "" {
+		http.Error(w, "item title is required", http.StatusBadRequest)
+		return
+	}
+
+	_, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
+		ID:                item.ID,
+		Code:              strings.TrimSpace(r.Form.Get("code")),
+		Title:             title,
+		Description:       strings.TrimSpace(r.Form.Get("description")),
+		Manufacturer:      strings.TrimSpace(r.Form.Get("manufacturer")),
+		ModelNumber:       strings.TrimSpace(r.Form.Get("model_number")),
+		Finish:            strings.TrimSpace(r.Form.Get("finish")),
+		FinishModelNumber: strings.TrimSpace(r.Form.Get("finish_model_number")),
+		Notes:             strings.TrimSpace(r.Form.Get("notes")),
+		SourceUrl:         strings.TrimSpace(r.Form.Get("source_url")),
+		SourceTitle:       strings.TrimSpace(r.Form.Get("source_title")),
+		SourceImageUrl:    strings.TrimSpace(r.Form.Get("source_image_url")),
+		SourcePdfLinks:    splitLines(r.Form.Get("source_pdf_links")),
+		Position:          parseInt32(r.Form.Get("position"), item.Position),
+	})
+	if err != nil {
+		http.Error(w, "could not update item", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)
+}
+
+func (a app) deleteScheduleItem(w http.ResponseWriter, r *http.Request) {
+	loaded, item, ok := a.loadProjectScheduleItem(w, r)
+	if !ok {
+		return
+	}
+	if err := a.queries.DeleteScheduleItem(r.Context(), item.ID); err != nil {
+		http.Error(w, "could not delete item", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)
+}
+
 func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
 	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -507,6 +577,25 @@ func (a app) loadProjectSchedule(w http.ResponseWriter, r *http.Request, project
 	return projectSchedule{project: project, schedule: schedule}, true
 }
 
+func (a app) loadProjectScheduleItem(w http.ResponseWriter, r *http.Request) (projectSchedule, queries.ScheduleItem, bool) {
+	loaded, ok := a.loadProjectSchedule(w, r, r.PathValue("projectID"), r.PathValue("scheduleID"))
+	if !ok {
+		return projectSchedule{}, queries.ScheduleItem{}, false
+	}
+
+	item, err := a.queries.GetScheduleItem(r.Context(), r.PathValue("itemID"))
+	if errors.Is(err, sql.ErrNoRows) || item.ScheduleID != loaded.schedule.ID {
+		http.NotFound(w, r)
+		return projectSchedule{}, queries.ScheduleItem{}, false
+	}
+	if err != nil {
+		http.Error(w, "could not load item", http.StatusInternalServerError)
+		return projectSchedule{}, queries.ScheduleItem{}, false
+	}
+
+	return loaded, item, true
+}
+
 func (a app) requireDevUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
 	if a.queries == nil {
 		http.Error(w, "database is unavailable", http.StatusServiceUnavailable)
@@ -561,6 +650,14 @@ type scheduleEditPage struct {
 	Title    string
 	Project  queries.Project
 	Schedule queries.Schedule
+}
+
+type itemEditPage struct {
+	Kind     string
+	Title    string
+	Project  queries.Project
+	Schedule queries.Schedule
+	Item     queries.ScheduleItem
 }
 
 type shareManagePage struct {
@@ -729,7 +826,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <h2>Items</h2>
     {{if .Items}}
       <table>
-        <thead><tr><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th></th></tr></thead>
         <tbody>
           {{range .Items}}
             <tr>
@@ -738,6 +835,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
               <td>{{.Manufacturer}} {{.ModelNumber}}</td>
               <td>{{.Finish}}</td>
               <td>{{.Notes}}</td>
+              <td><a href="/projects/{{$.Project.ID}}/schedules/{{$.Schedule.ID}}/items/{{.ID}}/edit">Edit</a></td>
             </tr>
           {{end}}
         </tbody>
@@ -755,6 +853,25 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     </form>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/delete">
       <button type="submit">Delete Schedule</button>
+    </form>
+  {{else if eq .Kind "edit-item"}}
+    <p><a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
+    <h1>Edit Item</h1>
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
+      <label>Code <input name="code" value="{{.Item.Code}}"></label>
+      <label>Title <input name="title" value="{{.Item.Title}}" required></label>
+      <label>Description <input name="description" value="{{.Item.Description}}"></label>
+      <label>Manufacturer <input name="manufacturer" value="{{.Item.Manufacturer}}"></label>
+      <label>Model Number <input name="model_number" value="{{.Item.ModelNumber}}"></label>
+      <label>Finish <input name="finish" value="{{.Item.Finish}}"></label>
+      <label>Finish Model Number <input name="finish_model_number" value="{{.Item.FinishModelNumber}}"></label>
+      <label>Notes <input name="notes" value="{{.Item.Notes}}"></label>
+      <label>Source URL <input name="source_url" value="{{.Item.SourceUrl}}"></label>
+      <label>Position <input name="position" value="{{.Item.Position}}"></label>
+      <button type="submit">Update Item</button>
+    </form>
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/delete">
+      <button type="submit">Delete Item</button>
     </form>
   {{else if eq .Kind "share-manage"}}
     <p><a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
