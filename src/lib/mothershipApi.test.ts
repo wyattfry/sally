@@ -16,7 +16,6 @@ function scheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
     id: "draft-request-123",
     capturedAt: "2026-04-24T18:30:00.000Z",
-    zone: "Primary Bath",
     title: "Wall Faucet",
     manufacturer: "Example Co.",
     modelNumber: "WF-200",

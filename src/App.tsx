@@ -1,28 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SallyPanel } from "./components/SallyPanel";
-import { ScheduleViewer } from "./components/ScheduleViewer";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
 import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
 import {
   getMothershipScheduleUrl,
   listMothershipProjects,
+  createMothershipProject,
   listMothershipSchedules,
+  createMothershipSchedule,
   saveMothershipScheduleItem
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 import {
-  getActiveMothershipContext,
-  getProjectName,
-  listScheduleItems,
-  listZones,
-  removeScheduleItem,
-  saveActiveMothershipContext,
-  saveProjectName,
-  saveScheduleItem,
-  saveZone
+  getActiveContext,
+  saveActiveContext
 } from "./lib/storage";
-import type { ActiveMothershipContext, MothershipProject, MothershipSchedule, ScheduleItem } from "./lib/types";
+import type { ActiveContext, Project, Schedule, ScheduleItem } from "./lib/types";
 
 type PanelState =
   | { kind: "closed" }
@@ -43,22 +37,12 @@ const DEFAULT_CATEGORIES = [
 
 export default function App() {
   const [panel, setPanel] = useState<PanelState>({ kind: "closed" });
-  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
-  const [projectName, setProjectName] = useState("My New Project");
-  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
-  const [zones, setZones] = useState<string[]>([]);
-  const [mothershipProjects, setMothershipProjects] = useState<MothershipProject[]>([]);
-  const [mothershipSchedules, setMothershipSchedules] = useState<MothershipSchedule[]>([]);
-  const [activeMothershipContext, setActiveMothershipContext] =
-    useState<ActiveMothershipContext | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<number | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [activeContext, setActiveContext] = useState<ActiveContext | null>(null);
 
   useEffect(() => {
-    refreshItemCount();
-    refreshProjectName();
-    refreshZones();
-    refreshMothershipContext();
+    refreshContext();
   }, []);
 
   useEffect(() => {
@@ -70,14 +54,13 @@ export default function App() {
       if (isSpecMessage(message)) {
         handleSpecClick();
       } else if (isViewMessage(message)) {
-        setPanel({ kind: "closed" });
-        setIsScheduleOpen(true);
+        handleViewItems();
       }
     }
 
     chrome.runtime.onMessage.addListener(handleRuntimeMessage);
     return () => chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
-  }, []);
+  }, [activeContext]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -90,59 +73,36 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [panel]);
 
-  useEffect(
-    () => () => {
-      if (toastTimeoutRef.current !== null) {
-        window.clearTimeout(toastTimeoutRef.current);
-      }
-    },
-    []
-  );
-
-  async function refreshItemCount() {
-    const items = await listScheduleItems();
-    setScheduleItems(items);
-  }
-
-  async function refreshZones() {
-    setZones(await listZones());
-  }
-
-  async function refreshProjectName() {
-    setProjectName(await getProjectName());
-  }
-
-  async function refreshMothershipContext() {
+  async function refreshContext() {
     try {
-      const [projects, storedContext] = await Promise.all([
+      const [fetchedProjects, storedContext] = await Promise.all([
         listMothershipProjects(),
-        getActiveMothershipContext()
+        getActiveContext()
       ]);
-      setMothershipProjects(projects);
-      const project =
-        projects.find((candidate) => candidate.id === storedContext?.projectId) ?? projects[0];
+      setProjects(fetchedProjects);
+      
+      const project = fetchedProjects.find((candidate) => candidate.id === storedContext?.projectId) ?? fetchedProjects[0];
       if (!project) {
-        setMothershipSchedules([]);
-        setActiveMothershipContext(null);
+        setSchedules([]);
+        setActiveContext(null);
         return;
       }
 
-      const schedules = await listMothershipSchedules(project.id);
-      setMothershipSchedules(schedules);
-      const schedule =
-        schedules.find((candidate) => candidate.id === storedContext?.scheduleId) ?? schedules[0];
+      const fetchedSchedules = await listMothershipSchedules(project.id);
+      setSchedules(fetchedSchedules);
+      const schedule = fetchedSchedules.find((candidate) => candidate.id === storedContext?.scheduleId) ?? fetchedSchedules[0];
       if (!schedule) {
-        setActiveMothershipContext(null);
+        setActiveContext({ projectId: project.id, scheduleId: "" });
         return;
       }
 
       const context = { projectId: project.id, scheduleId: schedule.id };
-      setActiveMothershipContext(context);
-      await saveActiveMothershipContext(context);
+      setActiveContext(context);
+      await saveActiveContext(context);
     } catch {
-      setMothershipProjects([]);
-      setMothershipSchedules([]);
-      setActiveMothershipContext(null);
+      setProjects([]);
+      setSchedules([]);
+      setActiveContext(null);
     }
   }
 
@@ -153,8 +113,6 @@ export default function App() {
       try {
         const proposal = await extractScheduleItem({
           capturedPage: captured,
-          projectName,
-          knownZones: zones,
           knownCategories: DEFAULT_CATEGORIES,
           onProgress: (tokenCount) => {
             setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
@@ -167,7 +125,6 @@ export default function App() {
           try {
             const proposal = mockExtractScheduleItem(captured);
             setPanel({ kind: "review", draft: proposal });
-            showToast("Using local mock fallback.");
             return;
           } catch {
             // fall through to visible error state
@@ -175,113 +132,83 @@ export default function App() {
         }
 
         setPanel({ kind: "error", message });
-        showToast(message);
       }
     }, 250);
   }
 
-  async function handleAddZone(zone: string) {
-    const nextZones = await saveZone(zone);
-    setZones(nextZones);
-    if (panel.kind === "review") {
-      setPanel({ kind: "review", draft: { ...panel.draft, zone: zone.trim() } });
-    }
-  }
-
   async function handleAccept(item: ScheduleItem) {
-    if (activeMothershipContext?.scheduleId) {
-      try {
-        await saveMothershipScheduleItem(activeMothershipContext.scheduleId, item);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Could not save item.";
-        showToast(message);
-        return;
-      }
-    }
-    await saveScheduleItem(item);
-    await refreshItemCount();
-    setPanel({ kind: "closed" });
-    showToast("Item added");
-  }
-
-  async function handleSelectMothershipProject(projectId: string) {
-    const schedules = await listMothershipSchedules(projectId);
-    setMothershipSchedules(schedules);
-    const schedule = schedules[0];
-    const context = schedule ? { projectId, scheduleId: schedule.id } : null;
-    setActiveMothershipContext(context);
-    if (context) {
-      await saveActiveMothershipContext(context);
-    }
-  }
-
-  async function handleSelectMothershipSchedule(scheduleId: string) {
-    if (!activeMothershipContext) {
+    if (!activeContext?.scheduleId) {
+      setPanel({ kind: "error", message: "Please select a project and schedule first." });
       return;
     }
-    const context = { ...activeMothershipContext, scheduleId };
-    setActiveMothershipContext(context);
-    await saveActiveMothershipContext(context);
+    
+    try {
+      await saveMothershipScheduleItem(activeContext.scheduleId, item);
+      setPanel({ kind: "closed" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not save item.";
+      setPanel({ kind: "error", message });
+    }
   }
 
-  async function handleRenameProject(nextProjectName: string) {
-    setProjectName(await saveProjectName(nextProjectName));
+  async function handleSelectProject(projectId: string) {
+    if (projectId === "__add_new__") return;
+    const fetchedSchedules = await listMothershipSchedules(projectId);
+    setSchedules(fetchedSchedules);
+    const schedule = fetchedSchedules[0];
+    const context = { projectId, scheduleId: schedule?.id ?? "" };
+    setActiveContext(context);
+    await saveActiveContext(context);
   }
 
-  async function handleRemoveItem(itemId: string) {
-    const items = await removeScheduleItem(itemId);
-    setScheduleItems(items);
+  async function handleSelectSchedule(scheduleId: string) {
+    if (!activeContext || scheduleId === "__add_new__") return;
+    const context = { ...activeContext, scheduleId };
+    setActiveContext(context);
+    await saveActiveContext(context);
+  }
+
+  async function handleCreateProject(name: string) {
+    try {
+      const project = await createMothershipProject(name);
+      setProjects([...projects, project]);
+      await handleSelectProject(project.id);
+    } catch (error) {
+      setPanel({ kind: "error", message: "Could not create project." });
+    }
+  }
+
+  async function handleCreateSchedule(name: string) {
+    if (!activeContext?.projectId) return;
+    try {
+      const schedule = await createMothershipSchedule(activeContext.projectId, name);
+      setSchedules([...schedules, schedule]);
+      await handleSelectSchedule(schedule.id);
+    } catch (error) {
+      setPanel({ kind: "error", message: "Could not create schedule." });
+    }
   }
 
   function handleViewItems() {
-    if (activeMothershipContext) {
+    if (activeContext?.projectId && activeContext?.scheduleId) {
       window.open(
         getMothershipScheduleUrl(
-          activeMothershipContext.projectId,
-          activeMothershipContext.scheduleId
+          activeContext.projectId,
+          activeContext.scheduleId
         ),
         "_blank"
       );
-      setPanel({ kind: "closed" });
-      return;
     }
     setPanel({ kind: "closed" });
-    setIsScheduleOpen(true);
-  }
-
-  function showToast(message: string) {
-    if (toastTimeoutRef.current !== null) {
-      window.clearTimeout(toastTimeoutRef.current);
-    }
-    setToast(message);
-    toastTimeoutRef.current = window.setTimeout(() => {
-      setToast(null);
-      toastTimeoutRef.current = null;
-    }, 3200);
   }
 
   return (
     <div className="sally-root">
       <SpecButton
         onClick={handleSpecClick}
-        itemCount={scheduleItems.length}
+        itemCount={0}
         onViewItems={handleViewItems}
       />
-      {toast ? (
-        <div className="toast" role="status">
-          <span>{toast}</span>
-          <div className="toast-progress" />
-        </div>
-      ) : null}
-      {isScheduleOpen ? (
-        <ScheduleViewer
-          items={scheduleItems}
-          projectName={projectName}
-          onClose={() => setIsScheduleOpen(false)}
-          onRemoveItem={handleRemoveItem}
-          onRenameProject={handleRenameProject}
-        />
-      ) : null}
       {panel.kind === "minimized" ? (
         <button
           className="restore-draft-button"
@@ -291,34 +218,20 @@ export default function App() {
           Restore Sally draft
         </button>
       ) : null}
-      {panel.kind === "error" ? (
-        <div aria-label="Extraction error" className="sally-error-state">
-          <p>{panel.message}</p>
-          <div>
-            <button type="button" onClick={handleSpecClick}>
-              Retry extraction
-            </button>
-            <button type="button" onClick={() => setPanel({ kind: "closed" })}>
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ) : null}
-      {panel.kind === "thinking" || panel.kind === "review" ? (
+      {panel.kind !== "closed" && panel.kind !== "minimized" ? (
         <SallyPanel
           panel={panel}
-          projectName={projectName}
-          mothershipProjects={mothershipProjects}
-          mothershipSchedules={mothershipSchedules}
-          activeMothershipContext={activeMothershipContext}
-          zones={zones}
+          projects={projects}
+          schedules={schedules}
+          activeContext={activeContext}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
             panel.kind === "review" ? setPanel({ ...panel, draft }) : undefined
           }
-          onAddZone={handleAddZone}
-          onSelectMothershipProject={handleSelectMothershipProject}
-          onSelectMothershipSchedule={handleSelectMothershipSchedule}
+          onSelectProject={handleSelectProject}
+          onSelectSchedule={handleSelectSchedule}
+          onCreateProject={handleCreateProject}
+          onCreateSchedule={handleCreateSchedule}
           onAccept={handleAccept}
           onViewItems={handleViewItems}
         />

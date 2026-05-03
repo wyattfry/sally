@@ -32,7 +32,6 @@ function successResponse(overrides: Partial<ExtractSpecResponse> = {}): ExtractS
       finishModelMappings: [{ finish: "Polished Chrome", modelNumber: "WF-200-PC" }],
       requiredAddOns: ["Rough valve body"],
       optionalCompanions: ["Drain assembly"],
-      zone: "Primary Bath",
       sourceUrl: "https://example.com/products/wf-200",
       sourceTitle: "Example Co. WF-200 Wall Faucet",
       sourceImageUrl: "https://example.com/faucet.jpg",
@@ -70,8 +69,6 @@ describe("extractScheduleItem", () => {
 
     await extractScheduleItem({
       capturedPage: capturedPage(),
-      projectName: "My New Project",
-      knownZones: ["Primary Bath", "Powder Room"],
       knownCategories: ["Plumbing Fixture", "Lighting"],
       now: FIXED_NOW
     });
@@ -90,8 +87,7 @@ describe("extractScheduleItem", () => {
       mainImageUrl: "https://example.com/faucet.jpg"
     });
     expect(body.projectContext).toEqual({
-      projectName: "My New Project",
-      knownZones: ["Primary Bath", "Powder Room"],
+      projectName: "",
       knownCategories: ["Plumbing Fixture", "Lighting"]
     });
     expect(body.options).toEqual({
@@ -115,23 +111,12 @@ describe("extractScheduleItem", () => {
 
     const item = await extractScheduleItem({
       capturedPage: capturedPage(),
-      projectName: "My New Project",
-      knownZones: ["Primary Bath"],
       knownCategories: ["Plumbing Fixture"],
       now: FIXED_NOW
     });
 
     expect(item).toMatchObject<Partial<ScheduleItem>>({
       capturedAt: "2026-04-24T18:30:00.000Z",
-      zone: "Primary Bath",
-      title: "Wall Faucet",
-      manufacturer: "Example Co.",
-      modelNumber: "WF-200",
-      category: "Plumbing Fixture",
-      description: "Wall-mounted faucet with rough-in requirements.",
-      finish: "Polished Chrome",
-      sourceUrl: "https://example.com/products/wf-200",
-      sourceTitle: "Example Co. WF-200 Wall Faucet",
       sourceImageUrl: "https://example.com/faucet.jpg",
       sourcePdfLinks: ["https://example.com/spec-sheet.pdf"]
     });
@@ -165,8 +150,6 @@ describe("extractScheduleItem", () => {
     await expect(
       extractScheduleItem({
         capturedPage: capturedPage(),
-        projectName: "My New Project",
-        knownZones: [],
         knownCategories: [],
         now: FIXED_NOW
       })
@@ -186,8 +169,6 @@ describe("extractScheduleItem", () => {
 
     const promise = extractScheduleItem({
       capturedPage: capturedPage(),
-      projectName: "My New Project",
-      knownZones: [],
       knownCategories: [],
       now: FIXED_NOW
     });
@@ -213,8 +194,6 @@ describe("extractScheduleItem", () => {
     await expect(
       extractScheduleItem({
         capturedPage: capturedPage(),
-        projectName: "My New Project",
-        knownZones: [],
         knownCategories: [],
         now: FIXED_NOW
       })

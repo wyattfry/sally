@@ -10,7 +10,6 @@ export type CapturedPage = {
 export type ScheduleItem = {
   id: string;
   capturedAt: string;
-  zone: string;
   title: string;
   manufacturer: string;
   modelNumber: string;
@@ -26,20 +25,20 @@ export type ScheduleItem = {
   sourcePdfLinks: string[];
 };
 
-export type MothershipProject = {
+export type Project = {
   id: string;
   name: string;
   address: string;
 };
 
-export type MothershipSchedule = {
+export type Schedule = {
   id: string;
   projectId: string;
   name: string;
   position: number;
 };
 
-export type ActiveMothershipContext = {
+export type ActiveContext = {
   projectId: string;
   scheduleId: string;
 };
@@ -61,7 +60,6 @@ export type ClientInfo = {
 
 export type ProjectContext = {
   projectName: string;
-  knownZones: string[];
   knownCategories: string[];
 };
 
@@ -91,7 +89,6 @@ export type ExtractedProposal = {
   finishModelMappings: FinishModelMapping[];
   requiredAddOns: string[];
   optionalCompanions: string[];
-  zone: string;
   sourceUrl: string;
   sourceTitle: string;
   sourceImageUrl?: string;

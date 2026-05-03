@@ -1,24 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { EXTRACT_TIMEOUT_MS } from "../lib/extractApi";
-import type { ActiveMothershipContext, MothershipProject, MothershipSchedule, ScheduleItem } from "../lib/types";
+import type { ActiveContext, Project, Schedule, ScheduleItem } from "../lib/types";
 
 const TOTAL_TIMEOUT_SECONDS = Math.ceil(EXTRACT_TIMEOUT_MS / 1000);
 
 type PanelState =
   | { kind: "thinking"; tokenCount: number }
-  | { kind: "review"; draft: ScheduleItem };
+  | { kind: "review"; draft: ScheduleItem }
+  | { kind: "error"; message: string };
 
 type SallyPanelProps = {
   panel: PanelState;
-  projectName: string;
-  mothershipProjects: MothershipProject[];
-  mothershipSchedules: MothershipSchedule[];
-  activeMothershipContext: ActiveMothershipContext | null;
-  zones: string[];
+  projects: Project[];
+  schedules: Schedule[];
+  activeContext: ActiveContext | null;
   onChange: (draft: ScheduleItem) => void;
-  onAddZone: (zone: string) => void;
-  onSelectMothershipProject: (projectId: string) => void;
-  onSelectMothershipSchedule: (scheduleId: string) => void;
+  onSelectProject: (projectId: string) => void;
+  onSelectSchedule: (scheduleId: string) => void;
+  onCreateProject: (name: string) => void;
+  onCreateSchedule: (name: string) => void;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
   onViewItems: () => void;
@@ -32,7 +32,7 @@ const textFields = [
   ["finishModelNumber", "Finish Model"]
 ] as const;
 
-const ADD_NEW_ZONE_VALUE = "__add_new__";
+const ADD_NEW_VALUE = "__add_new__";
 const DEFAULT_CATEGORIES = [
   "Plumbing Fixture",
   "Lighting",
@@ -45,22 +45,23 @@ const DEFAULT_CATEGORIES = [
 
 export function SallyPanel({
   panel,
-  projectName,
-  mothershipProjects,
-  mothershipSchedules,
-  activeMothershipContext,
-  zones,
+  projects,
+  schedules,
+  activeContext,
   onChange,
-  onAddZone,
-  onSelectMothershipProject,
-  onSelectMothershipSchedule,
+  onSelectProject,
+  onSelectSchedule,
+  onCreateProject,
+  onCreateSchedule,
   onAccept,
   onCancel,
   onViewItems
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
-  const [isAddingZone, setIsAddingZone] = useState(false);
-  const [newZone, setNewZone] = useState("");
+  const [isAddingProject, setIsAddingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [isAddingSchedule, setIsAddingSchedule] = useState(false);
+  const [newScheduleName, setNewScheduleName] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_TIMEOUT_SECONDS);
   const intervalRef = useRef<number | null>(null);
 
@@ -88,13 +89,107 @@ export function SallyPanel({
   return (
     <aside className="sally-panel" aria-label="Sally capture panel">
       <div className="panel-header">
-        <div className="panel-kicker">{projectName}</div>
-        <div className="panel-title">{panel.kind === "thinking" ? "Reading page" : "Add item to schedule"}</div>
+        <div className="panel-context">
+          <div className="field">
+            <select
+              id="sally-project"
+              value={isAddingProject ? ADD_NEW_VALUE : activeContext?.projectId ?? ""}
+              onChange={(event) => {
+                if (event.target.value === ADD_NEW_VALUE) {
+                  setIsAddingProject(true);
+                  return;
+                }
+                setIsAddingProject(false);
+                onSelectProject(event.target.value);
+              }}
+            >
+              <option value="" disabled>Select a project...</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+              <option value={ADD_NEW_VALUE}>New project...</option>
+            </select>
+          </div>
+          {isAddingProject ? (
+            <div className="inline-add">
+              <input
+                id="sally-new-project"
+                placeholder="Project name"
+                value={newProjectName}
+                onChange={(event) => setNewProjectName(event.target.value)}
+              />
+              <button
+                className="action-button secondary"
+                disabled={!newProjectName.trim()}
+                type="button"
+                onClick={() => {
+                  onCreateProject(newProjectName);
+                  setNewProjectName("");
+                  setIsAddingProject(false);
+                }}
+              >
+                Add
+              </button>
+            </div>
+          ) : null}
+
+          <div className="field">
+            <select
+              id="sally-schedule"
+              value={isAddingSchedule ? ADD_NEW_VALUE : activeContext?.scheduleId ?? ""}
+              onChange={(event) => {
+                if (event.target.value === ADD_NEW_VALUE) {
+                  setIsAddingSchedule(true);
+                  return;
+                }
+                setIsAddingSchedule(false);
+                onSelectSchedule(event.target.value);
+              }}
+            >
+              <option value="" disabled>Select a schedule...</option>
+              {schedules.map((schedule) => (
+                <option key={schedule.id} value={schedule.id}>
+                  {schedule.name}
+                </option>
+              ))}
+              {activeContext?.projectId ? <option value={ADD_NEW_VALUE}>New schedule...</option> : null}
+            </select>
+          </div>
+          {isAddingSchedule ? (
+            <div className="inline-add">
+              <input
+                id="sally-new-schedule"
+                placeholder="Schedule name"
+                value={newScheduleName}
+                onChange={(event) => setNewScheduleName(event.target.value)}
+              />
+              <button
+                className="action-button secondary"
+                disabled={!newScheduleName.trim()}
+                type="button"
+                onClick={() => {
+                  onCreateSchedule(newScheduleName);
+                  setNewScheduleName("");
+                  setIsAddingSchedule(false);
+                }}
+              >
+                Add
+              </button>
+            </div>
+          ) : null}
+        </div>
+        <div className="panel-title">{panel.kind === "thinking" ? "Reading page" : panel.kind === "error" ? "Error" : "Add item to schedule"}</div>
         {draft ? <div className="panel-source">{draft.sourceTitle}</div> : null}
       </div>
 
       <div className="panel-body">
-        {panel.kind === "thinking" ? (
+        {panel.kind === "error" ? (
+          <div className="sally-error-state">
+            <p>{panel.message}</p>
+          </div>
+        ) : panel.kind === "thinking" ? (
           <div className="thinking">
             <div aria-hidden="true" className="thinking-spinner" />
             <p>
@@ -110,93 +205,6 @@ export function SallyPanel({
           <>
             {draft?.sourceImageUrl ? (
               <img className="image-preview" src={draft.sourceImageUrl} alt="" />
-            ) : null}
-
-            {mothershipProjects.length ? (
-              <>
-                <div className="field">
-                  <label htmlFor="sally-mothership-project">Mother Ship Project</label>
-                  <select
-                    id="sally-mothership-project"
-                    value={activeMothershipContext?.projectId ?? ""}
-                    onChange={(event) => onSelectMothershipProject(event.target.value)}
-                  >
-                    {mothershipProjects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field">
-                  <label htmlFor="sally-mothership-schedule">Mother Ship Schedule</label>
-                  <select
-                    id="sally-mothership-schedule"
-                    value={activeMothershipContext?.scheduleId ?? ""}
-                    onChange={(event) => onSelectMothershipSchedule(event.target.value)}
-                  >
-                    {mothershipSchedules.map((schedule) => (
-                      <option key={schedule.id} value={schedule.id}>
-                        {schedule.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : null}
-
-            <div className="field">
-              <label htmlFor="sally-zone">Zone</label>
-              <select
-                id="sally-zone"
-                value={isAddingZone ? ADD_NEW_ZONE_VALUE : draft?.zone ?? ""}
-                onChange={(event) => {
-                  if (event.target.value === ADD_NEW_ZONE_VALUE) {
-                    setIsAddingZone(true);
-                    return;
-                  }
-
-                  setIsAddingZone(false);
-                  updateField("zone", event.target.value);
-                }}
-              >
-                <option value="">Unassigned</option>
-                {zones.map((zone) => (
-                  <option key={zone} value={zone}>
-                    {zone}
-                  </option>
-                ))}
-                {draft?.zone && !zones.includes(draft.zone) ? (
-                  <option value={draft.zone}>{draft.zone}</option>
-                ) : null}
-                <option value={ADD_NEW_ZONE_VALUE}>Add new zone...</option>
-              </select>
-            </div>
-
-            {isAddingZone ? (
-              <div className="inline-add">
-                <div className="field">
-                  <label htmlFor="sally-new-zone">New zone</label>
-                  <input
-                    id="sally-new-zone"
-                    value={newZone}
-                    onChange={(event) => setNewZone(event.target.value)}
-                  />
-                </div>
-                <button
-                  className="action-button secondary"
-                  disabled={!newZone.trim()}
-                  type="button"
-                  onClick={() => {
-                    onAddZone(newZone);
-                    setNewZone("");
-                    setIsAddingZone(false);
-                  }}
-                >
-                  Add zone
-                </button>
-              </div>
             ) : null}
 
             <div className="field">
@@ -259,7 +267,7 @@ export function SallyPanel({
               />
             </div>
 
-            {draft?.sourcePdfLinks.length ? (
+            {draft?.sourcePdfLinks?.length ? (
               <div className="source-links">
                 {draft.sourcePdfLinks.map((link) => (
                   <a className="source-link" href={link} key={link} rel="noreferrer" target="_blank">
@@ -281,7 +289,7 @@ export function SallyPanel({
         </button>
         <button
           className="action-button primary"
-          disabled={!draft}
+          disabled={!draft || !activeContext?.scheduleId}
           type="button"
           onClick={() => draft && onAccept(draft)}
         >

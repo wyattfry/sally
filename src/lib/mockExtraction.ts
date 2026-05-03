@@ -9,10 +9,9 @@ export function mockExtractScheduleItem(captured: CapturedPage, now = new Date()
   const finish = inferFinish(captured.visibleText);
 
   return {
-    id: stableId(captured.url),
-    capturedAt: now.toISOString(),
-    zone: "",
-    title,
+    id: "mock-" + Math.random().toString(36).slice(2, 9),
+    capturedAt: new Date().toISOString(),
+    title: title || "Unknown Product",
     manufacturer,
     modelNumber,
     category,

@@ -27,7 +27,9 @@ func registerMothershipAPI(mux *http.ServeMux, deps web.Deps) {
 		devUserName:  firstNonEmpty(deps.DevUserName, "Development User"),
 	}
 	mux.HandleFunc("GET /api/v1/projects", api.listProjects)
+	mux.HandleFunc("POST /api/v1/projects", api.createProject)
 	mux.HandleFunc("GET /api/v1/projects/{projectID}/schedules", api.listSchedules)
+	mux.HandleFunc("POST /api/v1/projects/{projectID}/schedules", api.createSchedule)
 	mux.HandleFunc("POST /api/v1/schedules/{scheduleID}/items", api.createScheduleItem)
 }
 
@@ -46,6 +48,41 @@ func (api mothershipAPI) listProjects(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, toProjectResponse(project))
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+type createProjectRequest struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+func (api mothershipAPI) createProject(w http.ResponseWriter, r *http.Request) {
+	user, ok := api.requireDevUser(w, r)
+	if !ok {
+		return
+	}
+
+	var req createProjectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		writeJSONError(w, http.StatusBadRequest, "project name is required")
+		return
+	}
+
+	project, err := api.queries.CreateProject(r.Context(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        req.Name,
+		Address:     req.Address,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not create project")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toProjectResponse(project))
 }
 
 func (api mothershipAPI) listSchedules(w http.ResponseWriter, r *http.Request) {
@@ -68,6 +105,50 @@ func (api mothershipAPI) listSchedules(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, toScheduleResponse(schedule))
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+type createScheduleRequest struct {
+	Name string `json:"name"`
+}
+
+func (api mothershipAPI) createSchedule(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	if _, err := api.queries.GetProject(r.Context(), projectID); errors.Is(err, sql.ErrNoRows) {
+		writeJSONError(w, http.StatusNotFound, "project not found")
+		return
+	} else if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not load project")
+		return
+	}
+
+	var req createScheduleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		writeJSONError(w, http.StatusBadRequest, "schedule name is required")
+		return
+	}
+
+	existingSchedules, err := api.queries.ListSchedulesByProject(r.Context(), projectID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not load schedules")
+		return
+	}
+
+	schedule, err := api.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
+		ProjectID: projectID,
+		Name:      req.Name,
+		Position:  int32(len(existingSchedules) + 1),
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not create schedule")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toScheduleResponse(schedule))
 }
 
 type createScheduleItemRequest struct {

@@ -1,4 +1,4 @@
-import type { MothershipProject, MothershipSchedule, ScheduleItem } from "./types";
+import type { Project, Schedule, ScheduleItem } from "./types";
 
 const DEFAULT_BACKEND_BASE_URL = "http://10.0.0.104:8080";
 
@@ -6,12 +6,28 @@ type SallyRuntimeConfig = {
   backendBaseUrl?: string;
 };
 
-export async function listMothershipProjects(): Promise<MothershipProject[]> {
-  return fetchJSON<MothershipProject[]>("/api/v1/projects");
+export async function listMothershipProjects(): Promise<Project[]> {
+  return fetchJSON<Project[]>("/api/v1/projects");
 }
 
-export async function listMothershipSchedules(projectId: string): Promise<MothershipSchedule[]> {
-  return fetchJSON<MothershipSchedule[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/schedules`);
+export async function createMothershipProject(name: string): Promise<Project> {
+  return fetchJSON<Project>("/api/v1/projects", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, address: "" })
+  });
+}
+
+export async function listMothershipSchedules(projectId: string): Promise<Schedule[]> {
+  return fetchJSON<Schedule[]>(`/api/v1/projects/${encodeURIComponent(projectId)}/schedules`);
+}
+
+export async function createMothershipSchedule(projectId: string, name: string): Promise<Schedule> {
+  return fetchJSON<Schedule>(`/api/v1/projects/${encodeURIComponent(projectId)}/schedules`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
 }
 
 export async function saveMothershipScheduleItem(
@@ -65,6 +81,7 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
       const message = response.text?.trim() || "Mother Ship request failed.";
       throw new Error(message);
     }
+    return JSON.parse(response.text) as T;
   }
 
   // Fallback for non-extension environment

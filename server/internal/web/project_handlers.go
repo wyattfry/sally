@@ -810,19 +810,6 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>{{.Schedule.Name}}</h1>
     <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">Edit Schedule</a></p>
-    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items">
-      <h2>Add Item</h2>
-      <label>Code <input name="code"></label>
-      <label>Title <input name="title" required></label>
-      <label>Description <input name="description"></label>
-      <label>Manufacturer <input name="manufacturer"></label>
-      <label>Model Number <input name="model_number"></label>
-      <label>Finish <input name="finish"></label>
-      <label>Finish Model Number <input name="finish_model_number"></label>
-      <label>Notes <input name="notes"></label>
-      <label>Source URL <input name="source_url"></label>
-      <button type="submit">Add Item</button>
-    </form>
     <h2>Items</h2>
     {{if .Items}}
       <table>
