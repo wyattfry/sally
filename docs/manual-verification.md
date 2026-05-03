@@ -35,10 +35,29 @@ The server listens on `:8080`, so it is reachable on the host's LAN IP or contai
 3. Confirm Sally opens on the right and briefly shows `Reading page`.
 4. Confirm an editable proposal appears.
 5. In Chrome DevTools, open `Network` and confirm a `POST` to:
-   - `http://<development-host>:8080/v1/extract-spec`
+   - `http://<development-host>:8080/api/v1/extract-spec`
 6. Confirm the response is `200` and the payload contains `status: "ok"`.
-7. Confirm the visible proposal fields in Sally match the `POST /v1/extract-spec` response body.
+7. Confirm the visible proposal fields in Sally match the `POST /api/v1/extract-spec` response body.
 8. Confirm no fallback toast appears during this check.
+
+## Confirm Mother Ship CRUD
+
+1. From `/home/wyatt/sally`, start the local stack:
+   ```bash
+   docker compose up -d --build sally-server
+   ```
+2. Open `http://localhost:8080/projects`.
+3. Click `New Project`.
+4. Create a project with a name and address.
+5. Confirm the project detail page opens.
+6. Click `Edit`, update the project, and confirm the detail page shows the change.
+7. Add a schedule from the project detail page.
+8. Confirm the schedule detail page opens.
+9. Add an item with code, title, manufacturer, model, finish, notes, and source URL.
+10. Confirm the item appears in the schedule table.
+11. Edit the item and confirm the updated values appear in the schedule table.
+12. Use `Share` on the project page, click `Get Link`, and open the generated `/share/...` path.
+13. Confirm the public share page shows project, schedule, item, and product source link without edit controls.
 
 ## Confirm Real Proposal Flow
 
