@@ -16,7 +16,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func TestProjectShareLinkRendersPublicProject(t *testing.T) {
+func newShareTestRouter(t *testing.T) (*queries.Queries, http.Handler) {
+	t.Helper()
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("DATABASE_URL is not set")
@@ -26,16 +27,27 @@ func TestProjectShareLinkRendersPublicProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}
-	defer conn.Close()
+	t.Cleanup(func() { conn.Close() })
 
 	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
 		t.Fatalf("run migrations: %v", err)
 	}
 
 	q := queries.New(conn)
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "share-test@example.com",
+		DevUserName:  "Share Test",
+	})
+	return q, router
+}
+
+func createShareTestProject(t *testing.T, q *queries.Queries) queries.Project {
+	t.Helper()
 	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
-		Email: "share-pages-test@example.com",
-		Name:  "Share Pages Test",
+		Email: "share-test@example.com",
+		Name:  "Share Test",
 	})
 	if err != nil {
 		t.Fatalf("create user: %v", err)
@@ -48,6 +60,13 @@ func TestProjectShareLinkRendersPublicProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create project: %v", err)
 	}
+	return project
+}
+
+func TestProjectShareLinkRendersPublicProject(t *testing.T) {
+	q, router := newShareTestRouter(t)
+	project := createShareTestProject(t, q)
+
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Bath",
@@ -75,13 +94,6 @@ func TestProjectShareLinkRendersPublicProject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create item: %v", err)
 	}
-
-	router := http.NewServeMux()
-	RegisterRoutes(router, Deps{
-		Queries:      q,
-		DevUserEmail: "share-pages-test@example.com",
-		DevUserName:  "Share Pages Test",
-	})
 
 	createReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
 	createResp := httptest.NewRecorder()
@@ -115,23 +127,7 @@ func TestProjectShareLinkRendersPublicProject(t *testing.T) {
 }
 
 func TestInvalidProjectShareTokenReturnsNotFound(t *testing.T) {
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		t.Skip("DATABASE_URL is not set")
-	}
-
-	conn, err := sql.Open("pgx", databaseURL)
-	if err != nil {
-		t.Fatalf("open database: %v", err)
-	}
-	defer conn.Close()
-
-	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
-		t.Fatalf("run migrations: %v", err)
-	}
-
-	router := http.NewServeMux()
-	RegisterRoutes(router, Deps{Queries: queries.New(conn)})
+	_, router := newShareTestRouter(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/share/not-a-real-token", nil)
 	resp := httptest.NewRecorder()
@@ -139,5 +135,143 @@ func TestInvalidProjectShareTokenReturnsNotFound(t *testing.T) {
 
 	if resp.Code != http.StatusNotFound {
 		t.Fatalf("expected invalid token to return 404, got %d", resp.Code)
+	}
+}
+
+func TestShareManagePage_NoActiveLink(t *testing.T) {
+	q, router := newShareTestRouter(t)
+	project := createShareTestProject(t, q)
+
+	req := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.Code)
+	}
+	body := resp.Body.String()
+	if !strings.Contains(body, "Enable sharing") {
+		t.Fatalf("expected 'Enable sharing' button when no active link, got:\n%s", body)
+	}
+	if strings.Contains(body, "Disable sharing") {
+		t.Fatalf("expected no 'Disable sharing' when no active link, got:\n%s", body)
+	}
+}
+
+func TestShareManagePage_ShowsFullURLAfterCreation(t *testing.T) {
+	q, router := newShareTestRouter(t)
+	project := createShareTestProject(t, q)
+
+	createReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
+	createResp := httptest.NewRecorder()
+	router.ServeHTTP(createResp, createReq)
+
+	location := createResp.Header().Get("Location")
+	token := strings.TrimPrefix(location, "/projects/"+project.ID+"/share?token=")
+
+	pageReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share?token="+token, nil)
+	pageReq.Host = "sally.example.com"
+	pageResp := httptest.NewRecorder()
+	router.ServeHTTP(pageResp, pageReq)
+
+	if pageResp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", pageResp.Code)
+	}
+	body := pageResp.Body.String()
+	expectedURL := "http://sally.example.com/share/" + token
+	if !strings.Contains(body, expectedURL) {
+		t.Fatalf("expected full share URL %q in page, got:\n%s", expectedURL, body)
+	}
+	if !strings.Contains(body, "Copy") {
+		t.Fatalf("expected Copy button, got:\n%s", body)
+	}
+	if !strings.Contains(body, "Disable sharing") {
+		t.Fatalf("expected 'Disable sharing' button, got:\n%s", body)
+	}
+}
+
+func TestShareManagePage_DeactivateRemovesLink(t *testing.T) {
+	q, router := newShareTestRouter(t)
+	project := createShareTestProject(t, q)
+
+	// Enable sharing
+	createReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
+	createResp := httptest.NewRecorder()
+	router.ServeHTTP(createResp, createReq)
+	if createResp.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 from create, got %d", createResp.Code)
+	}
+
+	location := createResp.Header().Get("Location")
+	token := strings.TrimPrefix(location, "/projects/"+project.ID+"/share?token=")
+
+	// Confirm the public link works
+	publicReq := httptest.NewRequest(http.MethodGet, "/share/"+token, nil)
+	publicResp := httptest.NewRecorder()
+	router.ServeHTTP(publicResp, publicReq)
+	if publicResp.Code != http.StatusOK {
+		t.Fatalf("expected public share to be accessible before disable, got %d", publicResp.Code)
+	}
+
+	// Disable sharing
+	disableReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links/deactivate", nil)
+	disableResp := httptest.NewRecorder()
+	router.ServeHTTP(disableResp, disableReq)
+	if disableResp.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 from deactivate, got %d", disableResp.Code)
+	}
+
+	// Confirm the public link no longer works
+	publicReq2 := httptest.NewRequest(http.MethodGet, "/share/"+token, nil)
+	publicResp2 := httptest.NewRecorder()
+	router.ServeHTTP(publicResp2, publicReq2)
+	if publicResp2.Code != http.StatusNotFound {
+		t.Fatalf("expected public share to return 404 after disable, got %d", publicResp2.Code)
+	}
+
+	// Confirm the manage page shows Enable button
+	pageReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/share", nil)
+	pageResp := httptest.NewRecorder()
+	router.ServeHTTP(pageResp, pageReq)
+	body := pageResp.Body.String()
+	if !strings.Contains(body, "Enable sharing") {
+		t.Fatalf("expected 'Enable sharing' after disable, got:\n%s", body)
+	}
+}
+
+func TestShareManagePage_ReEnableReplacesOldLink(t *testing.T) {
+	q, router := newShareTestRouter(t)
+	project := createShareTestProject(t, q)
+
+	// First enable
+	r1 := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
+	w1 := httptest.NewRecorder()
+	router.ServeHTTP(w1, r1)
+	token1 := strings.TrimPrefix(w1.Header().Get("Location"), "/projects/"+project.ID+"/share?token=")
+
+	// Re-enable (replaces old token)
+	r2 := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/share-links", nil)
+	w2 := httptest.NewRecorder()
+	router.ServeHTTP(w2, r2)
+	token2 := strings.TrimPrefix(w2.Header().Get("Location"), "/projects/"+project.ID+"/share?token=")
+
+	if token1 == token2 {
+		t.Fatal("expected new token to differ from old token after re-enable")
+	}
+
+	// Old token should be gone
+	r3 := httptest.NewRequest(http.MethodGet, "/share/"+token1, nil)
+	w3 := httptest.NewRecorder()
+	router.ServeHTTP(w3, r3)
+	if w3.Code != http.StatusNotFound {
+		t.Fatalf("expected old token to return 404 after re-enable, got %d", w3.Code)
+	}
+
+	// New token should work
+	r4 := httptest.NewRequest(http.MethodGet, "/share/"+token2, nil)
+	w4 := httptest.NewRecorder()
+	router.ServeHTTP(w4, r4)
+	if w4.Code != http.StatusOK {
+		t.Fatalf("expected new token to return 200, got %d", w4.Code)
 	}
 }

@@ -74,6 +74,45 @@ button,
   color: #666;
 }
 
+.share-status {
+  margin: 12px 0;
+}
+
+.share-url-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.share-url-input {
+  flex: 1;
+  font-family: monospace;
+  font-size: 13px;
+  background: #fff;
+  color: #161616;
+}
+
+.copy-button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.share-action-form {
+  margin-top: 16px;
+}
+
+.button-danger {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px solid #9b2b2b;
+  background: #fde8e8;
+  color: #5c1a1a;
+  text-decoration: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
 @media print {
   body {
     background: white;

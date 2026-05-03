@@ -25,3 +25,16 @@ returning *;
 update project_share_links
 set last_viewed_at = now()
 where id = $1;
+
+-- name: GetActiveProjectShareLinkByProject :one
+select *
+from project_share_links
+where project_id = $1 and active = true
+order by created_at desc
+limit 1;
+
+-- name: DeactivateProjectShareLinks :exec
+update project_share_links
+set active = false,
+    updated_at = now()
+where project_id = $1 and active = true;

@@ -122,6 +122,42 @@ func (q *Queries) ListProjectShareLinks(ctx context.Context, projectID string) (
 	return items, nil
 }
 
+const getActiveProjectShareLinkByProject = `-- name: GetActiveProjectShareLinkByProject :one
+select id, project_id, token_hash, label, active, created_at, updated_at, last_viewed_at
+from project_share_links
+where project_id = $1 and active = true
+order by created_at desc
+limit 1
+`
+
+func (q *Queries) GetActiveProjectShareLinkByProject(ctx context.Context, projectID string) (ProjectShareLink, error) {
+	row := q.db.QueryRowContext(ctx, getActiveProjectShareLinkByProject, projectID)
+	var i ProjectShareLink
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.TokenHash,
+		&i.Label,
+		&i.Active,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastViewedAt,
+	)
+	return i, err
+}
+
+const deactivateProjectShareLinks = `-- name: DeactivateProjectShareLinks :exec
+update project_share_links
+set active = false,
+    updated_at = now()
+where project_id = $1 and active = true
+`
+
+func (q *Queries) DeactivateProjectShareLinks(ctx context.Context, projectID string) error {
+	_, err := q.db.ExecContext(ctx, deactivateProjectShareLinks, projectID)
+	return err
+}
+
 const markProjectShareLinkViewed = `-- name: MarkProjectShareLinkViewed :exec
 update project_share_links
 set last_viewed_at = now()

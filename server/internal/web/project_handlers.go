@@ -57,6 +57,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/delete", a.deleteScheduleItem)
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
+	mux.HandleFunc("POST /projects/{projectID}/share-links/deactivate", a.deactivateProjectShareLinks)
 	mux.HandleFunc("GET /share/{token}", a.showPublicShare)
 }
 
@@ -462,18 +463,23 @@ func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	links, err := a.queries.ListProjectShareLinks(r.Context(), project.ID)
-	if err != nil {
-		http.Error(w, "could not load share links", http.StatusInternalServerError)
+	activeLink, err := a.queries.GetActiveProjectShareLinkByProject(r.Context(), project.ID)
+	var activeLinkPtr *queries.ProjectShareLink
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		http.Error(w, "could not load share link", http.StatusInternalServerError)
 		return
+	}
+	if err == nil {
+		activeLinkPtr = &activeLink
 	}
 
 	render(w, shareManagePage{
-		Kind:       "share-manage",
-		Title:      "Share " + project.Name,
-		Project:    project,
-		Links:      links,
-		PlainToken: r.URL.Query().Get("token"),
+		Kind:         "share-manage",
+		Title:        "Share " + project.Name,
+		Project:      project,
+		ActiveLink:   activeLinkPtr,
+		PlainToken:   r.URL.Query().Get("token"),
+		ShareBaseURL: requestBaseURL(r),
 	})
 }
 
@@ -488,15 +494,20 @@ func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := a.queries.DeactivateProjectShareLinks(r.Context(), project.ID); err != nil {
+		http.Error(w, "could not deactivate existing share links", http.StatusInternalServerError)
+		return
+	}
+
 	token, err := share.NewToken()
 	if err != nil {
 		http.Error(w, "could not create share token", http.StatusInternalServerError)
 		return
 	}
 	_, err = a.queries.CreateProjectShareLink(r.Context(), queries.CreateProjectShareLinkParams{
-		ProjectID:  project.ID,
-		TokenHash:  share.HashToken(token),
-		Label:      "Project share",
+		ProjectID: project.ID,
+		TokenHash: share.HashToken(token),
+		Label:     "Project share",
 	})
 	if err != nil {
 		http.Error(w, "could not create share link", http.StatusInternalServerError)
@@ -504,6 +515,25 @@ func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/projects/"+project.ID+"/share?token="+url.QueryEscape(token), http.StatusSeeOther)
+}
+
+func (a app) deactivateProjectShareLinks(w http.ResponseWriter, r *http.Request) {
+	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
+	if errors.Is(err, sql.ErrNoRows) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return
+	}
+
+	if err := a.queries.DeactivateProjectShareLinks(r.Context(), project.ID); err != nil {
+		http.Error(w, "could not deactivate share links", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+project.ID+"/share", http.StatusSeeOther)
 }
 
 func (a app) showPublicShare(w http.ResponseWriter, r *http.Request) {
@@ -661,11 +691,12 @@ type itemEditPage struct {
 }
 
 type shareManagePage struct {
-	Kind       string
-	Title      string
-	Project    queries.Project
-	Links      []queries.ProjectShareLink
-	PlainToken string
+	Kind         string
+	Title        string
+	Project      queries.Project
+	ActiveLink   *queries.ProjectShareLink
+	PlainToken   string
+	ShareBaseURL string
 }
 
 type publicSharePage struct {
@@ -708,6 +739,16 @@ func firstNonEmpty(value string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func requestBaseURL(r *http.Request) string {
+	scheme := "https"
+	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
+		scheme = proto
+	} else if r.TLS == nil {
+		scheme = "http"
+	}
+	return scheme + "://" + r.Host
 }
 
 func splitLines(value string) []string {
@@ -863,23 +904,26 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
   {{else if eq .Kind "share-manage"}}
     <p><a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
     <h1>Share</h1>
-    <form method="post" action="/projects/{{.Project.ID}}/share-links">
-      <button type="submit">Get Link</button>
-    </form>
     {{if .PlainToken}}
-      <p><strong>Share link:</strong> <code>/share/{{.PlainToken}}</code></p>
-    {{end}}
-    {{if .Links}}
-      <table>
-        <thead><tr><th>Label</th><th>Active</th><th>Created</th></tr></thead>
-        <tbody>
-          {{range .Links}}
-            <tr><td>{{.Label}}</td><td>{{.Active}}</td><td>{{.CreatedAt.Format "2006-01-02"}}</td></tr>
-          {{end}}
-        </tbody>
-      </table>
+      <p class="share-status">Sharing is <strong>enabled</strong>. Copy the link below and send it to your contractor or client.</p>
+      <div class="share-url-row">
+        <input id="share-url-input" class="share-url-input" type="text" readonly value="{{.ShareBaseURL}}/share/{{.PlainToken}}">
+        <button type="button" class="copy-button" onclick="(function(){var i=document.getElementById('share-url-input');i.select();navigator.clipboard.writeText(i.value).catch(function(){document.execCommand('copy')});})()">Copy</button>
+      </div>
+      <form method="post" action="/projects/{{.Project.ID}}/share-links/deactivate" class="share-action-form">
+        <button type="submit" class="button-danger">Disable sharing</button>
+      </form>
+    {{else if .ActiveLink}}
+      <p class="share-status">Sharing is <strong>enabled</strong>.</p>
+      <p class="muted">To get a copyable link, disable sharing and re-enable it.</p>
+      <form method="post" action="/projects/{{.Project.ID}}/share-links/deactivate" class="share-action-form">
+        <button type="submit" class="button-danger">Disable sharing</button>
+      </form>
     {{else}}
-      <p class="muted">No share links yet.</p>
+      <p class="muted">Share a read-only link with contractors and clients so they can view the schedule.</p>
+      <form method="post" action="/projects/{{.Project.ID}}/share-links">
+        <button type="submit">Enable sharing</button>
+      </form>
     {{end}}
   {{else if eq .Kind "public-share"}}
     <h1>{{.Project.Name}}</h1>
