@@ -44,8 +44,6 @@ export async function extractScheduleItem({
   now = new Date(),
   onProgress
 }: ExtractScheduleItemArgs): Promise<ScheduleItem> {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), EXTRACT_TIMEOUT_MS);
   const request = buildExtractSpecRequest({
     capturedPage,
     projectName,
@@ -54,9 +52,78 @@ export async function extractScheduleItem({
     now
   });
 
+  const apiUrl = getExtractApiUrl();
+  console.debug("Sending extraction request to", apiUrl, "with payload", request);
+
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.connect) {
+    return new Promise((resolve, reject) => {
+      const port = chrome.runtime.connect({ name: "extract-spec" });
+      let resolved = false;
+      let timeoutId: number;
+
+      const cleanup = () => {
+        window.clearTimeout(timeoutId);
+        if (!resolved) {
+          port.disconnect();
+        }
+      };
+
+      port.onMessage.addListener((msg) => {
+        if (msg.type === "SSE_EVENT") {
+          const { event, data } = msg;
+          if (event === "progress") {
+            const parsed = JSON.parse(data) as { tokens: number };
+            onProgress?.(parsed.tokens);
+          } else if (event === "done") {
+            const payload = JSON.parse(data) as ExtractSpecResponse;
+            if (!payload.proposal) {
+              cleanup();
+              reject(new ExtractionError("invalid", "Extraction response was missing a proposal."));
+              return;
+            }
+            resolved = true;
+            cleanup();
+            resolve(toScheduleItem(payload, now));
+          } else if (event === "error") {
+            const payload = JSON.parse(data) as ExtractSpecResponse;
+            cleanup();
+            reject(new ExtractionError("backend", payload?.error?.message || "Extraction request failed."));
+          }
+        } else if (msg.type === "ERROR") {
+          cleanup();
+          reject(new ExtractionError(msg.kind, msg.message));
+        } else if (msg.type === "DONE") {
+          if (!resolved) {
+            cleanup();
+            reject(new ExtractionError("invalid", "Stream ended without a completion event."));
+          }
+        }
+      });
+
+      port.onDisconnect.addListener(() => {
+        if (!resolved) {
+          cleanup();
+          reject(new ExtractionError("transport", "Connection to background script closed unexpectedly."));
+        }
+      });
+
+      port.postMessage({
+        type: "START_EXTRACTION",
+        apiUrl,
+        request
+      });
+
+      timeoutId = window.setTimeout(() => {
+        cleanup();
+        reject(new ExtractionError("transport", "Extraction request timed out."));
+      }, EXTRACT_TIMEOUT_MS);
+    });
+  }
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), EXTRACT_TIMEOUT_MS);
+
   try {
-    const apiUrl = getExtractApiUrl();
-    console.debug("Sending extraction request to", apiUrl, "with payload", request);
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

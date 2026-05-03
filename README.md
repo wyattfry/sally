@@ -128,3 +128,17 @@ Expected result:
 See [docs/plans/2026-04-24-deployment-notes.md](/home/wyatt/sally/docs/plans/2026-04-24-deployment-notes.md) for the concise deployment notes.
 
 The extension stores accepted PoC items locally in the current Chrome profile through `chrome.storage.local`.
+
+Problem: json_schema not supported
+
+provider failure: upstream status 400: {"error":{"message":"This model does not support response format `json_schema`. See supported models at https://console.groq.com/docs/structured-outputs#supported-models","type":"invalid_request_error","param":"response_format"}}
+
+Solution: switch json_object
+CHATCOMPLETION_RESPONSE_FORMAT=json_object
+
+Problem: request too large for model
+
+provider failure: upstream status 413: {"error":{"message":"Request too large for model `llama-3.1-8b-instant` in organization `org_01kq360wyvfvvsfyfaq3n7r2s7` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 8270, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing","type":"tokens","code":"rate_limit_exceeded"}}
+
+Solution: use a larger model, e.g.
+OPENAI_MODEL=llama-3.3-70b-versatile
