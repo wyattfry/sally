@@ -86,12 +86,13 @@ func TestItemPagesCreateAndListItem(t *testing.T) {
 		t.Fatalf("expected create to redirect with 303, got %d", createResp.Code)
 	}
 	location := createResp.Header().Get("Location")
-	expectedLocation := "/projects/" + project.ID + "/schedules/" + schedule.ID
+	expectedLocation := "/projects/" + project.ID + "#schedule-" + schedule.ID
 	if location != expectedLocation {
 		t.Fatalf("expected redirect to %q, got %q", expectedLocation, location)
 	}
 
-	showReq := httptest.NewRequest(http.MethodGet, location, nil)
+	// Fragment is stripped by the router; GET the project page directly.
+	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
 	showResp := httptest.NewRecorder()
 
 	router.ServeHTTP(showResp, showReq)
@@ -102,7 +103,7 @@ func TestItemPagesCreateAndListItem(t *testing.T) {
 	body := showResp.Body.String()
 	for _, expected := range []string{"B-01", "Wall Faucet", "Example Co.", "Polished Chrome", "Verify rough-in."} {
 		if !strings.Contains(body, expected) {
-			t.Fatalf("expected schedule detail to include %q, got %s", expected, body)
+			t.Fatalf("expected project page to include %q, got %s", expected, body)
 		}
 	}
 }
@@ -281,12 +282,12 @@ func TestItemPagesUpdateAndDeleteItem(t *testing.T) {
 		t.Fatalf("expected update to redirect with 303, got %d", updateResp.Code)
 	}
 
-	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/schedules/"+schedule.ID, nil)
-	showResp := httptest.NewRecorder()
-	router.ServeHTTP(showResp, showReq)
+	projectReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
+	projectResp := httptest.NewRecorder()
+	router.ServeHTTP(projectResp, projectReq)
 	for _, expected := range []string{"B-02", "Updated Faucet", "Updated Co.", "Brushed Nickel", "Updated notes."} {
-		if !strings.Contains(showResp.Body.String(), expected) {
-			t.Fatalf("expected updated item detail to include %q, got %s", expected, showResp.Body.String())
+		if !strings.Contains(projectResp.Body.String(), expected) {
+			t.Fatalf("expected project page to include %q after update, got %s", expected, projectResp.Body.String())
 		}
 	}
 
@@ -298,8 +299,8 @@ func TestItemPagesUpdateAndDeleteItem(t *testing.T) {
 	}
 
 	deletedResp := httptest.NewRecorder()
-	router.ServeHTTP(deletedResp, showReq)
+	router.ServeHTTP(deletedResp, projectReq)
 	if strings.Contains(deletedResp.Body.String(), "Updated Faucet") {
-		t.Fatalf("expected deleted item to be absent, got %s", deletedResp.Body.String())
+		t.Fatalf("expected deleted item to be absent from project page, got %s", deletedResp.Body.String())
 	}
 }

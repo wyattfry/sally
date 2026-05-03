@@ -133,7 +133,7 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	schedules, err := a.queries.ListSchedulesByProject(r.Context(), project.ID)
+	schedules, err := a.schedulesWithItems(r.Context(), project.ID)
 	if err != nil {
 		http.Error(w, "could not load schedules", http.StatusInternalServerError)
 		return
@@ -240,7 +240,7 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
@@ -265,19 +265,7 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := a.queries.ListScheduleItems(r.Context(), schedule.ID)
-	if err != nil {
-		http.Error(w, "could not load items", http.StatusInternalServerError)
-		return
-	}
-
-	render(w, scheduleDetailPage{
-		Kind:     "schedule",
-		Title:    schedule.Name,
-		Project:  project,
-		Schedule: schedule,
-		Items:    items,
-	})
+	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) editSchedule(w http.ResponseWriter, r *http.Request) {
@@ -321,7 +309,7 @@ func (a app) updateSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+scheduleID, http.StatusSeeOther)
 }
 
 func (a app) deleteSchedule(w http.ResponseWriter, r *http.Request) {
@@ -381,7 +369,7 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+scheduleID, http.StatusSeeOther)
 }
 
 func (a app) editScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -436,7 +424,7 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) deleteScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -448,7 +436,7 @@ func (a app) deleteScheduleItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not delete item", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
@@ -657,21 +645,13 @@ type projectDetailPage struct {
 	Kind      string
 	Title     string
 	Project   queries.Project
-	Schedules []queries.Schedule
+	Schedules []scheduleWithItems
 }
 
 type projectEditPage struct {
 	Kind    string
 	Title   string
 	Project queries.Project
-}
-
-type scheduleDetailPage struct {
-	Kind     string
-	Title    string
-	Project  queries.Project
-	Schedule queries.Schedule
-	Items    []queries.ScheduleItem
 }
 
 type scheduleEditPage struct {
@@ -821,16 +801,50 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <label>New Schedule <input name="name" required></label>
       <button type="submit">Add Schedule</button>
     </form>
-    <h2>Schedules</h2>
     {{if .Schedules}}
-      <table>
-        <thead><tr><th>Name</th><th>Updated</th></tr></thead>
-        <tbody>
+      <div class="project-layout">
+        <nav class="schedule-nav">
+          <ul>
+            {{range .Schedules}}
+              <li><a href="#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></li>
+            {{end}}
+          </ul>
+        </nav>
+        <div class="schedule-content">
           {{range .Schedules}}
-            <tr><td><a href="/projects/{{$.Project.ID}}/schedules/{{.ID}}">{{.Name}}</a></td><td>{{.UpdatedAt.Format "2006-01-02"}}</td></tr>
+            {{$s := .Schedule}}
+            <details class="schedule-section" id="schedule-{{$s.ID}}" open>
+              <summary>
+                <h2>{{$s.Name}}</h2>
+                <span class="summary-toggle"></span>
+              </summary>
+              <div class="schedule-actions">
+                <a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/edit">Edit Schedule</a>
+              </div>
+              {{if .Items}}
+                <table>
+                  <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th></th></tr></thead>
+                  <tbody>
+                    {{range .Items}}
+                      <tr>
+                        <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
+                        <td>{{.Code}}</td>
+                        <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted">{{.Description}}</span></td>
+                        <td>{{.Manufacturer}} {{.ModelNumber}}</td>
+                        <td>{{.Finish}}</td>
+                        <td>{{.Notes}}</td>
+                        <td><a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{.ID}}/edit">Edit</a></td>
+                      </tr>
+                    {{end}}
+                  </tbody>
+                </table>
+              {{else}}
+                <span class="schedule-empty muted">No items yet.</span>
+              {{end}}
+            </details>
           {{end}}
-        </tbody>
-      </table>
+        </div>
+      </div>
     {{else}}
       <p class="muted">No schedules yet.</p>
     {{end}}
@@ -845,32 +859,8 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <form method="post" action="/projects/{{.Project.ID}}/delete">
       <button type="submit">Delete Project</button>
     </form>
-  {{else if eq .Kind "schedule"}}
-    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
-    <h1>{{.Schedule.Name}}</h1>
-    <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">Edit Schedule</a></p>
-    <h2>Items</h2>
-    {{if .Items}}
-      <table>
-        <thead><tr><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th></th></tr></thead>
-        <tbody>
-          {{range .Items}}
-            <tr>
-              <td>{{.Code}}</td>
-              <td>{{.Title}}<br><span class="muted">{{.Description}}</span></td>
-              <td>{{.Manufacturer}} {{.ModelNumber}}</td>
-              <td>{{.Finish}}</td>
-              <td>{{.Notes}}</td>
-              <td><a href="/projects/{{$.Project.ID}}/schedules/{{$.Schedule.ID}}/items/{{.ID}}/edit">Edit</a></td>
-            </tr>
-          {{end}}
-        </tbody>
-      </table>
-    {{else}}
-      <p class="muted">No items yet.</p>
-    {{end}}
   {{else if eq .Kind "edit-schedule"}}
-    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
+    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
     <h1>Edit Schedule</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
       <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
@@ -881,7 +871,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <button type="submit">Delete Schedule</button>
     </form>
   {{else if eq .Kind "edit-item"}}
-    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
+    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
     <h1>Edit Item</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
       <label>Code <input name="code" value="{{.Item.Code}}"></label>
@@ -924,16 +914,17 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <h2>{{.Schedule.Name}}</h2>
       {{if .Items}}
         <table>
-          <thead><tr><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th>Source</th></tr></thead>
+          <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th>Source</th></tr></thead>
           <tbody>
             {{range .Items}}
               <tr>
+                <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
                 <td>{{.Code}}</td>
-                <td>{{.Title}}<br><span class="muted">{{.Description}}</span></td>
+                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted">{{.Description}}</span></td>
                 <td>{{.Manufacturer}} {{.ModelNumber}}</td>
                 <td>{{.Finish}}</td>
                 <td>{{.Notes}}</td>
-                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">Product Page</a><br><span class="muted">{{.SourceUrl}}</span>{{end}}</td>
+                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">Product Page</a>{{end}}</td>
               </tr>
             {{end}}
           </tbody>

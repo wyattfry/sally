@@ -113,6 +113,109 @@ button,
   cursor: pointer;
 }
 
+.item-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border: 1px solid #d8d8d2;
+  display: block;
+}
+
+/* Project page: sidebar nav + schedule content */
+.project-layout {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.schedule-nav {
+  flex-shrink: 0;
+  width: 160px;
+  position: sticky;
+  top: 16px;
+}
+
+.schedule-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  border-right: 2px solid #d8d8d2;
+}
+
+.schedule-nav li a {
+  display: block;
+  padding: 6px 12px 6px 0;
+  font-size: 14px;
+  text-decoration: none;
+  color: #145f43;
+}
+
+.schedule-nav li a:hover {
+  text-decoration: underline;
+}
+
+.schedule-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Collapsible schedule sections */
+details.schedule-section {
+  margin-bottom: 20px;
+  border: 1px solid #d8d8d2;
+  border-radius: 3px;
+  background: white;
+}
+
+details.schedule-section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #ecece6;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+details.schedule-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.schedule-section > summary h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.summary-toggle {
+  font-size: 11px;
+  color: #888;
+}
+
+details.schedule-section[open] > summary .summary-toggle::before { content: "▲"; }
+details.schedule-section:not([open]) > summary .summary-toggle::before { content: "▼"; }
+
+.schedule-actions {
+  padding: 6px 14px;
+  border-bottom: 1px solid #ecece6;
+  font-size: 13px;
+}
+
+details.schedule-section table {
+  border-top: 1px solid #d8d8d2;
+}
+
+.schedule-empty {
+  padding: 12px 14px;
+  display: block;
+}
+
+.login-page {
+  max-width: 400px;
+  margin: 80px auto;
+  text-align: center;
+}
+
 @media print {
   body {
     background: white;

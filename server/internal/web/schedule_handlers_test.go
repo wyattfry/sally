@@ -70,11 +70,12 @@ func TestSchedulePagesCreateAndShowSchedule(t *testing.T) {
 		t.Fatalf("expected create to redirect with 303, got %d", createResp.Code)
 	}
 	location := createResp.Header().Get("Location")
-	if !strings.HasPrefix(location, "/projects/"+project.ID+"/schedules/") {
-		t.Fatalf("expected redirect to schedule detail, got %q", location)
+	if !strings.HasPrefix(location, "/projects/"+project.ID+"#schedule-") {
+		t.Fatalf("expected redirect to project page with schedule anchor, got %q", location)
 	}
 
-	showReq := httptest.NewRequest(http.MethodGet, location, nil)
+	// Fragment is stripped by the router; GET the project page directly.
+	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
 	showResp := httptest.NewRecorder()
 
 	router.ServeHTTP(showResp, showReq)
@@ -84,7 +85,7 @@ func TestSchedulePagesCreateAndShowSchedule(t *testing.T) {
 	}
 	body := showResp.Body.String()
 	if !strings.Contains(body, "Bath") || !strings.Contains(body, "No items yet.") {
-		t.Fatalf("expected schedule detail with empty item state, got %s", body)
+		t.Fatalf("expected project detail with new schedule, got %s", body)
 	}
 }
 
@@ -215,11 +216,11 @@ func TestSchedulePagesUpdateAndDeleteSchedule(t *testing.T) {
 		t.Fatalf("expected update to redirect with 303, got %d", updateResp.Code)
 	}
 
-	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/schedules/"+schedule.ID, nil)
-	showResp := httptest.NewRecorder()
-	router.ServeHTTP(showResp, showReq)
-	if !strings.Contains(showResp.Body.String(), "Primary Bath") {
-		t.Fatalf("expected updated schedule detail, got %s", showResp.Body.String())
+	projectReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
+	projectResp := httptest.NewRecorder()
+	router.ServeHTTP(projectResp, projectReq)
+	if !strings.Contains(projectResp.Body.String(), "Primary Bath") {
+		t.Fatalf("expected project page to contain updated schedule name, got %s", projectResp.Body.String())
 	}
 
 	deleteReq := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/schedules/"+schedule.ID+"/delete", nil)
@@ -229,8 +230,9 @@ func TestSchedulePagesUpdateAndDeleteSchedule(t *testing.T) {
 		t.Fatalf("expected delete redirect to project, got status=%d location=%q", deleteResp.Code, deleteResp.Header().Get("Location"))
 	}
 
+	deletedShowReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID+"/schedules/"+schedule.ID, nil)
 	deletedResp := httptest.NewRecorder()
-	router.ServeHTTP(deletedResp, showReq)
+	router.ServeHTTP(deletedResp, deletedShowReq)
 	if deletedResp.Code != http.StatusNotFound {
 		t.Fatalf("expected deleted schedule to return 404, got %d", deletedResp.Code)
 	}
