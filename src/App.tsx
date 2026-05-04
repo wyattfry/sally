@@ -259,24 +259,26 @@ export default function App() {
     if (!popup) return;
     setPanel({ kind: "signing-in" });
 
+    const maxAttempts = 200; // ~5 minutes
+    let attempts = 0;
+
     const interval = setInterval(async () => {
-      if (popup.closed) {
-        clearInterval(interval);
-        const ok = await checkAuth();
-        if (ok) {
-          setPanel({ kind: "closed" });
-          refreshContext();
-        } else {
-          setPanel({ kind: "signed-out" });
-        }
-        return;
-      }
+      attempts++;
+
       const ok = await checkAuth();
       if (ok) {
         clearInterval(interval);
-        popup.close();
+        try { popup.close(); } catch { /* COOP may block */ }
         setPanel({ kind: "closed" });
         refreshContext();
+        return;
+      }
+
+      let closed = false;
+      try { closed = popup.closed; } catch { /* COOP may block */ }
+      if (closed || attempts >= maxAttempts) {
+        clearInterval(interval);
+        setPanel({ kind: "signed-out" });
       }
     }, 1500);
   }
