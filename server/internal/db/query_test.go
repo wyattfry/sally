@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"testing"
+	"time"
 
 	queries "sally/server/internal/db/generated"
 
@@ -80,5 +81,91 @@ func TestProjectScheduleItemQueries(t *testing.T) {
 	}
 	if len(items) != 1 || items[0].ID != item.ID {
 		t.Fatalf("expected created item in list, got %#v", items)
+	}
+}
+
+func TestProjectUpdatedAtBumpsOnChildChanges(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "trigger-test@example.com",
+		Name:  "Trigger Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Trigger Test Project",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	t0 := project.UpdatedAt
+
+	// Creating a schedule must bump project.updated_at.
+	time.Sleep(time.Millisecond)
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Bath",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+	after1, err := q.GetProject(context.Background(), project.ID)
+	if err != nil {
+		t.Fatalf("get project: %v", err)
+	}
+	if !after1.UpdatedAt.After(t0) {
+		t.Fatalf("expected updated_at to advance after schedule create: was %v, now %v", t0, after1.UpdatedAt)
+	}
+	t1 := after1.UpdatedAt
+
+	// Adding an item must bump project.updated_at.
+	time.Sleep(time.Millisecond)
+	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
+		ScheduleID:     schedule.ID,
+		Title:          "Wall Faucet",
+		SourcePdfLinks: []string{},
+	})
+	if err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+	after2, err := q.GetProject(context.Background(), project.ID)
+	if err != nil {
+		t.Fatalf("get project: %v", err)
+	}
+	if !after2.UpdatedAt.After(t1) {
+		t.Fatalf("expected updated_at to advance after item create: was %v, now %v", t1, after2.UpdatedAt)
+	}
+	t2 := after2.UpdatedAt
+
+	// Deleting an item must also bump project.updated_at.
+	time.Sleep(time.Millisecond)
+	if err := q.DeleteScheduleItem(context.Background(), item.ID); err != nil {
+		t.Fatalf("delete item: %v", err)
+	}
+	after3, err := q.GetProject(context.Background(), project.ID)
+	if err != nil {
+		t.Fatalf("get project: %v", err)
+	}
+	if !after3.UpdatedAt.After(t2) {
+		t.Fatalf("expected updated_at to advance after item delete: was %v, now %v", t2, after3.UpdatedAt)
 	}
 }
