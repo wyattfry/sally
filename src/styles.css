@@ -232,6 +232,48 @@
   resize: vertical;
 }
 
+.panel-modal-backdrop {
+  background: rgb(0 0 0 / 35%);
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 10;
+}
+
+.panel-modal {
+  background: #fbfcf8;
+  border: 1px solid #cfd8cb;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 24%);
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  width: calc(100% - 48px);
+}
+
+.panel-modal-title {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.panel-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.panel-modal-error {
+  color: #b91c1c;
+  font-size: 13px;
+  margin: 0;
+}
+
 .inline-add {
   align-items: end;
   display: grid;

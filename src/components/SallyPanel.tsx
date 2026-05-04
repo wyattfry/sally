@@ -13,6 +13,7 @@ type SallyPanelProps = {
   panel: PanelState;
   projects: Project[];
   schedules: Schedule[];
+  zones: string[];
   activeContext: ActiveContext | null;
   suggestedNewScheduleName?: string;
   onChange: (draft: ScheduleItem) => void;
@@ -48,6 +49,7 @@ export function SallyPanel({
   panel,
   projects,
   schedules,
+  zones,
   activeContext,
   suggestedNewScheduleName,
   onChange,
@@ -60,19 +62,27 @@ export function SallyPanel({
   onViewItems
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
-  const [isAddingProject, setIsAddingProject] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
-  const [projectCreateError, setProjectCreateError] = useState<string | null>(null);
-  const [isAddingSchedule, setIsAddingSchedule] = useState(false);
-  const [newScheduleName, setNewScheduleName] = useState("");
-  const [scheduleCreateError, setScheduleCreateError] = useState<string | null>(null);
+  const [modal, setModal] = useState<null | "project" | "schedule" | "zone">(null);
+  const [modalInputValue, setModalInputValue] = useState("");
+  const [modalError, setModalError] = useState<string | null>(null);
+  const modalInputRef = useRef<HTMLInputElement>(null);
+  const [localZones, setLocalZones] = useState<string[]>(zones);
 
   useEffect(() => {
     if (suggestedNewScheduleName) {
-      setIsAddingSchedule(true);
-      setNewScheduleName(suggestedNewScheduleName);
+      setModal("schedule");
+      setModalInputValue(suggestedNewScheduleName);
+      setModalError(null);
     }
   }, [suggestedNewScheduleName]);
+
+  useEffect(() => {
+    if (modal) {
+      modalInputRef.current?.focus();
+      modalInputRef.current?.select();
+    }
+  }, [modal]);
+
   const [secondsLeft, setSecondsLeft] = useState(TOTAL_TIMEOUT_SECONDS);
   const intervalRef = useRef<number | null>(null);
 
@@ -91,27 +101,92 @@ export function SallyPanel({
   }, [panel.kind]);
 
   function updateField<Key extends keyof ScheduleItem>(key: Key, value: ScheduleItem[Key]) {
-    if (!draft) {
+    if (!draft) return;
+    onChange({ ...draft, [key]: value });
+  }
+
+  function closeModal() {
+    setModal(null);
+    setModalInputValue("");
+    setModalError(null);
+  }
+
+  async function submitModal() {
+    const name = modalInputValue.trim();
+    if (!name) return;
+    if (modal === "zone") {
+      setLocalZones((prev) => prev.includes(name) ? prev : [...prev, name]);
+      updateField("zone", name);
+      closeModal();
       return;
     }
-    onChange({ ...draft, [key]: value });
+    const error = modal === "project"
+      ? await onCreateProject(name)
+      : await onCreateSchedule(name);
+    if (error) {
+      setModalError(error);
+    } else {
+      closeModal();
+    }
   }
 
   return (
     <aside className="sally-panel" aria-label="Sally capture panel">
+      {modal ? (
+        <div
+          className="panel-modal-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
+        >
+          <div className="panel-modal" role="dialog" aria-modal="true">
+            <p className="panel-modal-title">
+              {modal === "project" ? "New project" : modal === "schedule" ? "New schedule" : "New zone"}
+            </p>
+            <div className="field">
+              <label htmlFor="panel-modal-input">Name</label>
+              <input
+                id="panel-modal-input"
+                ref={modalInputRef}
+                value={modalInputValue}
+                placeholder={modal === "project" ? "Project name" : "Schedule name"}
+                onChange={(e) => { setModalInputValue(e.target.value); setModalError(null); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitModal();
+                  if (e.key === "Escape") closeModal();
+                }}
+              />
+            </div>
+            {modalError ? <p className="panel-modal-error">{modalError}</p> : null}
+            <div className="panel-modal-actions">
+              <button className="action-button secondary" type="button" onClick={closeModal}>
+                Cancel
+              </button>
+              <button
+                className="action-button primary"
+                type="button"
+                disabled={!modalInputValue.trim()}
+                onClick={submitModal}
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="panel-header">
         <div className="panel-context">
           <div className="field">
             <label htmlFor="sally-project">Project</label>
             <select
               id="sally-project"
-              value={isAddingProject ? ADD_NEW_VALUE : activeContext?.projectId ?? ""}
+              value={activeContext?.projectId ?? ""}
               onChange={(event) => {
                 if (event.target.value === ADD_NEW_VALUE) {
-                  setIsAddingProject(true);
+                  setModal("project");
+                  setModalInputValue("");
+                  setModalError(null);
                   return;
                 }
-                setIsAddingProject(false);
                 onSelectProject(event.target.value);
               }}
             >
@@ -124,94 +199,31 @@ export function SallyPanel({
               <option value={ADD_NEW_VALUE}>New project...</option>
             </select>
           </div>
-          {isAddingProject ? (
-            <div className="inline-add">
-              <input
-                id="sally-new-project"
-                placeholder="Project name"
-                value={newProjectName}
-                onChange={(event) => {
-                  setNewProjectName(event.target.value);
-                  setProjectCreateError(null);
-                }}
-              />
-              <button
-                className="action-button secondary"
-                disabled={!newProjectName.trim()}
-                type="button"
-                onClick={async () => {
-                  const error = await onCreateProject(newProjectName.trim());
-                  if (error) {
-                    setProjectCreateError(error);
-                  } else {
-                    setNewProjectName("");
-                    setIsAddingProject(false);
-                    setProjectCreateError(null);
-                  }
-                }}
-              >
-                Add
-              </button>
-              {projectCreateError ? (
-                <span className="inline-add-error">{projectCreateError}</span>
-              ) : null}
-            </div>
-          ) : null}
 
-          <div className="field">
-            <label htmlFor="sally-schedule">Schedule</label>
-            <select
-              id="sally-schedule"
-              value={isAddingSchedule ? ADD_NEW_VALUE : activeContext?.scheduleId ?? ""}
-              onChange={(event) => {
-                if (event.target.value === ADD_NEW_VALUE) {
-                  setIsAddingSchedule(true);
-                  return;
-                }
-                setIsAddingSchedule(false);
-                onSelectSchedule(event.target.value);
-              }}
-            >
-              <option value="" disabled>Select a schedule...</option>
-              {schedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {schedule.name}
-                </option>
-              ))}
-              {activeContext?.projectId ? <option value={ADD_NEW_VALUE}>New schedule...</option> : null}
-            </select>
-          </div>
-          {isAddingSchedule ? (
-            <div className="inline-add">
-              <input
-                id="sally-new-schedule"
-                placeholder="Schedule name"
-                value={newScheduleName}
+          {panel.kind !== "thinking" ? (
+            <div className="field">
+              <label htmlFor="sally-schedule">Schedule</label>
+              <select
+                id="sally-schedule"
+                value={activeContext?.scheduleId ?? ""}
                 onChange={(event) => {
-                  setNewScheduleName(event.target.value);
-                  setScheduleCreateError(null);
-                }}
-              />
-              <button
-                className="action-button secondary"
-                disabled={!newScheduleName.trim()}
-                type="button"
-                onClick={async () => {
-                  const error = await onCreateSchedule(newScheduleName.trim());
-                  if (error) {
-                    setScheduleCreateError(error);
-                  } else {
-                    setNewScheduleName("");
-                    setIsAddingSchedule(false);
-                    setScheduleCreateError(null);
+                  if (event.target.value === ADD_NEW_VALUE) {
+                    setModal("schedule");
+                    setModalInputValue("");
+                    setModalError(null);
+                    return;
                   }
+                  onSelectSchedule(event.target.value);
                 }}
               >
-                Add
-              </button>
-              {scheduleCreateError ? (
-                <span className="inline-add-error">{scheduleCreateError}</span>
-              ) : null}
+                <option value="" disabled>Select a schedule...</option>
+                {schedules.map((schedule) => (
+                  <option key={schedule.id} value={schedule.id}>
+                    {schedule.name}
+                  </option>
+                ))}
+                {activeContext?.projectId ? <option value={ADD_NEW_VALUE}>New schedule...</option> : null}
+              </select>
             </div>
           ) : null}
         </div>
@@ -241,6 +253,29 @@ export function SallyPanel({
             {draft?.sourceImageUrl ? (
               <img className="image-preview" src={draft.sourceImageUrl} alt="" />
             ) : null}
+
+            <div className="field">
+              <label htmlFor="sally-zone">Zone</label>
+              <select
+                id="sally-zone"
+                value={draft?.zone ?? ""}
+                onChange={(event) => {
+                  if (event.target.value === ADD_NEW_VALUE) {
+                    setModal("zone");
+                    setModalInputValue("");
+                    setModalError(null);
+                    return;
+                  }
+                  updateField("zone", event.target.value);
+                }}
+              >
+                <option value="">No zone</option>
+                {[...new Set([...(draft?.zone ? [draft.zone] : []), ...localZones])].map((z) => (
+                  <option key={z} value={z}>{z}</option>
+                ))}
+                <option value={ADD_NEW_VALUE}>New zone...</option>
+              </select>
+            </div>
 
             <div className="field">
               <label htmlFor="sally-category">Category</label>
