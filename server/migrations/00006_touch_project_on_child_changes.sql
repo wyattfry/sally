@@ -1,6 +1,7 @@
 -- +goose Up
 
 -- Bump project.updated_at whenever a schedule is created, updated, or deleted.
+-- +goose StatementBegin
 create or replace function touch_project_on_schedule_change()
 returns trigger language plpgsql as $$
 begin
@@ -10,12 +11,14 @@ begin
   return null;
 end;
 $$;
+-- +goose StatementEnd
 
 create trigger schedules_touch_project
 after insert or update or delete on schedules
 for each row execute function touch_project_on_schedule_change();
 
 -- Bump project.updated_at whenever a schedule item is created, updated, or deleted.
+-- +goose StatementBegin
 create or replace function touch_project_on_item_change()
 returns trigger language plpgsql as $$
 begin
@@ -27,6 +30,7 @@ begin
   return null;
 end;
 $$;
+-- +goose StatementEnd
 
 create trigger items_touch_project
 after insert or update or delete on schedule_items
