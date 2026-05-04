@@ -108,11 +108,11 @@
               {{if eq $sw.Schedule.Kind "note"}}
                 <div class="schedule-note-content">{{$sw.Schedule.Notes}}</div>
               {{else if $sw.Groups}}
-                <table>
+                <table class="schedule-table">
                   <thead>
                     <tr>
                       <th></th>
-                      {{range $sw.Columns}}<th>{{.Label}}</th>{{end}}
+                      {{range $sw.Columns}}<th{{if eq .Key "code"}} class="col-code"{{end}}>{{.Label}}</th>{{end}}
                       <th></th>
                     </tr>
                   </thead>
@@ -125,7 +125,7 @@
                         <tr>
                           <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
                           {{range $sw.Columns}}
-                            <td>
+                            <td{{if eq .Key "code"}} class="col-code"{{end}}>
                               {{if and (eq .Key "title") $item.SourceUrl}}
                                 <a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>
                               {{else}}
@@ -221,11 +221,11 @@
       {{if eq $sw.Schedule.Kind "note"}}
         <div class="schedule-note-content">{{$sw.Schedule.Notes}}</div>
       {{else if $sw.Groups}}
-        <table>
+        <table class="schedule-table">
           <thead>
             <tr>
               <th></th>
-              {{range $sw.Columns}}<th>{{.Label}}</th>{{end}}
+              {{range $sw.Columns}}<th{{if eq .Key "code"}} class="col-code"{{end}}>{{.Label}}</th>{{end}}
               <th>Source</th>
             </tr>
           </thead>
@@ -238,7 +238,7 @@
                 <tr>
                   <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
                   {{range $sw.Columns}}
-                    <td>
+                    <td{{if eq .Key "code"}} class="col-code"{{end}}>
                       {{if and (eq .Key "title") $item.SourceUrl}}
                         <a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>
                       {{else}}
