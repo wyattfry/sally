@@ -1,12 +1,12 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
-  color: #161616;
-  background: #f7f7f4;
+  color: var(--c-text);
+  background: var(--c-bg);
 }
 
 header {
-  background: #0f2f24;
+  background: var(--c-header-bg);
   color: white;
   padding: 14px 24px;
   display: flex;
@@ -37,7 +37,7 @@ main {
 }
 
 a {
-  color: #145f43;
+  color: var(--c-primary-mid);
 }
 
 table {
@@ -48,7 +48,7 @@ table {
 
 th,
 td {
-  border-bottom: 1px solid #d8d8d2;
+  border-bottom: 1px solid var(--c-border);
   padding: 10px;
   text-align: left;
   vertical-align: top;
@@ -57,7 +57,7 @@ td {
 th {
   font-size: 12px;
   text-transform: uppercase;
-  background: #ecece6;
+  background: var(--c-surface-raised);
 }
 
 input {
@@ -77,9 +77,9 @@ button,
 .button {
   display: inline-block;
   padding: 8px 12px;
-  border: 1px solid #145f43;
-  background: #b7f3c5;
-  color: #102015;
+  border: 1px solid var(--c-primary-mid);
+  background: var(--c-primary-light);
+  color: var(--c-primary-text);
   text-decoration: none;
   border-radius: 4px;
   cursor: pointer;
@@ -106,10 +106,10 @@ button,
 
 .share-url-input {
   flex: 1;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   background: #fff;
-  color: #161616;
+  color: var(--c-text);
 }
 
 .copy-button {
@@ -124,9 +124,9 @@ button,
 .button-danger {
   display: inline-block;
   padding: 8px 12px;
-  border: 1px solid #9b2b2b;
-  background: #fde8e8;
-  color: #5c1a1a;
+  border: 1px solid var(--c-danger-border);
+  background: var(--c-danger-bg);
+  color: var(--c-danger-text);
   text-decoration: none;
   border-radius: 4px;
   cursor: pointer;
@@ -141,7 +141,7 @@ button,
 
 .project-card {
   background: white;
-  border: 1px solid #d8d8d2;
+  border: 1px solid var(--c-border);
   border-radius: 6px;
   overflow: hidden;
   display: block;
@@ -156,7 +156,7 @@ button,
 
 .project-thumb-wrap {
   aspect-ratio: 4 / 3;
-  background: #ecece6;
+  background: var(--c-surface-raised);
   overflow: hidden;
 }
 
@@ -181,7 +181,7 @@ button,
 }
 
 .project-thumb-cell {
-  background: #e4e4de;
+  background: var(--c-surface-raised);
 }
 
 .project-thumb-initial {
@@ -204,7 +204,7 @@ button,
   font-size: 15px;
   font-weight: 700;
   margin: 0 0 4px;
-  color: #145f43;
+  color: var(--c-primary-mid);
 }
 
 .project-card-meta {
@@ -251,7 +251,7 @@ button,
   width: 56px;
   height: 56px;
   object-fit: cover;
-  border: 1px solid #d8d8d2;
+  border: 1px solid var(--c-border);
   display: block;
 }
 
@@ -273,7 +273,7 @@ button,
   list-style: none;
   padding: 0;
   margin: 0 0 16px 0;
-  border-right: 2px solid #d8d8d2;
+  border-right: 2px solid var(--c-border);
 }
 
 .schedule-nav li a {
@@ -281,7 +281,7 @@ button,
   padding: 6px 12px 6px 0;
   font-size: 14px;
   text-decoration: none;
-  color: #145f43;
+  color: var(--c-primary-mid);
 }
 
 .schedule-nav li a:hover {
@@ -296,7 +296,7 @@ button,
 /* Collapsible schedule sections */
 details.schedule-section {
   margin-bottom: 20px;
-  border: 1px solid #d8d8d2;
+  border: 1px solid var(--c-border);
   border-radius: 3px;
   background: white;
 }
@@ -306,7 +306,7 @@ details.schedule-section > summary {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: #ecece6;
+  background: var(--c-surface-raised);
   cursor: pointer;
   user-select: none;
   list-style: none;
@@ -331,14 +331,14 @@ details.schedule-section:not([open]) > summary .summary-toggle::before { content
 
 .schedule-actions {
   padding: 6px 14px;
-  border-bottom: 1px solid #ecece6;
+  border-bottom: 1px solid var(--c-surface-raised);
   font-size: 13px;
 }
 
 .zone-row td {
-  background: #f0f3ed;
-  border-top: 2px solid #cfd8cb;
-  color: #354832;
+  background: var(--c-zone-bg);
+  border-top: 2px solid var(--c-zone-border);
+  color: var(--c-zone-text);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -351,12 +351,12 @@ details.schedule-section:not([open]) > summary .summary-toggle::before { content
   margin: 0;
   font-size: 13px;
   color: #444;
-  border-bottom: 1px solid #ecece6;
+  border-bottom: 1px solid var(--c-surface-raised);
   white-space: pre-wrap;
 }
 
 details.schedule-section table {
-  border-top: 1px solid #d8d8d2;
+  border-top: 1px solid var(--c-border);
 }
 
 .schedule-empty {
