@@ -55,6 +55,7 @@ func TestMothershipAPISavesScheduleItem(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Bath",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
@@ -86,18 +87,17 @@ func TestMothershipAPISavesScheduleItem(t *testing.T) {
 	}
 
 	body := bytes.NewBufferString(`{
-		"code":"B-01",
-		"title":"Wall Faucet",
-		"description":"Wall-mounted faucet.",
-		"manufacturer":"Example Co.",
-		"modelNumber":"WF-200",
-		"finish":"Polished Chrome",
-		"finishModelNumber":"WF-200-PC",
-		"notes":"Verify rough-in.",
-		"sourceUrl":"https://example.com/products/wf-200",
-		"sourceTitle":"Example Co. WF-200 Wall Faucet",
-		"sourceImageUrl":"https://example.com/faucet.jpg",
-		"sourcePdfLinks":["https://example.com/spec-sheet.pdf"]
+		"data": {
+			"title": "Wall Faucet",
+			"manufacturer": "Example Co.",
+			"model_number": "WF-200",
+			"finish": "Polished Chrome",
+			"notes": "Verify rough-in."
+		},
+		"sourceUrl": "https://example.com/products/wf-200",
+		"sourceTitle": "Example Co. WF-200 Wall Faucet",
+		"sourceImageUrl": "https://example.com/faucet.jpg",
+		"sourcePdfLinks": ["https://example.com/spec-sheet.pdf"]
 	}`)
 	createResp := httptest.NewRecorder()
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/schedules/"+schedule.ID+"/items", body)
@@ -108,14 +108,13 @@ func TestMothershipAPISavesScheduleItem(t *testing.T) {
 	}
 
 	var created struct {
-		Title        string   `json:"title"`
-		Manufacturer string   `json:"manufacturer"`
-		SourcePDFLinks []string `json:"sourcePdfLinks"`
+		Data           map[string]string `json:"data"`
+		SourcePDFLinks []string          `json:"sourcePdfLinks"`
 	}
 	if err := json.Unmarshal(createResp.Body.Bytes(), &created); err != nil {
 		t.Fatalf("decode created item: %v", err)
 	}
-	if created.Title != "Wall Faucet" || created.Manufacturer != "Example Co." || len(created.SourcePDFLinks) != 1 {
+	if created.Data["title"] != "Wall Faucet" || created.Data["manufacturer"] != "Example Co." || len(created.SourcePDFLinks) != 1 {
 		t.Fatalf("unexpected created item: %#v", created)
 	}
 }
@@ -154,6 +153,7 @@ func TestMothershipAPIZoneRoundTrips(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Appliance Schedule",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
@@ -167,12 +167,14 @@ func TestMothershipAPIZoneRoundTrips(t *testing.T) {
 	})
 
 	body := bytes.NewBufferString(`{
-		"title":"Range Hood",
-		"zone":"Kitchen",
-		"manufacturer":"Example Co.",
-		"modelNumber":"RH-100",
-		"finish":"Stainless",
-		"sourcePdfLinks":[]
+		"data": {
+			"title": "Range Hood",
+			"manufacturer": "Example Co.",
+			"model_number": "RH-100",
+			"finish": "Stainless"
+		},
+		"zone": "Kitchen",
+		"sourcePdfLinks": []
 	}`)
 	createResp := httptest.NewRecorder()
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/schedules/"+schedule.ID+"/items", body)

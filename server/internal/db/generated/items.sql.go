@@ -7,6 +7,7 @@ package generated
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/lib/pq"
 )
@@ -14,14 +15,7 @@ import (
 const createScheduleItem = `-- name: CreateScheduleItem :one
 insert into schedule_items (
     schedule_id,
-    code,
-    title,
-    description,
-    manufacturer,
-    model_number,
-    finish,
-    finish_model_number,
-    notes,
+    data,
     zone,
     source_url,
     source_title,
@@ -29,42 +23,25 @@ insert into schedule_items (
     source_pdf_links,
     position
 )
-values (
-    $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12, $13, $14, $15
-)
-returning id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+values ($1, $2, $3, $4, $5, $6, $7, $8)
+returning id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
 `
 
 type CreateScheduleItemParams struct {
-	ScheduleID        string   `json:"schedule_id"`
-	Code              string   `json:"code"`
-	Title             string   `json:"title"`
-	Description       string   `json:"description"`
-	Manufacturer      string   `json:"manufacturer"`
-	ModelNumber       string   `json:"model_number"`
-	Finish            string   `json:"finish"`
-	FinishModelNumber string   `json:"finish_model_number"`
-	Notes             string   `json:"notes"`
-	Zone              string   `json:"zone"`
-	SourceUrl         string   `json:"source_url"`
-	SourceTitle       string   `json:"source_title"`
-	SourceImageUrl    string   `json:"source_image_url"`
-	SourcePdfLinks    []string `json:"source_pdf_links"`
-	Position          int32    `json:"position"`
+	ScheduleID     string          `json:"schedule_id"`
+	Data           json.RawMessage `json:"data"`
+	Zone           string          `json:"zone"`
+	SourceUrl      string          `json:"source_url"`
+	SourceTitle    string          `json:"source_title"`
+	SourceImageUrl string          `json:"source_image_url"`
+	SourcePdfLinks []string        `json:"source_pdf_links"`
+	Position       int32           `json:"position"`
 }
 
 func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItemParams) (ScheduleItem, error) {
 	row := q.db.QueryRowContext(ctx, createScheduleItem,
 		arg.ScheduleID,
-		arg.Code,
-		arg.Title,
-		arg.Description,
-		arg.Manufacturer,
-		arg.ModelNumber,
-		arg.Finish,
-		arg.FinishModelNumber,
-		arg.Notes,
+		arg.Data,
 		arg.Zone,
 		arg.SourceUrl,
 		arg.SourceTitle,
@@ -76,15 +53,6 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 	err := row.Scan(
 		&i.ID,
 		&i.ScheduleID,
-		&i.Code,
-		&i.Title,
-		&i.Description,
-		&i.Manufacturer,
-		&i.ModelNumber,
-		&i.Finish,
-		&i.FinishModelNumber,
-		&i.Notes,
-		&i.Zone,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
@@ -92,6 +60,8 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Zone,
+		&i.Data,
 	)
 	return i, err
 }
@@ -107,7 +77,7 @@ func (q *Queries) DeleteScheduleItem(ctx context.Context, id string) error {
 }
 
 const getScheduleItem = `-- name: GetScheduleItem :one
-select id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+select id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
 from schedule_items
 where id = $1
 `
@@ -118,15 +88,6 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 	err := row.Scan(
 		&i.ID,
 		&i.ScheduleID,
-		&i.Code,
-		&i.Title,
-		&i.Description,
-		&i.Manufacturer,
-		&i.ModelNumber,
-		&i.Finish,
-		&i.FinishModelNumber,
-		&i.Notes,
-		&i.Zone,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
@@ -134,12 +95,14 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Zone,
+		&i.Data,
 	)
 	return i, err
 }
 
 const listScheduleItems = `-- name: ListScheduleItems :many
-select id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+select id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
 from schedule_items
 where schedule_id = $1
 order by zone asc, position asc, created_at asc
@@ -157,15 +120,6 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 		if err := rows.Scan(
 			&i.ID,
 			&i.ScheduleID,
-			&i.Code,
-			&i.Title,
-			&i.Description,
-			&i.Manufacturer,
-			&i.ModelNumber,
-			&i.Finish,
-			&i.FinishModelNumber,
-			&i.Notes,
-			&i.Zone,
 			&i.SourceUrl,
 			&i.SourceTitle,
 			&i.SourceImageUrl,
@@ -173,6 +127,8 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Zone,
+			&i.Data,
 		); err != nil {
 			return nil, err
 		}
@@ -189,54 +145,33 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 
 const updateScheduleItem = `-- name: UpdateScheduleItem :one
 update schedule_items
-set code = $2,
-    title = $3,
-    description = $4,
-    manufacturer = $5,
-    model_number = $6,
-    finish = $7,
-    finish_model_number = $8,
-    notes = $9,
-    zone = $10,
-    source_url = $11,
-    source_title = $12,
-    source_image_url = $13,
-    source_pdf_links = $14,
-    position = $15,
-    updated_at = now()
+set data             = $2,
+    zone             = $3,
+    source_url       = $4,
+    source_title     = $5,
+    source_image_url = $6,
+    source_pdf_links = $7,
+    position         = $8,
+    updated_at       = now()
 where id = $1
-returning id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+returning id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
 `
 
 type UpdateScheduleItemParams struct {
-	ID                string   `json:"id"`
-	Code              string   `json:"code"`
-	Title             string   `json:"title"`
-	Description       string   `json:"description"`
-	Manufacturer      string   `json:"manufacturer"`
-	ModelNumber       string   `json:"model_number"`
-	Finish            string   `json:"finish"`
-	FinishModelNumber string   `json:"finish_model_number"`
-	Notes             string   `json:"notes"`
-	Zone              string   `json:"zone"`
-	SourceUrl         string   `json:"source_url"`
-	SourceTitle       string   `json:"source_title"`
-	SourceImageUrl    string   `json:"source_image_url"`
-	SourcePdfLinks    []string `json:"source_pdf_links"`
-	Position          int32    `json:"position"`
+	ID             string          `json:"id"`
+	Data           json.RawMessage `json:"data"`
+	Zone           string          `json:"zone"`
+	SourceUrl      string          `json:"source_url"`
+	SourceTitle    string          `json:"source_title"`
+	SourceImageUrl string          `json:"source_image_url"`
+	SourcePdfLinks []string        `json:"source_pdf_links"`
+	Position       int32           `json:"position"`
 }
 
 func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItemParams) (ScheduleItem, error) {
 	row := q.db.QueryRowContext(ctx, updateScheduleItem,
 		arg.ID,
-		arg.Code,
-		arg.Title,
-		arg.Description,
-		arg.Manufacturer,
-		arg.ModelNumber,
-		arg.Finish,
-		arg.FinishModelNumber,
-		arg.Notes,
+		arg.Data,
 		arg.Zone,
 		arg.SourceUrl,
 		arg.SourceTitle,
@@ -248,15 +183,6 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 	err := row.Scan(
 		&i.ID,
 		&i.ScheduleID,
-		&i.Code,
-		&i.Title,
-		&i.Description,
-		&i.Manufacturer,
-		&i.ModelNumber,
-		&i.Finish,
-		&i.FinishModelNumber,
-		&i.Notes,
-		&i.Zone,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
@@ -264,6 +190,8 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Zone,
+		&i.Data,
 	)
 	return i, err
 }

@@ -207,9 +207,9 @@ func TestGroupByZone(t *testing.T) {
 	})
 
 	t.Run("items without zone form one unnamed group", func(t *testing.T) {
-		items := []queries.ScheduleItem{
-			{Title: "Faucet"},
-			{Title: "Drain"},
+		items := []scheduleItemView{
+			{ScheduleItem: queries.ScheduleItem{Zone: ""}},
+			{ScheduleItem: queries.ScheduleItem{Zone: ""}},
 		}
 		groups := groupByZone(items)
 		if len(groups) != 1 {
@@ -224,11 +224,11 @@ func TestGroupByZone(t *testing.T) {
 	})
 
 	t.Run("items with zones are grouped in first-appearance order", func(t *testing.T) {
-		items := []queries.ScheduleItem{
-			{Zone: "", Title: "Misc"},
-			{Zone: "Kitchen", Title: "Hood"},
-			{Zone: "Kitchen", Title: "Range"},
-			{Zone: "Primary Bath", Title: "Tub"},
+		items := []scheduleItemView{
+			{ScheduleItem: queries.ScheduleItem{Zone: ""}},
+			{ScheduleItem: queries.ScheduleItem{Zone: "Kitchen"}},
+			{ScheduleItem: queries.ScheduleItem{Zone: "Kitchen"}},
+			{ScheduleItem: queries.ScheduleItem{Zone: "Primary Bath"}},
 		}
 		groups := groupByZone(items)
 		if len(groups) != 3 {

@@ -10,29 +10,37 @@ import (
 )
 
 const createSchedule = `-- name: CreateSchedule :one
-insert into schedules (project_id, name, notes, position)
-values ($1, $2, $3, $4)
-returning id, project_id, name, notes, position, created_at, updated_at
+insert into schedules (project_id, name, kind, notes, position)
+values ($1, $2, $3, $4, $5)
+returning id, project_id, name, position, created_at, updated_at, notes, kind
 `
 
 type CreateScheduleParams struct {
 	ProjectID string `json:"project_id"`
 	Name      string `json:"name"`
+	Kind      string `json:"kind"`
 	Notes     string `json:"notes"`
 	Position  int32  `json:"position"`
 }
 
 func (q *Queries) CreateSchedule(ctx context.Context, arg CreateScheduleParams) (Schedule, error) {
-	row := q.db.QueryRowContext(ctx, createSchedule, arg.ProjectID, arg.Name, arg.Notes, arg.Position)
+	row := q.db.QueryRowContext(ctx, createSchedule,
+		arg.ProjectID,
+		arg.Name,
+		arg.Kind,
+		arg.Notes,
+		arg.Position,
+	)
 	var i Schedule
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
 		&i.Name,
-		&i.Notes,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Notes,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -48,7 +56,7 @@ func (q *Queries) DeleteSchedule(ctx context.Context, id string) error {
 }
 
 const getSchedule = `-- name: GetSchedule :one
-select id, project_id, name, notes, position, created_at, updated_at
+select id, project_id, name, position, created_at, updated_at, notes, kind
 from schedules
 where id = $1
 `
@@ -60,16 +68,17 @@ func (q *Queries) GetSchedule(ctx context.Context, id string) (Schedule, error) 
 		&i.ID,
 		&i.ProjectID,
 		&i.Name,
-		&i.Notes,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Notes,
+		&i.Kind,
 	)
 	return i, err
 }
 
 const listSchedulesByProject = `-- name: ListSchedulesByProject :many
-select id, project_id, name, notes, position, created_at, updated_at
+select id, project_id, name, position, created_at, updated_at, notes, kind
 from schedules
 where project_id = $1
 order by position asc, created_at asc
@@ -88,10 +97,11 @@ func (q *Queries) ListSchedulesByProject(ctx context.Context, projectID string) 
 			&i.ID,
 			&i.ProjectID,
 			&i.Name,
-			&i.Notes,
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Notes,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -108,32 +118,41 @@ func (q *Queries) ListSchedulesByProject(ctx context.Context, projectID string) 
 
 const updateSchedule = `-- name: UpdateSchedule :one
 update schedules
-set name = $2,
-    notes = $3,
-    position = $4,
+set name       = $2,
+    kind       = $3,
+    notes      = $4,
+    position   = $5,
     updated_at = now()
 where id = $1
-returning id, project_id, name, notes, position, created_at, updated_at
+returning id, project_id, name, position, created_at, updated_at, notes, kind
 `
 
 type UpdateScheduleParams struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
+	Kind     string `json:"kind"`
 	Notes    string `json:"notes"`
 	Position int32  `json:"position"`
 }
 
 func (q *Queries) UpdateSchedule(ctx context.Context, arg UpdateScheduleParams) (Schedule, error) {
-	row := q.db.QueryRowContext(ctx, updateSchedule, arg.ID, arg.Name, arg.Notes, arg.Position)
+	row := q.db.QueryRowContext(ctx, updateSchedule,
+		arg.ID,
+		arg.Name,
+		arg.Kind,
+		arg.Notes,
+		arg.Position,
+	)
 	var i Schedule
 	err := row.Scan(
 		&i.ID,
 		&i.ProjectID,
 		&i.Name,
-		&i.Notes,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Notes,
+		&i.Kind,
 	)
 	return i, err
 }

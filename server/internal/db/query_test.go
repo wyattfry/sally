@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -55,21 +56,24 @@ func TestProjectScheduleItemQueries(t *testing.T) {
 		t.Fatalf("create schedule: %v", err)
 	}
 
+	itemData, _ := json.Marshal(map[string]string{
+		"code":               "B-01",
+		"title":              "Wall Faucet",
+		"description":        "Wall-mounted faucet with rough valve.",
+		"manufacturer":       "Example Co.",
+		"model_number":       "WF-200",
+		"finish":             "Polished Chrome",
+		"finish_model_number": "WF-200-PC",
+		"notes":              "Verify rough-in.",
+	})
 	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
-		ScheduleID:        schedule.ID,
-		Code:              "B-01",
-		Title:             "Wall Faucet",
-		Description:       "Wall-mounted faucet with rough valve.",
-		Manufacturer:      "Example Co.",
-		ModelNumber:       "WF-200",
-		Finish:            "Polished Chrome",
-		FinishModelNumber: "WF-200-PC",
-		Notes:             "Verify rough-in.",
-		SourceUrl:         "https://example.com/products/wf-200",
-		SourceTitle:       "Example Co. WF-200 Wall Faucet",
-		SourceImageUrl:    "https://example.com/faucet.jpg",
-		SourcePdfLinks:    []string{"https://example.com/spec-sheet.pdf"},
-		Position:          1,
+		ScheduleID:     schedule.ID,
+		Data:           itemData,
+		SourceUrl:      "https://example.com/products/wf-200",
+		SourceTitle:    "Example Co. WF-200 Wall Faucet",
+		SourceImageUrl: "https://example.com/faucet.jpg",
+		SourcePdfLinks: []string{"https://example.com/spec-sheet.pdf"},
+		Position:       1,
 	})
 	if err != nil {
 		t.Fatalf("create item: %v", err)
@@ -141,7 +145,7 @@ func TestProjectUpdatedAtBumpsOnChildChanges(t *testing.T) {
 	time.Sleep(time.Millisecond)
 	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
 		ScheduleID:     schedule.ID,
-		Title:          "Wall Faucet",
+		Data:           json.RawMessage(`{"title":"Wall Faucet"}`),
 		SourcePdfLinks: []string{},
 	})
 	if err != nil {

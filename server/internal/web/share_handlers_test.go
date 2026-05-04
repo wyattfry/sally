@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -91,26 +92,30 @@ func TestProjectShareLinkRendersPublicProject(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Bath",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
 		t.Fatalf("create schedule: %v", err)
 	}
+	if err := seedColumns(context.Background(), q, schedule.ID, "general"); err != nil {
+		t.Fatalf("seed columns: %v", err)
+	}
+	itemData, _ := json.Marshal(map[string]string{
+		"code":         "B-01",
+		"title":        "Wall Faucet",
+		"description":  "Wall-mounted faucet.",
+		"manufacturer": "Example Co.",
+		"model_number": "WF-200",
+		"finish":       "Polished Chrome",
+		"notes":        "Verify rough-in.",
+	})
 	_, err = q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
-		ScheduleID:        schedule.ID,
-		Code:              "B-01",
-		Title:             "Wall Faucet",
-		Description:       "Wall-mounted faucet.",
-		Manufacturer:      "Example Co.",
-		ModelNumber:       "WF-200",
-		Finish:            "Polished Chrome",
-		FinishModelNumber: "",
-		Notes:             "Verify rough-in.",
-		SourceUrl:         "https://example.com/products/wf-200",
-		SourceTitle:       "",
-		SourceImageUrl:    "",
-		SourcePdfLinks:    []string{},
-		Position:          1,
+		ScheduleID:     schedule.ID,
+		Data:           itemData,
+		SourceUrl:      "https://example.com/products/wf-200",
+		SourcePdfLinks: []string{},
+		Position:       1,
 	})
 	if err != nil {
 		t.Fatalf("create item: %v", err)

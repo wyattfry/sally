@@ -6,6 +6,7 @@ package generated
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 )
 
@@ -14,53 +15,57 @@ type Project struct {
 	OwnerUserID  string    `json:"owner_user_id"`
 	Name         string    `json:"name"`
 	Address      string    `json:"address"`
-	Description  string    `json:"description"`
-	ThumbnailUrl string    `json:"thumbnail_url"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+	Description  string    `json:"description"`
+	ThumbnailUrl string    `json:"thumbnail_url"`
 }
 
 type ProjectShareLink struct {
 	ID           string       `json:"id"`
 	ProjectID    string       `json:"project_id"`
 	TokenHash    string       `json:"token_hash"`
-	Token        string       `json:"token"`
 	Label        string       `json:"label"`
 	Active       bool         `json:"active"`
 	CreatedAt    time.Time    `json:"created_at"`
 	UpdatedAt    time.Time    `json:"updated_at"`
 	LastViewedAt sql.NullTime `json:"last_viewed_at"`
+	Token        string       `json:"token"`
 }
 
 type Schedule struct {
 	ID        string    `json:"id"`
 	ProjectID string    `json:"project_id"`
 	Name      string    `json:"name"`
-	Notes     string    `json:"notes"`
 	Position  int32     `json:"position"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Notes     string    `json:"notes"`
+	Kind      string    `json:"kind"`
+}
+
+type ScheduleColumn struct {
+	ID         string    `json:"id"`
+	ScheduleID string    `json:"schedule_id"`
+	Key        string    `json:"key"`
+	Label      string    `json:"label"`
+	Kind       string    `json:"kind"`
+	Position   int32     `json:"position"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type ScheduleItem struct {
-	ID                string    `json:"id"`
-	ScheduleID        string    `json:"schedule_id"`
-	Code              string    `json:"code"`
-	Title             string    `json:"title"`
-	Description       string    `json:"description"`
-	Manufacturer      string    `json:"manufacturer"`
-	ModelNumber       string    `json:"model_number"`
-	Finish            string    `json:"finish"`
-	FinishModelNumber string    `json:"finish_model_number"`
-	Notes             string    `json:"notes"`
-	Zone              string    `json:"zone"`
-	SourceUrl         string    `json:"source_url"`
-	SourceTitle       string    `json:"source_title"`
-	SourceImageUrl    string    `json:"source_image_url"`
-	SourcePdfLinks    []string  `json:"source_pdf_links"`
-	Position          int32     `json:"position"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID             string          `json:"id"`
+	ScheduleID     string          `json:"schedule_id"`
+	SourceUrl      string          `json:"source_url"`
+	SourceTitle    string          `json:"source_title"`
+	SourceImageUrl string          `json:"source_image_url"`
+	SourcePdfLinks []string        `json:"source_pdf_links"`
+	Position       int32           `json:"position"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
+	Zone           string          `json:"zone"`
+	Data           json.RawMessage `json:"data"`
 }
 
 type User struct {

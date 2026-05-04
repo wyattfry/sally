@@ -12,3 +12,5 @@ sql:
         overrides:
           - db_type: "uuid"
             go_type: "string"
+          - db_type: "jsonb"
+            go_type: "encoding/json.RawMessage"

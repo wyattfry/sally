@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -52,10 +53,14 @@ func TestItemPagesCreateAndListItem(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Bath",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
 		t.Fatalf("create schedule: %v", err)
+	}
+	if err := seedColumns(context.Background(), q, schedule.ID, "general"); err != nil {
+		t.Fatalf("seed columns: %v", err)
 	}
 
 	router := http.NewServeMux()
@@ -66,13 +71,13 @@ func TestItemPagesCreateAndListItem(t *testing.T) {
 	})
 
 	form := url.Values{}
-	form.Set("code", "B-01")
-	form.Set("title", "Wall Faucet")
-	form.Set("description", "Wall-mounted faucet with rough valve.")
-	form.Set("manufacturer", "Example Co.")
-	form.Set("model_number", "WF-200")
-	form.Set("finish", "Polished Chrome")
-	form.Set("notes", "Verify rough-in.")
+	form.Set("col_code", "B-01")
+	form.Set("col_title", "Wall Faucet")
+	form.Set("col_description", "Wall-mounted faucet with rough valve.")
+	form.Set("col_manufacturer", "Example Co.")
+	form.Set("col_model_number", "WF-200")
+	form.Set("col_finish", "Polished Chrome")
+	form.Set("col_notes", "Verify rough-in.")
 	form.Set("source_url", "https://example.com/products/wf-200")
 
 	path := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items"
@@ -143,26 +148,27 @@ func TestEditItemPageShowsFullBreadcrumb(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Bath",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
 		t.Fatalf("create schedule: %v", err)
 	}
+	data, _ := json.Marshal(map[string]string{
+		"code":         "B-01",
+		"title":        "Wall Faucet",
+		"manufacturer": "Example Co.",
+		"model_number": "WF-200",
+		"finish":       "Chrome",
+	})
 	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
-		ScheduleID:        schedule.ID,
-		Code:              "B-01",
-		Title:             "Wall Faucet",
-		Description:       "",
-		Manufacturer:      "Example Co.",
-		ModelNumber:       "WF-200",
-		Finish:            "Chrome",
-		FinishModelNumber: "",
-		Notes:             "",
-		SourceUrl:         "",
-		SourceTitle:       "",
-		SourceImageUrl:    "",
-		SourcePdfLinks:    []string{},
-		Position:          1,
+		ScheduleID:     schedule.ID,
+		Data:           data,
+		SourceUrl:      "",
+		SourceTitle:    "",
+		SourceImageUrl: "",
+		SourcePdfLinks: []string{},
+		Position:       1,
 	})
 	if err != nil {
 		t.Fatalf("create item: %v", err)
@@ -230,26 +236,31 @@ func TestItemPagesUpdateAndDeleteItem(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Bath",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
 		t.Fatalf("create schedule: %v", err)
 	}
+	if err := seedColumns(context.Background(), q, schedule.ID, "general"); err != nil {
+		t.Fatalf("seed columns: %v", err)
+	}
+	initialData, _ := json.Marshal(map[string]string{
+		"code":         "B-01",
+		"title":        "Wall Faucet",
+		"description":  "Wall-mounted faucet.",
+		"manufacturer": "Example Co.",
+		"model_number": "WF-200",
+		"finish":       "Chrome",
+	})
 	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
-		ScheduleID:        schedule.ID,
-		Code:              "B-01",
-		Title:             "Wall Faucet",
-		Description:       "Wall-mounted faucet.",
-		Manufacturer:      "Example Co.",
-		ModelNumber:       "WF-200",
-		Finish:            "Chrome",
-		FinishModelNumber: "",
-		Notes:             "",
-		SourceUrl:         "",
-		SourceTitle:       "",
-		SourceImageUrl:    "",
-		SourcePdfLinks:    []string{},
-		Position:          1,
+		ScheduleID:     schedule.ID,
+		Data:           initialData,
+		SourceUrl:      "",
+		SourceTitle:    "",
+		SourceImageUrl: "",
+		SourcePdfLinks: []string{},
+		Position:       1,
 	})
 	if err != nil {
 		t.Fatalf("create item: %v", err)
@@ -263,13 +274,13 @@ func TestItemPagesUpdateAndDeleteItem(t *testing.T) {
 	})
 
 	form := url.Values{}
-	form.Set("code", "B-02")
-	form.Set("title", "Updated Faucet")
-	form.Set("description", "Updated description.")
-	form.Set("manufacturer", "Updated Co.")
-	form.Set("model_number", "WF-201")
-	form.Set("finish", "Brushed Nickel")
-	form.Set("notes", "Updated notes.")
+	form.Set("col_code", "B-02")
+	form.Set("col_title", "Updated Faucet")
+	form.Set("col_description", "Updated description.")
+	form.Set("col_manufacturer", "Updated Co.")
+	form.Set("col_model_number", "WF-201")
+	form.Set("col_finish", "Brushed Nickel")
+	form.Set("col_notes", "Updated notes.")
 	form.Set("position", "2")
 
 	editPath := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items/" + item.ID + "/edit"
@@ -339,10 +350,14 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Appliance Schedule",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
 		t.Fatalf("create schedule: %v", err)
+	}
+	if err := seedColumns(context.Background(), q, schedule.ID, "appliance"); err != nil {
+		t.Fatalf("seed columns: %v", err)
 	}
 
 	router := http.NewServeMux()
@@ -354,9 +369,9 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 
 	// Create an item via the web form with a zone.
 	form := url.Values{}
-	form.Set("title", "Range Hood")
+	form.Set("col_description", "Range Hood")
 	form.Set("zone", "Kitchen")
-	form.Set("manufacturer", "Example Co.")
+	form.Set("col_product_info", "Example Co.")
 
 	path := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items"
 	createReq := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
@@ -376,7 +391,7 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 	}
 	body := showResp.Body.String()
 	if !strings.Contains(body, "Range Hood") {
-		t.Fatalf("expected item title in project page, got:\n%s", body)
+		t.Fatalf("expected item description in project page, got:\n%s", body)
 	}
 	if !strings.Contains(body, "Kitchen") {
 		t.Fatalf("expected zone header on project page, got:\n%s", body)
@@ -420,14 +435,19 @@ func TestEditItemPreservesSourceImageUrl(t *testing.T) {
 	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
 		ProjectID: project.ID,
 		Name:      "Bath",
+		Kind:      "items",
 		Position:  1,
 	})
 	if err != nil {
 		t.Fatalf("create schedule: %v", err)
 	}
+	if err := seedColumns(context.Background(), q, schedule.ID, "general"); err != nil {
+		t.Fatalf("seed columns: %v", err)
+	}
+	itemData, _ := json.Marshal(map[string]string{"title": "Wall Faucet"})
 	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
 		ScheduleID:     schedule.ID,
-		Title:          "Wall Faucet",
+		Data:           itemData,
 		SourceImageUrl: "https://example.com/faucet.jpg",
 		SourceTitle:    "Wall Faucet Product Page",
 		SourcePdfLinks: []string{"https://example.com/spec.pdf"},
@@ -449,7 +469,7 @@ func TestEditItemPreservesSourceImageUrl(t *testing.T) {
 
 	// Simulate what the edit form sends: hidden fields for source_image_url etc.
 	form := url.Values{}
-	form.Set("title", "Wall Faucet")
+	form.Set("col_title", "Wall Faucet")
 	form.Set("zone", "Primary Bath")
 	form.Set("source_image_url", item.SourceImageUrl)
 	form.Set("source_title", item.SourceTitle)

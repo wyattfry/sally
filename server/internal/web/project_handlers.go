@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -12,6 +13,7 @@ import (
 
 	"golang.org/x/oauth2"
 	queries "sally/server/internal/db/generated"
+	"sally/server/internal/presets"
 	"sally/server/internal/share"
 )
 
@@ -264,6 +266,11 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	kind := strings.TrimSpace(r.Form.Get("kind"))
+	if kind == "" {
+		kind = "items"
+	}
+
 	existingSchedules, err := a.queries.ListSchedulesByProject(r.Context(), projectID)
 	if err != nil {
 		http.Error(w, "could not load schedules", http.StatusInternalServerError)
@@ -273,12 +280,21 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 	schedule, err := a.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
 		ProjectID: projectID,
 		Name:      name,
+		Kind:      kind,
 		Notes:     strings.TrimSpace(r.Form.Get("notes")),
 		Position:  int32(len(existingSchedules) + 1),
 	})
 	if err != nil {
 		http.Error(w, "could not create schedule", http.StatusInternalServerError)
 		return
+	}
+
+	if kind == "items" {
+		preset := strings.TrimSpace(r.Form.Get("preset"))
+		if err := seedColumns(r.Context(), a.queries, schedule.ID, preset); err != nil {
+			http.Error(w, "could not seed columns", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
@@ -326,7 +342,8 @@ func (a app) editSchedule(w http.ResponseWriter, r *http.Request) {
 func (a app) updateSchedule(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
 	scheduleID := r.PathValue("scheduleID")
-	if _, ok := a.loadProjectSchedule(w, r, projectID, scheduleID); !ok {
+	loaded, ok := a.loadProjectSchedule(w, r, projectID, scheduleID)
+	if !ok {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -340,9 +357,15 @@ func (a app) updateSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	kind := strings.TrimSpace(r.Form.Get("kind"))
+	if kind == "" {
+		kind = loaded.schedule.Kind
+	}
+
 	_, err := a.queries.UpdateSchedule(r.Context(), queries.UpdateScheduleParams{
 		ID:       scheduleID,
 		Name:     name,
+		Kind:     kind,
 		Notes:    strings.TrimSpace(r.Form.Get("notes")),
 		Position: parseInt32(r.Form.Get("position"), 1),
 	})
@@ -378,9 +401,16 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title := strings.TrimSpace(r.Form.Get("title"))
-	if title == "" {
-		http.Error(w, "item title is required", http.StatusBadRequest)
+	columns, err := a.queries.ListScheduleColumns(r.Context(), scheduleID)
+	if err != nil {
+		http.Error(w, "could not load columns", http.StatusInternalServerError)
+		return
+	}
+
+	dataMap := buildDataMap(r, columns)
+	dataJSON, err := json.Marshal(dataMap)
+	if err != nil {
+		http.Error(w, "could not encode item data", http.StatusInternalServerError)
 		return
 	}
 
@@ -391,21 +421,14 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
-		ScheduleID:        scheduleID,
-		Code:              strings.TrimSpace(r.Form.Get("code")),
-		Title:             title,
-		Description:       strings.TrimSpace(r.Form.Get("description")),
-		Manufacturer:      strings.TrimSpace(r.Form.Get("manufacturer")),
-		ModelNumber:       strings.TrimSpace(r.Form.Get("model_number")),
-		Finish:            strings.TrimSpace(r.Form.Get("finish")),
-		FinishModelNumber: strings.TrimSpace(r.Form.Get("finish_model_number")),
-		Notes:             strings.TrimSpace(r.Form.Get("notes")),
-		Zone:              strings.TrimSpace(r.Form.Get("zone")),
-		SourceUrl:         strings.TrimSpace(r.Form.Get("source_url")),
-		SourceTitle:       strings.TrimSpace(r.Form.Get("source_title")),
-		SourceImageUrl:    strings.TrimSpace(r.Form.Get("source_image_url")),
-		SourcePdfLinks:    splitLines(r.Form.Get("source_pdf_links")),
-		Position:          int32(len(existingItems) + 1),
+		ScheduleID:     scheduleID,
+		Data:           dataJSON,
+		Zone:           strings.TrimSpace(r.Form.Get("zone")),
+		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
+		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
+		SourceImageUrl: strings.TrimSpace(r.Form.Get("source_image_url")),
+		SourcePdfLinks: splitLines(r.Form.Get("source_pdf_links")),
+		Position:       int32(len(existingItems) + 1),
 	})
 	if err != nil {
 		http.Error(w, "could not create item", http.StatusInternalServerError)
@@ -421,12 +444,19 @@ func (a app) editScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	columns, err := a.queries.ListScheduleColumns(r.Context(), loaded.schedule.ID)
+	if err != nil {
+		http.Error(w, "could not load columns", http.StatusInternalServerError)
+		return
+	}
+
 	render(w, itemEditPage{
 		Kind:     "edit-item",
-		Title:    "Edit " + item.Title,
+		Title:    "Edit " + itemDisplayTitle(item),
 		Project:  loaded.project,
 		Schedule: loaded.schedule,
-		Item:     item,
+		Item:     toItemView(item),
+		Columns:  columns,
 	})
 }
 
@@ -440,28 +470,28 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title := strings.TrimSpace(r.Form.Get("title"))
-	if title == "" {
-		http.Error(w, "item title is required", http.StatusBadRequest)
+	columns, err := a.queries.ListScheduleColumns(r.Context(), loaded.schedule.ID)
+	if err != nil {
+		http.Error(w, "could not load columns", http.StatusInternalServerError)
 		return
 	}
 
-	_, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
-		ID:                item.ID,
-		Code:              strings.TrimSpace(r.Form.Get("code")),
-		Title:             title,
-		Description:       strings.TrimSpace(r.Form.Get("description")),
-		Manufacturer:      strings.TrimSpace(r.Form.Get("manufacturer")),
-		ModelNumber:       strings.TrimSpace(r.Form.Get("model_number")),
-		Finish:            strings.TrimSpace(r.Form.Get("finish")),
-		FinishModelNumber: strings.TrimSpace(r.Form.Get("finish_model_number")),
-		Notes:             strings.TrimSpace(r.Form.Get("notes")),
-		Zone:              strings.TrimSpace(r.Form.Get("zone")),
-		SourceUrl:         strings.TrimSpace(r.Form.Get("source_url")),
-		SourceTitle:       strings.TrimSpace(r.Form.Get("source_title")),
-		SourceImageUrl:    strings.TrimSpace(r.Form.Get("source_image_url")),
-		SourcePdfLinks:    splitLines(r.Form.Get("source_pdf_links")),
-		Position:          parseInt32(r.Form.Get("position"), item.Position),
+	dataMap := buildDataMap(r, columns)
+	dataJSON, err := json.Marshal(dataMap)
+	if err != nil {
+		http.Error(w, "could not encode item data", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
+		ID:             item.ID,
+		Data:           dataJSON,
+		Zone:           strings.TrimSpace(r.Form.Get("zone")),
+		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
+		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
+		SourceImageUrl: strings.TrimSpace(r.Form.Get("source_image_url")),
+		SourcePdfLinks: splitLines(r.Form.Get("source_pdf_links")),
+		Position:       parseInt32(r.Form.Get("position"), item.Position),
 	})
 	if err != nil {
 		http.Error(w, "could not update item", http.StatusInternalServerError)
@@ -609,6 +639,8 @@ func (a app) showPublicShare(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+
 type projectSchedule struct {
 	project  queries.Project
 	schedule queries.Schedule
@@ -693,9 +725,119 @@ func (a app) requireUser(w http.ResponseWriter, r *http.Request) (queries.User, 
 	return user, true
 }
 
+// seedColumns inserts preset column definitions for a newly created schedule.
+func seedColumns(ctx context.Context, q *queries.Queries, scheduleID, presetName string) error {
+	for _, col := range presets.Get(presetName) {
+		_, err := q.CreateScheduleColumn(ctx, queries.CreateScheduleColumnParams{
+			ScheduleID: scheduleID,
+			Key:        col.Key,
+			Label:      col.Label,
+			Kind:       "text",
+			Position:   col.Position,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// buildDataMap reads col_<key> form fields for each column and returns a data map.
+func buildDataMap(r *http.Request, columns []queries.ScheduleColumn) map[string]string {
+	data := make(map[string]string, len(columns))
+	for _, col := range columns {
+		if v := strings.TrimSpace(r.Form.Get("col_" + col.Key)); v != "" {
+			data[col.Key] = v
+		}
+	}
+	return data
+}
+
+// scheduleItemView wraps ScheduleItem with a pre-parsed data map for templates.
+type scheduleItemView struct {
+	queries.ScheduleItem
+	DataMap map[string]string
+}
+
+func toItemView(item queries.ScheduleItem) scheduleItemView {
+	var dm map[string]string
+	_ = json.Unmarshal(item.Data, &dm)
+	if dm == nil {
+		dm = map[string]string{}
+	}
+	return scheduleItemView{ScheduleItem: item, DataMap: dm}
+}
+
+func itemDisplayTitle(item queries.ScheduleItem) string {
+	var dm map[string]string
+	_ = json.Unmarshal(item.Data, &dm)
+	if t := dm["title"]; t != "" {
+		return t
+	}
+	if t := dm["description"]; t != "" {
+		return t
+	}
+	return "item"
+}
+
+type zoneGroup struct {
+	Zone  string
+	Items []scheduleItemView
+}
+
+type scheduleWithItems struct {
+	Schedule queries.Schedule
+	Columns  []queries.ScheduleColumn
+	Groups   []zoneGroup
+}
+
+func groupByZone(items []scheduleItemView) []zoneGroup {
+	seen := map[string]int{}
+	var groups []zoneGroup
+	for _, item := range items {
+		if idx, ok := seen[item.Zone]; ok {
+			groups[idx].Items = append(groups[idx].Items, item)
+		} else {
+			seen[item.Zone] = len(groups)
+			groups = append(groups, zoneGroup{Zone: item.Zone, Items: []scheduleItemView{item}})
+		}
+	}
+	return groups
+}
+
+func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]scheduleWithItems, error) {
+	schedules, err := a.queries.ListSchedulesByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]scheduleWithItems, 0, len(schedules))
+	for _, schedule := range schedules {
+		cols, err := a.queries.ListScheduleColumns(ctx, schedule.ID)
+		if err != nil {
+			return nil, err
+		}
+		rawItems, err := a.queries.ListScheduleItems(ctx, schedule.ID)
+		if err != nil {
+			return nil, err
+		}
+		views := make([]scheduleItemView, len(rawItems))
+		for i, it := range rawItems {
+			views[i] = toItemView(it)
+		}
+		result = append(result, scheduleWithItems{
+			Schedule: schedule,
+			Columns:  cols,
+			Groups:   groupByZone(views),
+		})
+	}
+	return result, nil
+}
+
+// ── page data types ───────────────────────────────────────────────────────────
+
 type projectListItem struct {
 	Project     queries.Project
-	ThumbImages []string // up to 4, padded with empty strings for 2×2 grid
+	ThumbImages []string
 }
 
 type projectsPage struct {
@@ -735,7 +877,8 @@ type itemEditPage struct {
 	Title    string
 	Project  queries.Project
 	Schedule queries.Schedule
-	Item     queries.ScheduleItem
+	Item     scheduleItemView
+	Columns  []queries.ScheduleColumn
 }
 
 type shareManagePage struct {
@@ -758,45 +901,7 @@ type publicSharePage struct {
 	Schedules []scheduleWithItems
 }
 
-type zoneGroup struct {
-	Zone  string
-	Items []queries.ScheduleItem
-}
-
-type scheduleWithItems struct {
-	Schedule queries.Schedule
-	Groups   []zoneGroup
-}
-
-func groupByZone(items []queries.ScheduleItem) []zoneGroup {
-	seen := map[string]int{}
-	var groups []zoneGroup
-	for _, item := range items {
-		if idx, ok := seen[item.Zone]; ok {
-			groups[idx].Items = append(groups[idx].Items, item)
-		} else {
-			seen[item.Zone] = len(groups)
-			groups = append(groups, zoneGroup{Zone: item.Zone, Items: []queries.ScheduleItem{item}})
-		}
-	}
-	return groups
-}
-
-func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]scheduleWithItems, error) {
-	schedules, err := a.queries.ListSchedulesByProject(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]scheduleWithItems, 0, len(schedules))
-	for _, schedule := range schedules {
-		items, err := a.queries.ListScheduleItems(ctx, schedule.ID)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, scheduleWithItems{Schedule: schedule, Groups: groupByZone(items)})
-	}
-	return result, nil
-}
+// ── utilities ─────────────────────────────────────────────────────────────────
 
 func render(w http.ResponseWriter, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -842,7 +947,11 @@ func parseInt32(value string, fallback int32) int32 {
 	return int32(parsed)
 }
 
-var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
+// ── template ──────────────────────────────────────────────────────────────────
+
+var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
+	"add": func(a, b int) int { return a + b },
+}).Parse(`<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -910,6 +1019,19 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <form method="post" action="/projects/{{.Project.ID}}/schedules">
       <label>New Schedule <input name="name" required></label>
       <label>Notes <textarea name="notes" rows="2"></textarea></label>
+      <label>Type
+        <select name="preset">
+          <option value="general">General</option>
+          <option value="appliance">Appliance</option>
+          <option value="door">Door</option>
+          <option value="door_hardware">Door Hardware</option>
+          <option value="electrical_fixture">Electrical Fixture</option>
+          <option value="insulation">Insulation</option>
+          <option value="paint">Paint</option>
+          <option value="specialties">Specialties</option>
+          <option value="window">Window</option>
+        </select>
+      </label>
       <button type="submit">Add Schedule</button>
     </form>
     {{if .Schedules}}
@@ -923,31 +1045,45 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
         </nav>
         <div class="schedule-content">
           {{range .Schedules}}
-            {{$s := .Schedule}}
-            <details class="schedule-section" id="schedule-{{$s.ID}}" open>
+            {{$sw := .}}
+            <details class="schedule-section" id="schedule-{{$sw.Schedule.ID}}" open>
               <summary>
-                <h2>{{$s.Name}}</h2>
+                <h2>{{$sw.Schedule.Name}}</h2>
                 <span class="summary-toggle"></span>
               </summary>
               <div class="schedule-actions">
-                <a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/edit">Edit Schedule</a>
+                <a href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/edit">Edit Schedule</a>
               </div>
-              {{if $s.Notes}}<p class="schedule-notes">{{$s.Notes}}</p>{{end}}
-              {{if .Groups}}
+              {{if $sw.Schedule.Notes}}<p class="schedule-notes">{{$sw.Schedule.Notes}}</p>{{end}}
+              {{if eq $sw.Schedule.Kind "note"}}
+                <div class="schedule-note-content">{{$sw.Schedule.Notes}}</div>
+              {{else if $sw.Groups}}
                 <table>
-                  <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th></th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th></th>
+                      {{range $sw.Columns}}<th>{{.Label}}</th>{{end}}
+                      <th></th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {{range .Groups}}
-                      {{if .Zone}}<tr class="zone-row"><td colspan="7">{{.Zone}}</td></tr>{{end}}
-                      {{range .Items}}
+                    {{range $sw.Groups}}
+                      {{$g := .}}
+                      {{if $g.Zone}}<tr class="zone-row"><td colspan="{{len $sw.Columns | add 2}}">{{$g.Zone}}</td></tr>{{end}}
+                      {{range $g.Items}}
+                        {{$item := .}}
                         <tr>
-                          <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
-                          <td>{{.Code}}</td>
-                          <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
-                          <td>{{.Manufacturer}} {{.ModelNumber}}</td>
-                          <td>{{.Finish}}</td>
-                          <td>{{.Notes}}</td>
-                          <td><a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{.ID}}/edit">Edit</a></td>
+                          <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
+                          {{range $sw.Columns}}
+                            <td>
+                              {{if and (eq .Key "title") $item.SourceUrl}}
+                                <a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>
+                              {{else}}
+                                {{index $item.DataMap .Key}}
+                              {{end}}
+                            </td>
+                          {{end}}
+                          <td><a href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/edit">Edit</a></td>
                         </tr>
                       {{end}}
                     {{end}}
@@ -981,6 +1117,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <h1>Edit Schedule</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
       <input type="hidden" name="position" value="{{.Schedule.Position}}">
+      <input type="hidden" name="kind" value="{{.Schedule.Kind}}">
       <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
       <label>Notes <textarea name="notes" rows="3">{{.Schedule.Notes}}</textarea></label>
       <button type="submit">Update Schedule</button>
@@ -998,14 +1135,9 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <textarea name="source_pdf_links" style="display:none">{{range .Item.SourcePdfLinks}}{{.}}
 {{end}}</textarea>
       <label>Zone <input name="zone" value="{{.Item.Zone}}" placeholder="e.g. Kitchen, Primary Bath"></label>
-      <label>Code <input name="code" value="{{.Item.Code}}"></label>
-      <label>Title <input name="title" value="{{.Item.Title}}" required></label>
-      <label>Description <input name="description" value="{{.Item.Description}}"></label>
-      <label>Manufacturer <input name="manufacturer" value="{{.Item.Manufacturer}}"></label>
-      <label>Model Number <input name="model_number" value="{{.Item.ModelNumber}}"></label>
-      <label>Finish <input name="finish" value="{{.Item.Finish}}"></label>
-      <label>Finish Model Number <input name="finish_model_number" value="{{.Item.FinishModelNumber}}"></label>
-      <label>Notes <input name="notes" value="{{.Item.Notes}}"></label>
+      {{range .Columns}}
+        <label>{{.Label}} <input name="col_{{.Key}}" value="{{index $.Item.DataMap .Key}}"></label>
+      {{end}}
       <label>Source URL <input name="source_url" value="{{.Item.SourceUrl}}"></label>
       <button type="submit">Update Item</button>
     </form>
@@ -1034,23 +1166,37 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <h1>{{.Project.Name}}</h1>
     {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
     {{range .Schedules}}
-      <h2>{{.Schedule.Name}}</h2>
-      {{if .Schedule.Notes}}<p class="schedule-notes">{{.Schedule.Notes}}</p>{{end}}
-      {{if .Groups}}
+      {{$sw := .}}
+      <h2>{{$sw.Schedule.Name}}</h2>
+      {{if eq $sw.Schedule.Kind "note"}}
+        <div class="schedule-note-content">{{$sw.Schedule.Notes}}</div>
+      {{else if $sw.Groups}}
         <table>
-          <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th>Source</th></tr></thead>
+          <thead>
+            <tr>
+              <th></th>
+              {{range $sw.Columns}}<th>{{.Label}}</th>{{end}}
+              <th>Source</th>
+            </tr>
+          </thead>
           <tbody>
-            {{range .Groups}}
-              {{if .Zone}}<tr class="zone-row"><td colspan="7">{{.Zone}}</td></tr>{{end}}
-              {{range .Items}}
+            {{range $sw.Groups}}
+              {{$g := .}}
+              {{if $g.Zone}}<tr class="zone-row"><td colspan="{{len $sw.Columns | add 2}}">{{$g.Zone}}</td></tr>{{end}}
+              {{range $g.Items}}
+                {{$item := .}}
                 <tr>
-                  <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
-                  <td>{{.Code}}</td>
-                  <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
-                  <td>{{.Manufacturer}} {{.ModelNumber}}</td>
-                  <td>{{.Finish}}</td>
-                  <td>{{.Notes}}</td>
-                  <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">Product Page</a>{{end}}</td>
+                  <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
+                  {{range $sw.Columns}}
+                    <td>
+                      {{if and (eq .Key "title") $item.SourceUrl}}
+                        <a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>
+                      {{else}}
+                        {{index $item.DataMap .Key}}
+                      {{end}}
+                    </td>
+                  {{end}}
+                  <td>{{if $item.SourceUrl}}<a href="{{$item.SourceUrl}}">Product Page</a>{{end}}</td>
                 </tr>
               {{end}}
             {{end}}

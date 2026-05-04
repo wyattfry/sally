@@ -1,15 +1,15 @@
 -- name: CreateProject :one
 insert into projects (owner_user_id, name, address, description, thumbnail_url)
 values ($1, $2, $3, $4, $5)
-returning id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at;
+returning *;
 
 -- name: GetProject :one
-select id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at
+select *
 from projects
 where id = $1;
 
 -- name: ListProjectsByOwner :many
-select id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at
+select *
 from projects
 where owner_user_id = $1
 order by updated_at desc, created_at desc;
@@ -22,7 +22,7 @@ set name = $2,
     thumbnail_url = $5,
     updated_at = now()
 where id = $1
-returning id, owner_user_id, name, address, description, thumbnail_url, created_at, updated_at;
+returning *;
 
 -- name: DeleteProject :exec
 delete from projects
