@@ -125,6 +125,7 @@ export default function App() {
 
   function handleSpecClick() {
     setPanel({ kind: "thinking", tokenCount: 0 });
+    refreshContext();
     window.setTimeout(async () => {
       const captured = capturePage(document, window.location);
       const knownScheduleNames = [
