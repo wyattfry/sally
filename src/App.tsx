@@ -249,6 +249,34 @@ export default function App() {
     }
   }
 
+  function handleSignIn() {
+    const popup = window.open(
+      getSignInUrl(),
+      "sally-signin",
+      "width=500,height=650,scrollbars=yes,resizable=yes"
+    );
+    if (!popup) return;
+
+    const interval = setInterval(async () => {
+      if (popup.closed) {
+        clearInterval(interval);
+        const ok = await checkAuth();
+        if (ok) {
+          setPanel({ kind: "closed" });
+          refreshContext();
+        }
+        return;
+      }
+      const ok = await checkAuth();
+      if (ok) {
+        clearInterval(interval);
+        popup.close();
+        setPanel({ kind: "closed" });
+        refreshContext();
+      }
+    }, 1500);
+  }
+
   function handleViewItems() {
     if (activeContext?.projectId && activeContext?.scheduleId) {
       window.open(
@@ -285,14 +313,9 @@ export default function App() {
           </div>
           <div className="panel-body">
             <p>Sign in to save items to your Sally projects.</p>
-            <a
-              className="action-button primary"
-              href={getSignInUrl()}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <button className="action-button primary" type="button" onClick={handleSignIn}>
               Sign in with Google
-            </a>
+            </button>
           </div>
           <div className="panel-actions">
             <button className="action-button secondary" type="button" onClick={() => setPanel({ kind: "closed" })}>
