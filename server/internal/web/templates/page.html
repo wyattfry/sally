@@ -10,7 +10,14 @@
 
 </head>
 <body>
-  <header><strong>Sally</strong></header>
+  <header>
+    <strong>Sally</strong>
+    {{if ne .Kind "login"}}
+    <form method="post" action="/logout" style="margin:0">
+      <button type="submit" class="button-ghost">Sign out</button>
+    </form>
+    {{end}}
+  </header>
   <main>
     {{template "content" .}}
   </main>

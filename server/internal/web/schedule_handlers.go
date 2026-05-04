@@ -1,8 +1,6 @@
 package web
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -11,11 +9,7 @@ import (
 
 func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
-	if _, err := a.queries.GetProject(r.Context(), projectID); errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
-		return
-	} else if err != nil {
-		http.Error(w, "could not load project", http.StatusInternalServerError)
+	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -64,28 +58,11 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
-	projectID := r.PathValue("projectID")
-	project, err := a.queries.GetProject(r.Context(), projectID)
-	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+	loaded, ok := a.loadProjectSchedule(w, r, r.PathValue("projectID"), r.PathValue("scheduleID"))
+	if !ok {
 		return
 	}
-	if err != nil {
-		http.Error(w, "could not load project", http.StatusInternalServerError)
-		return
-	}
-
-	schedule, err := a.queries.GetSchedule(r.Context(), r.PathValue("scheduleID"))
-	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		http.Error(w, "could not load schedule", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) editSchedule(w http.ResponseWriter, r *http.Request) {

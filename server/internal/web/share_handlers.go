@@ -11,13 +11,8 @@ import (
 )
 
 func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
-	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
-	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		http.Error(w, "could not load project", http.StatusInternalServerError)
+	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	if !ok {
 		return
 	}
 
@@ -41,13 +36,8 @@ func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
-	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
-	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		http.Error(w, "could not load project", http.StatusInternalServerError)
+	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	if !ok {
 		return
 	}
 
@@ -76,13 +66,8 @@ func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) deactivateProjectShareLinks(w http.ResponseWriter, r *http.Request) {
-	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
-	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		http.Error(w, "could not load project", http.StatusInternalServerError)
+	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	if !ok {
 		return
 	}
 

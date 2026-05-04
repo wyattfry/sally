@@ -9,6 +9,25 @@ header {
   background: #0f2f24;
   color: white;
   padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+header form {
+  margin-left: auto;
+}
+
+.button-ghost {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: transparent;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
 }
 
 main {

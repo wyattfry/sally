@@ -17,14 +17,30 @@ type projectSchedule struct {
 	schedule queries.Schedule
 }
 
-func (a app) loadProjectSchedule(w http.ResponseWriter, r *http.Request, projectID string, scheduleID string) (projectSchedule, bool) {
+func (a app) loadUserProject(w http.ResponseWriter, r *http.Request, projectID string) (queries.User, queries.Project, bool) {
+	user, ok := a.requireUser(w, r)
+	if !ok {
+		return queries.User{}, queries.Project{}, false
+	}
 	project, err := a.queries.GetProject(r.Context(), projectID)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.NotFound(w, r)
-		return projectSchedule{}, false
+		return queries.User{}, queries.Project{}, false
 	}
 	if err != nil {
 		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return queries.User{}, queries.Project{}, false
+	}
+	if a.oauthConfig != nil && project.OwnerUserID != user.ID {
+		http.NotFound(w, r)
+		return queries.User{}, queries.Project{}, false
+	}
+	return user, project, true
+}
+
+func (a app) loadProjectSchedule(w http.ResponseWriter, r *http.Request, projectID string, scheduleID string) (projectSchedule, bool) {
+	_, project, ok := a.loadUserProject(w, r, projectID)
+	if !ok {
 		return projectSchedule{}, false
 	}
 

@@ -140,14 +140,8 @@ func (a app) createProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) showProject(w http.ResponseWriter, r *http.Request) {
-	projectID := r.PathValue("projectID")
-	project, err := a.queries.GetProject(r.Context(), projectID)
-	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		http.Error(w, "could not load project", http.StatusInternalServerError)
+	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	if !ok {
 		return
 	}
 
@@ -180,13 +174,8 @@ outer:
 }
 
 func (a app) editProject(w http.ResponseWriter, r *http.Request) {
-	project, err := a.queries.GetProject(r.Context(), r.PathValue("projectID"))
-	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
-		return
-	}
-	if err != nil {
-		http.Error(w, "could not load project", http.StatusInternalServerError)
+	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	if !ok {
 		return
 	}
 
@@ -199,6 +188,9 @@ func (a app) editProject(w http.ResponseWriter, r *http.Request) {
 
 func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
+	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
+		return
+	}
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
@@ -231,6 +223,9 @@ func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 
 func (a app) deleteProject(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
+	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
+		return
+	}
 	if err := a.queries.DeleteProject(r.Context(), projectID); err != nil {
 		http.Error(w, "could not delete project", http.StatusInternalServerError)
 		return
