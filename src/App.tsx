@@ -9,6 +9,7 @@ import {
   createMothershipProject,
   listMothershipSchedules,
   createMothershipSchedule,
+  listMothershipScheduleColumns,
   saveMothershipScheduleItem
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
@@ -16,7 +17,7 @@ import {
   getActiveContext,
   saveActiveContext
 } from "./lib/storage";
-import type { ActiveContext, Project, Schedule, ScheduleItem } from "./lib/types";
+import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "./lib/types";
 
 type PanelState =
   | { kind: "closed" }
@@ -24,16 +25,6 @@ type PanelState =
   | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string }
   | { kind: "minimized"; draft: ScheduleItem }
   | { kind: "error"; message: string };
-
-const DEFAULT_CATEGORIES = [
-  "Plumbing Fixture",
-  "Lighting",
-  "Appliance",
-  "Hardware",
-  "Finish",
-  "Furniture",
-  "Accessory"
-];
 
 const SUGGESTED_SCHEDULE_NAMES = [
   "Appliance Schedule",
@@ -53,6 +44,7 @@ export default function App() {
   const [panel, setPanel] = useState<PanelState>({ kind: "closed" });
   const [projects, setProjects] = useState<Project[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [columns, setColumns] = useState<ScheduleColumn[]>([]);
   const [activeContext, setActiveContext] = useState<ActiveContext | null>(null);
 
   useEffect(() => {
@@ -94,10 +86,11 @@ export default function App() {
         getActiveContext()
       ]);
       setProjects(fetchedProjects);
-      
+
       const project = fetchedProjects[0];
       if (!project) {
         setSchedules([]);
+        setColumns([]);
         setActiveContext(null);
         return;
       }
@@ -109,9 +102,15 @@ export default function App() {
         : undefined;
       const schedule = restoredSchedule ?? fetchedSchedules[0];
       if (!schedule) {
+        setColumns([]);
         setActiveContext({ projectId: project.id, scheduleId: "" });
         return;
       }
+
+      const [fetchedColumns] = await Promise.all([
+        listMothershipScheduleColumns(schedule.id)
+      ]);
+      setColumns(fetchedColumns);
 
       const context = { projectId: project.id, scheduleId: schedule.id };
       setActiveContext(context);
@@ -119,6 +118,7 @@ export default function App() {
     } catch {
       setProjects([]);
       setSchedules([]);
+      setColumns([]);
       setActiveContext(null);
     }
   }
@@ -135,7 +135,7 @@ export default function App() {
       try {
         const { item, suggestedScheduleName } = await extractScheduleItem({
           capturedPage: captured,
-          knownCategories: DEFAULT_CATEGORIES,
+          knownCategories: [],
           knownScheduleNames,
           onProgress: (tokenCount) => {
             setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
@@ -175,7 +175,7 @@ export default function App() {
       setPanel({ kind: "error", message: "Please select a project and schedule first." });
       return;
     }
-    
+
     try {
       await saveMothershipScheduleItem(activeContext.scheduleId, item);
       setPanel({ kind: "closed" });
@@ -191,6 +191,10 @@ export default function App() {
       const fetchedSchedules = await listMothershipSchedules(projectId);
       setSchedules(fetchedSchedules);
       const schedule = fetchedSchedules[0];
+      const fetchedColumns = schedule
+        ? await listMothershipScheduleColumns(schedule.id)
+        : [];
+      setColumns(fetchedColumns);
       const context = { projectId, scheduleId: schedule?.id ?? "" };
       setActiveContext(context);
       await saveActiveContext(context);
@@ -201,6 +205,12 @@ export default function App() {
 
   async function handleSelectSchedule(scheduleId: string) {
     if (!activeContext || scheduleId === "__add_new__") return;
+    try {
+      const fetchedColumns = await listMothershipScheduleColumns(scheduleId);
+      setColumns(fetchedColumns);
+    } catch {
+      setColumns([]);
+    }
     const context = { ...activeContext, scheduleId };
     setActiveContext(context);
     await saveActiveContext(context);
@@ -265,6 +275,7 @@ export default function App() {
           panel={panel}
           projects={projects}
           schedules={schedules}
+          columns={columns}
           zones={[]}
           activeContext={activeContext}
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}

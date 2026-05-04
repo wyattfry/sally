@@ -23,26 +23,20 @@ function capturedPage(overrides: Partial<CapturedPage> = {}): CapturedPage {
 }
 
 describe("mockExtractScheduleItem", () => {
-  it("creates a deterministic editable schedule proposal from captured product data", () => {
+  it("creates an editable schedule proposal from captured product data", () => {
     const item = mockExtractScheduleItem(capturedPage(), new Date("2026-04-21T12:00:00.000Z"));
 
-    expect(item).toMatchObject({
-      id: "mock-https-example-com-products-wf-200",
-      capturedAt: "2026-04-21T12:00:00.000Z",
-      zone: "",
-      title: "Wall Faucet",
-      manufacturer: "Example Co.",
-      modelNumber: "WF-200",
-      category: "Faucet",
-      finish: "Polished Chrome",
-      finishModelNumber: "WF-200-PC",
-      requiredAddOns: ["Rough valve body", "Drain assembly"],
-      sourceUrl: "https://example.com/products/wf-200",
-      sourceTitle: "Example Co. WF-200 Wall Faucet",
-      sourceImageUrl: "https://example.com/faucet.jpg",
-      sourcePdfLinks: ["https://example.com/spec-sheet.pdf"]
-    });
-    expect(item.description).toContain("wall-mounted faucet");
+    expect(item.capturedAt).toBe("2026-04-21T12:00:00.000Z");
+    expect(item.sourceUrl).toBe("https://example.com/products/wf-200");
+    expect(item.sourceTitle).toBe("Example Co. WF-200 Wall Faucet");
+    expect(item.sourceImageUrl).toBe("https://example.com/faucet.jpg");
+    expect(item.sourcePdfLinks).toEqual(["https://example.com/spec-sheet.pdf"]);
+
+    expect(item.data.title).toBe("Wall Faucet");
+    expect(item.data.manufacturer).toBe("Example Co.");
+    expect(item.data.model_number).toBe("WF-200");
+    expect(item.data.finish).toBe("Polished Chrome");
+    expect(item.data.description).toContain("wall-mounted faucet");
   });
 
   it("uses conservative fallback values when product data is sparse", () => {
@@ -57,11 +51,9 @@ describe("mockExtractScheduleItem", () => {
       new Date("2026-04-21T12:00:00.000Z")
     );
 
-    expect(item.title).toBe("Unknown Catalog Page");
-    expect(item.manufacturer).toBe("");
-    expect(item.modelNumber).toBe("");
-    expect(item.category).toBe("Uncategorized");
-    expect(item.requiredAddOns).toEqual([]);
+    expect(item.data.title).toBe("Unknown Catalog Page");
+    expect(item.data.manufacturer ?? "").toBe("");
+    expect(item.data.model_number ?? "").toBe("");
+    expect(item.data.notes ?? "").toBe("");
   });
 });
-

@@ -16,15 +16,15 @@ function scheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
     id: "draft-request-123",
     capturedAt: "2026-04-24T18:30:00.000Z",
-    title: "Wall Faucet",
-    manufacturer: "Example Co.",
-    modelNumber: "WF-200",
-    category: "Plumbing Fixture",
-    description: "Wall-mounted faucet.",
-    finish: "Polished Chrome",
-    finishModelNumber: "WF-200-PC",
-    requiredAddOns: ["Rough valve body"],
-    optionalCompanions: [],
+    data: {
+      title: "Wall Faucet",
+      manufacturer: "Example Co.",
+      model_number: "WF-200",
+      description: "Wall-mounted faucet.",
+      finish: "Polished Chrome",
+      finish_model_number: "WF-200-PC",
+      notes: "Rough valve body"
+    },
     sourceUrl: "https://example.com/products/wf-200",
     sourceTitle: "Example Co. WF-200 Wall Faucet",
     sourceImageUrl: "https://example.com/faucet.jpg",
@@ -82,10 +82,12 @@ describe("mothershipApi", () => {
     expect(url).toBe("http://localhost:8080/api/v1/schedules/schedule-1/items");
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toMatchObject({
-      title: "Wall Faucet",
-      manufacturer: "Example Co.",
-      modelNumber: "WF-200",
-      finish: "Polished Chrome",
+      data: {
+        title: "Wall Faucet",
+        manufacturer: "Example Co.",
+        model_number: "WF-200",
+        finish: "Polished Chrome"
+      },
       sourcePdfLinks: ["https://example.com/spec-sheet.pdf"]
     });
   });

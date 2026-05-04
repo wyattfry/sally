@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ActiveContext, Project, Schedule, ScheduleItem } from "../lib/types";
+import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "../lib/types";
 
 type PanelState =
   | { kind: "thinking"; tokenCount: number }
@@ -10,6 +10,7 @@ type SallyPanelProps = {
   panel: PanelState;
   projects: Project[];
   schedules: Schedule[];
+  columns: ScheduleColumn[];
   zones: string[];
   activeContext: ActiveContext | null;
   suggestedNewScheduleName?: string;
@@ -22,29 +23,13 @@ type SallyPanelProps = {
   onCancel: () => void;
 };
 
-const textFields = [
-  ["title", "Title"],
-  ["manufacturer", "Manufacturer"],
-  ["modelNumber", "Model"],
-  ["finish", "Finish"],
-  ["finishModelNumber", "Finish Model"]
-] as const;
-
 const ADD_NEW_VALUE = "__add_new__";
-const DEFAULT_CATEGORIES = [
-  "Plumbing Fixture",
-  "Lighting",
-  "Appliance",
-  "Hardware",
-  "Finish",
-  "Furniture",
-  "Accessory"
-];
 
 export function SallyPanel({
   panel,
   projects,
   schedules,
+  columns,
   zones,
   activeContext,
   suggestedNewScheduleName,
@@ -78,10 +63,9 @@ export function SallyPanel({
     }
   }, [modal]);
 
-
-  function updateField<Key extends keyof ScheduleItem>(key: Key, value: ScheduleItem[Key]) {
+  function updateData(key: string, value: string) {
     if (!draft) return;
-    onChange({ ...draft, [key]: value });
+    onChange({ ...draft, data: { ...draft.data, [key]: value } });
   }
 
   function closeModal() {
@@ -95,7 +79,7 @@ export function SallyPanel({
     if (!name) return;
     if (modal === "zone") {
       setLocalZones((prev) => prev.includes(name) ? prev : [...prev, name]);
-      updateField("zone", name);
+      onChange({ ...draft!, zone: name });
       closeModal();
       return;
     }
@@ -242,7 +226,7 @@ export function SallyPanel({
                     setModalError(null);
                     return;
                   }
-                  updateField("zone", event.target.value);
+                  onChange({ ...draft!, zone: event.target.value });
                 }}
               >
                 <option value="">No zone</option>
@@ -253,65 +237,16 @@ export function SallyPanel({
               </select>
             </div>
 
-            <div className="field">
-              <label htmlFor="sally-category">Category</label>
-              <select
-                id="sally-category"
-                value={draft?.category ?? ""}
-                onChange={(event) => updateField("category", event.target.value)}
-              >
-                {draft?.category && !DEFAULT_CATEGORIES.includes(draft.category) ? (
-                  <option value={draft.category}>{draft.category}</option>
-                ) : null}
-                {DEFAULT_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {textFields.map(([key, label]) => (
-              <div className="field" key={key}>
-                <label htmlFor={`sally-${key}`}>{label}</label>
+            {columns.map((col) => (
+              <div className="field" key={col.key}>
+                <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
                 <input
-                  id={`sally-${key}`}
-                  value={String(draft?.[key] ?? "")}
-                  onChange={(event) => updateField(key, event.target.value)}
+                  id={`sally-col-${col.key}`}
+                  value={draft?.data[col.key] ?? ""}
+                  onChange={(event) => updateData(col.key, event.target.value)}
                 />
               </div>
             ))}
-
-            <div className="field">
-              <label htmlFor="sally-description">Description</label>
-              <textarea
-                id="sally-description"
-                value={draft?.description ?? ""}
-                onChange={(event) => updateField("description", event.target.value)}
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="sally-required-addons">Required Add-ons</label>
-              <input
-                id="sally-required-addons"
-                value={(draft?.requiredAddOns ?? []).join(", ")}
-                onChange={(event) =>
-                  updateField("requiredAddOns", splitList(event.target.value))
-                }
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="sally-optional-companions">Optional Companions</label>
-              <input
-                id="sally-optional-companions"
-                value={(draft?.optionalCompanions ?? []).join(", ")}
-                onChange={(event) =>
-                  updateField("optionalCompanions", splitList(event.target.value))
-                }
-              />
-            </div>
 
             {draft?.sourcePdfLinks?.length ? (
               <div className="source-links">
@@ -341,11 +276,4 @@ export function SallyPanel({
       </div>
     </aside>
   );
-}
-
-function splitList(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }

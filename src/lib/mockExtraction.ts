@@ -5,21 +5,26 @@ export function mockExtractScheduleItem(captured: CapturedPage, now = new Date()
   const manufacturer = readBrandName(product);
   const modelNumber = readString(product, ["sku", "model", "mpn", "productID"]) || findModelNumber(captured);
   const title = readString(product, ["name"]) || stripSiteSuffix(captured.title);
-  const category = inferCategory(`${captured.title} ${captured.visibleText}`);
   const finish = inferFinish(captured.visibleText);
+  const finishModelNumber = finish && modelNumber ? `${modelNumber}-${finishCode(finish)}` : "";
+  const notes = [
+    ...inferRequiredAddOns(captured.visibleText),
+    ...inferOptionalCompanions(captured.visibleText)
+  ].join("; ");
+
+  const data: Record<string, string> = {};
+  if (title) data.title = title || "Unknown Product";
+  if (manufacturer) data.manufacturer = manufacturer;
+  if (modelNumber) data.model_number = modelNumber;
+  data.description = buildDescription(captured, title);
+  if (finish) data.finish = finish;
+  if (finishModelNumber) data.finish_model_number = finishModelNumber;
+  if (notes) data.notes = notes;
 
   return {
     id: "mock-" + Math.random().toString(36).slice(2, 9),
-    capturedAt: new Date().toISOString(),
-    title: title || "Unknown Product",
-    manufacturer,
-    modelNumber,
-    category,
-    description: buildDescription(captured, title),
-    finish,
-    finishModelNumber: finish && modelNumber ? `${modelNumber}-${finishCode(finish)}` : undefined,
-    requiredAddOns: inferRequiredAddOns(captured.visibleText),
-    optionalCompanions: inferOptionalCompanions(captured.visibleText),
+    capturedAt: now.toISOString(),
+    data,
     sourceUrl: captured.url,
     sourceTitle: captured.title,
     sourceImageUrl: captured.mainImageUrl,

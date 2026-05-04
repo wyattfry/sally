@@ -8,6 +8,7 @@ import {
   getMothershipScheduleUrl,
   listMothershipProjects,
   listMothershipSchedules,
+  listMothershipScheduleColumns,
   saveMothershipScheduleItem
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
@@ -27,6 +28,7 @@ vi.mock("./lib/mothershipApi", () => ({
   getMothershipScheduleUrl: vi.fn(),
   listMothershipProjects: vi.fn(),
   listMothershipSchedules: vi.fn(),
+  listMothershipScheduleColumns: vi.fn(),
   saveMothershipScheduleItem: vi.fn()
 }));
 
@@ -43,14 +45,14 @@ function extractedItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
     id: "draft-request-123",
     capturedAt: "2026-04-24T18:30:00.000Z",
     zone: "Primary Bath",
-    title: "Wall Faucet",
-    manufacturer: "Example Co.",
-    modelNumber: "WF-200",
-    category: "Faucet",
-    description: "Wall-mounted faucet.",
-    finish: "Polished Chrome",
-    requiredAddOns: ["Rough valve body"],
-    optionalCompanions: [],
+    data: {
+      title: "Wall Faucet",
+      manufacturer: "Example Co.",
+      model_number: "WF-200",
+      description: "Wall-mounted faucet.",
+      finish: "Polished Chrome",
+      notes: "Rough valve body"
+    },
     sourceUrl: "https://example.com/products/wf-200",
     sourceTitle: "Example Co. WF-200 Wall Faucet",
     sourceImageUrl: "https://example.com/faucet.jpg",
@@ -106,7 +108,14 @@ describe("App", () => {
       { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z" }
     ]);
     vi.mocked(listMothershipSchedules).mockResolvedValue([
-      { id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }
+      { id: "schedule-1", projectId: "project-1", name: "Bath", kind: "items", notes: "", position: 1 }
+    ]);
+    vi.mocked(listMothershipScheduleColumns).mockResolvedValue([
+      { id: "col-1", scheduleId: "schedule-1", key: "title", label: "Title", kind: "text", position: 1 },
+      { id: "col-2", scheduleId: "schedule-1", key: "manufacturer", label: "Manufacturer", kind: "text", position: 2 },
+      { id: "col-3", scheduleId: "schedule-1", key: "model_number", label: "Model Number", kind: "text", position: 3 },
+      { id: "col-4", scheduleId: "schedule-1", key: "finish", label: "Finish", kind: "text", position: 4 },
+      { id: "col-5", scheduleId: "schedule-1", key: "notes", label: "Notes", kind: "text", position: 5 }
     ]);
     vi.mocked(saveMothershipScheduleItem).mockResolvedValue(undefined);
     vi.mocked(getMothershipScheduleUrl).mockReturnValue(
@@ -125,12 +134,10 @@ describe("App", () => {
 
     expect(screen.getByText("Reading page")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("Wall Faucet")).toBeInTheDocument();
-    expect(screen.getByText("My New Project")).toBeInTheDocument();
-    expect(screen.getByLabelText("Mother Ship Project")).toHaveValue("project-1");
-    expect(screen.getByLabelText("Mother Ship Schedule")).toHaveValue("schedule-1");
+    expect(screen.getByLabelText("Project")).toHaveValue("project-1");
+    expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-1");
 
     await user.selectOptions(screen.getByLabelText("Zone"), "Primary Bath");
-    await user.selectOptions(screen.getByLabelText("Category"), "Plumbing Fixture");
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Wall faucet revised");
     await user.click(screen.getByRole("button", { name: "OK" }));
@@ -138,7 +145,7 @@ describe("App", () => {
     await waitFor(() => expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument());
     expect(saveMothershipScheduleItem).toHaveBeenCalledWith(
       "schedule-1",
-      expect.objectContaining({ title: "Wall faucet revised" })
+      expect.objectContaining({ data: expect.objectContaining({ title: "Wall faucet revised" }) })
     );
     expect(screen.getByText("Item added")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "SPEC" })).not.toHaveClass("spec-button--specd");
@@ -152,22 +159,22 @@ describe("App", () => {
     ]);
     vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
       projectId === "project-2"
-        ? [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", notes: "", position: 1 }]
-        : [{ id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }]
+        ? [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", kind: "items", notes: "", position: 1 }]
+        : [{ id: "schedule-1", projectId: "project-1", name: "Bath", kind: "items", notes: "", position: 1 }]
     );
 
     render(<App />);
     await user.click(await screen.findByRole("button", { name: "SPEC" }));
     await screen.findByDisplayValue("Wall Faucet");
 
-    await user.selectOptions(screen.getByLabelText("Mother Ship Project"), "project-2");
+    await user.selectOptions(screen.getByLabelText("Project"), "project-2");
 
-    await waitFor(() => expect(screen.getByLabelText("Mother Ship Schedule")).toHaveValue("schedule-2"));
+    await waitFor(() => expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-2"));
     await user.click(screen.getByRole("button", { name: "OK" }));
 
     expect(saveMothershipScheduleItem).toHaveBeenCalledWith(
       "schedule-2",
-      expect.objectContaining({ title: "Wall Faucet" })
+      expect.objectContaining({ data: expect.objectContaining({ title: "Wall Faucet" }) })
     );
   });
 
@@ -180,8 +187,8 @@ describe("App", () => {
     ]);
     vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
       projectId === "project-1"
-        ? [{ id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }]
-        : [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", notes: "", position: 1 }]
+        ? [{ id: "schedule-1", projectId: "project-1", name: "Bath", kind: "items", notes: "", position: 1 }]
+        : [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", kind: "items", notes: "", position: 1 }]
     );
 
     render(<App />);
@@ -396,7 +403,7 @@ describe("App", () => {
     const user = userEvent.setup();
     vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Extraction backend is unreachable."));
     vi.mocked(mockExtractScheduleItem).mockReturnValue(
-      extractedItem({ id: "mock-draft-123", title: "Mock fallback faucet" })
+      extractedItem({ id: "mock-draft-123", data: { title: "Mock fallback faucet" } })
     );
     vi.mocked(shouldAllowMockFallback).mockReturnValue(true);
     vi.mocked(shouldFallbackToMock).mockReturnValue(true);
@@ -445,7 +452,7 @@ describe("App", () => {
     const user = userEvent.setup();
     vi.mocked(extractScheduleItem)
       .mockRejectedValueOnce(new Error("Backend unavailable"))
-      .mockResolvedValueOnce(extractedResult({ title: "Recovered faucet" }));
+      .mockResolvedValueOnce(extractedResult({ data: { title: "Recovered faucet" } }));
     vi.mocked(shouldFallbackToMock).mockReturnValue(false);
 
     render(<App />);
@@ -463,7 +470,7 @@ describe("App", () => {
     vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Extraction backend is unreachable."));
     vi.mocked(shouldAllowMockFallback).mockReturnValue(true);
     vi.mocked(shouldFallbackToMock).mockReturnValue(true);
-    vi.mocked(mockExtractScheduleItem).mockReturnValueOnce(extractedItem({ title: "Fallback item" }));
+    vi.mocked(mockExtractScheduleItem).mockReturnValueOnce(extractedItem({ data: { title: "Fallback item" } }));
 
     render(<App />);
 

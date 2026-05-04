@@ -281,20 +281,24 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
     throw new ExtractionError("invalid", "Extraction response was missing a proposal.");
   }
 
+  const data: Record<string, string> = {};
+  if (proposal.title) data.title = proposal.title;
+  if (proposal.manufacturer) data.manufacturer = proposal.manufacturer;
+  if (proposal.modelNumber) data.model_number = proposal.modelNumber;
+  if (proposal.description) data.description = proposal.description;
+  if (proposal.finish) data.finish = proposal.finish;
+  if (proposal.finishModelNumber) data.finish_model_number = proposal.finishModelNumber;
+  const notes = [...(proposal.requiredAddOns ?? []), ...(proposal.optionalCompanions ?? [])]
+    .filter(Boolean)
+    .join("; ");
+  if (notes) data.notes = notes;
+
   return {
     item: {
       id: `draft-${response.requestId}`,
       capturedAt: now.toISOString(),
       zone: proposal.zone && proposal.zone !== "<UNKNOWN>" ? proposal.zone : undefined,
-      title: proposal.title,
-      manufacturer: proposal.manufacturer,
-      modelNumber: proposal.modelNumber,
-      category: proposal.category,
-      description: proposal.description,
-      finish: proposal.finish,
-      finishModelNumber: proposal.finishModelNumber || undefined,
-      requiredAddOns: proposal.requiredAddOns ?? [],
-      optionalCompanions: proposal.optionalCompanions ?? [],
+      data,
       sourceUrl: proposal.sourceUrl,
       sourceTitle: proposal.sourceTitle,
       sourceImageUrl: proposal.sourceImageUrl,

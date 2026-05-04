@@ -1,4 +1,4 @@
-import type { Project, Schedule, ScheduleItem } from "./types";
+import type { Project, Schedule, ScheduleColumn, ScheduleItem } from "./types";
 
 const DEFAULT_BACKEND_BASE_URL = "http://10.0.0.104:8080";
 
@@ -30,6 +30,10 @@ export async function createMothershipSchedule(projectId: string, name: string):
   });
 }
 
+export async function listMothershipScheduleColumns(scheduleId: string): Promise<ScheduleColumn[]> {
+  return fetchJSON<ScheduleColumn[]>(`/api/v1/schedules/${encodeURIComponent(scheduleId)}/columns`);
+}
+
 export async function saveMothershipScheduleItem(
   scheduleId: string,
   item: ScheduleItem
@@ -38,14 +42,7 @@ export async function saveMothershipScheduleItem(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      code: "",
-      title: item.title,
-      description: item.description,
-      manufacturer: item.manufacturer,
-      modelNumber: item.modelNumber,
-      finish: item.finish,
-      finishModelNumber: item.finishModelNumber ?? "",
-      notes: [...item.requiredAddOns, ...item.optionalCompanions].join("; "),
+      data: item.data,
       zone: item.zone ?? "",
       sourceUrl: item.sourceUrl,
       sourceTitle: item.sourceTitle,

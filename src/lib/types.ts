@@ -11,15 +11,7 @@ export type ScheduleItem = {
   id: string;
   capturedAt: string;
   zone?: string;
-  title: string;
-  manufacturer: string;
-  modelNumber: string;
-  category: string;
-  description: string;
-  finish: string;
-  finishModelNumber?: string;
-  requiredAddOns: string[];
-  optionalCompanions: string[];
+  data: Record<string, string>;
   sourceUrl: string;
   sourceTitle: string;
   sourceImageUrl?: string;
@@ -38,7 +30,17 @@ export type Schedule = {
   id: string;
   projectId: string;
   name: string;
+  kind: string;
   notes: string;
+  position: number;
+};
+
+export type ScheduleColumn = {
+  id: string;
+  scheduleId: string;
+  key: string;
+  label: string;
+  kind: string;
   position: number;
 };
 
