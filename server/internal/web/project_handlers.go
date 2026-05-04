@@ -993,6 +993,10 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <h1>Edit Item</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
       <input type="hidden" name="position" value="{{.Item.Position}}">
+      <input type="hidden" name="source_title" value="{{.Item.SourceTitle}}">
+      <input type="hidden" name="source_image_url" value="{{.Item.SourceImageUrl}}">
+      <textarea name="source_pdf_links" style="display:none">{{range .Item.SourcePdfLinks}}{{.}}
+{{end}}</textarea>
       <label>Zone <input name="zone" value="{{.Item.Zone}}" placeholder="e.g. Kitchen, Primary Bath"></label>
       <label>Code <input name="code" value="{{.Item.Code}}"></label>
       <label>Title <input name="title" value="{{.Item.Title}}" required></label>

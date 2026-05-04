@@ -385,3 +385,94 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 		t.Fatalf("expected zone-row CSS class on project page, got:\n%s", body)
 	}
 }
+
+func TestEditItemPreservesSourceImageUrl(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "item-preserve-test@example.com",
+		Name:  "Item Preserve Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Preserve Test Project " + time.Now().Format("150405.000000"),
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Bath",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
+		ScheduleID:     schedule.ID,
+		Title:          "Wall Faucet",
+		SourceImageUrl: "https://example.com/faucet.jpg",
+		SourceTitle:    "Wall Faucet Product Page",
+		SourcePdfLinks: []string{"https://example.com/spec.pdf"},
+		Position:       1,
+	})
+	if err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "item-preserve-test@example.com",
+		DevUserName:  "Item Preserve Test",
+	})
+
+	// Edit the item to add a zone, sending only the fields the edit form exposes.
+	editPath := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items/" + item.ID + "/edit"
+
+	// Simulate what the edit form sends: hidden fields for source_image_url etc.
+	form := url.Values{}
+	form.Set("title", "Wall Faucet")
+	form.Set("zone", "Primary Bath")
+	form.Set("source_image_url", item.SourceImageUrl)
+	form.Set("source_title", item.SourceTitle)
+	form.Set("source_pdf_links", strings.Join(item.SourcePdfLinks, "\n"))
+	form.Set("position", "1")
+
+	req := httptest.NewRequest(http.MethodPost, editPath, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d", resp.Code)
+	}
+
+	// The project page must still show the thumbnail after the zone edit.
+	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
+	showResp := httptest.NewRecorder()
+	router.ServeHTTP(showResp, showReq)
+	body := showResp.Body.String()
+	if !strings.Contains(body, "https://example.com/faucet.jpg") {
+		t.Fatalf("expected source_image_url preserved after zone edit, got:\n%s", body)
+	}
+	if !strings.Contains(body, "Primary Bath") {
+		t.Fatalf("expected zone header after edit, got:\n%s", body)
+	}
+}
