@@ -69,7 +69,18 @@ func (a app) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setSessionCookie(w, a.sessionSecret, email)
-	http.Redirect(w, r, "/projects", http.StatusSeeOther)
+	http.Redirect(w, r, "/auth/done", http.StatusSeeOther)
+}
+
+func (a app) authDone(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`<!doctype html>
+<html><head><title>Signed in</title></head>
+<body>
+<p>Signed in! This window will close automatically.</p>
+<script>window.close();</script>
+</body></html>`))
 }
 
 func (a app) logout(w http.ResponseWriter, r *http.Request) {

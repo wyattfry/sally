@@ -269,8 +269,7 @@ export default function App() {
       if (ok) {
         clearInterval(interval);
         try { popup.close(); } catch { /* COOP may block */ }
-        setPanel({ kind: "closed" });
-        refreshContext();
+        handleSpecClick();
         return;
       }
 

@@ -46,6 +46,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /login", a.loginPage)
 	mux.HandleFunc("GET /auth/google", a.startGoogleOAuth)
 	mux.HandleFunc("GET /auth/callback", a.oauthCallback)
+	mux.HandleFunc("GET /auth/done", a.authDone)
 	mux.HandleFunc("POST /logout", a.logout)
 	mux.HandleFunc("GET /", a.redirectHome)
 	mux.HandleFunc("GET /projects", a.listProjects)
