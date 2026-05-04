@@ -211,34 +211,21 @@ button,
   overflow: hidden;
 }
 
-/* Schedule tables: fixed layout so long cells truncate instead of wrapping */
-.schedule-table {
-  table-layout: fixed;
-}
-
-.schedule-table th,
-.schedule-table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Schedule tables: shrink-to-content columns; clamp long text to 3 lines */
+.schedule-table th:first-child,
+.schedule-table td:first-child,
+.schedule-table th:last-child,
+.schedule-table td:last-child,
+.schedule-table .col-code {
+  width: 1%;
   white-space: nowrap;
 }
 
-/* Thumbnail column */
-.schedule-table th:first-child,
-.schedule-table td:first-child {
-  width: 72px;
-}
-
-/* Edit / Source link column */
-.schedule-table th:last-child,
-.schedule-table td:last-child {
-  width: 60px;
-}
-
-/* Code column: fixed-width, never wraps, no ellipsis */
-.schedule-table .col-code {
-  width: 80px;
-  text-overflow: clip;
+.cell-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .item-thumb {

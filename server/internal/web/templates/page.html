@@ -125,13 +125,11 @@
                         <tr>
                           <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
                           {{range $sw.Columns}}
-                            <td{{if eq .Key "code"}} class="col-code"{{end}}>
-                              {{if and (eq .Key "title") $item.SourceUrl}}
-                                <a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>
-                              {{else}}
-                                {{index $item.DataMap .Key}}
-                              {{end}}
-                            </td>
+                            {{if eq .Key "code"}}
+                              <td class="col-code">{{index $item.DataMap .Key}}</td>
+                            {{else}}
+                              <td><div class="cell-clamp">{{if and (eq .Key "title") $item.SourceUrl}}<a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>{{else}}{{index $item.DataMap .Key}}{{end}}</div></td>
+                            {{end}}
                           {{end}}
                           <td><a href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/edit">Edit</a></td>
                         </tr>
@@ -238,13 +236,11 @@
                 <tr>
                   <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
                   {{range $sw.Columns}}
-                    <td{{if eq .Key "code"}} class="col-code"{{end}}>
-                      {{if and (eq .Key "title") $item.SourceUrl}}
-                        <a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>
-                      {{else}}
-                        {{index $item.DataMap .Key}}
-                      {{end}}
-                    </td>
+                    {{if eq .Key "code"}}
+                      <td class="col-code">{{index $item.DataMap .Key}}</td>
+                    {{else}}
+                      <td><div class="cell-clamp">{{if and (eq .Key "title") $item.SourceUrl}}<a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>{{else}}{{index $item.DataMap .Key}}{{end}}</div></td>
+                    {{end}}
                   {{end}}
                   <td>{{if $item.SourceUrl}}<a href="{{$item.SourceUrl}}">Product Page</a>{{end}}</td>
                 </tr>
