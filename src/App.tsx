@@ -95,7 +95,7 @@ export default function App() {
       ]);
       setProjects(fetchedProjects);
       
-      const project = fetchedProjects.find((candidate) => candidate.id === storedContext?.projectId) ?? fetchedProjects[0];
+      const project = fetchedProjects[0];
       if (!project) {
         setSchedules([]);
         setActiveContext(null);
@@ -104,7 +104,10 @@ export default function App() {
 
       const fetchedSchedules = await listMothershipSchedules(project.id);
       setSchedules(fetchedSchedules);
-      const schedule = fetchedSchedules.find((candidate) => candidate.id === storedContext?.scheduleId) ?? fetchedSchedules[0];
+      const restoredSchedule = storedContext?.projectId === project.id
+        ? fetchedSchedules.find((s) => s.id === storedContext.scheduleId)
+        : undefined;
+      const schedule = restoredSchedule ?? fetchedSchedules[0];
       if (!schedule) {
         setActiveContext({ projectId: project.id, scheduleId: "" });
         return;

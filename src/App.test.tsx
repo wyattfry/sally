@@ -171,6 +171,27 @@ describe("App", () => {
     );
   });
 
+  it("defaults to first (most-recently-updated) project even when stored context points to another", async () => {
+    const user = userEvent.setup();
+    storageState["sally.activeContext"] = { projectId: "project-2", scheduleId: "schedule-2" };
+    vi.mocked(listMothershipProjects).mockResolvedValue([
+      { id: "project-1", name: "Newest Project", address: "", description: "", updatedAt: "2026-04-01T00:00:00Z" },
+      { id: "project-2", name: "Older Project", address: "", description: "", updatedAt: "2026-01-01T00:00:00Z" }
+    ]);
+    vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
+      projectId === "project-1"
+        ? [{ id: "schedule-1", projectId: "project-1", name: "Bath", notes: "", position: 1 }]
+        : [{ id: "schedule-2", projectId: "project-2", name: "Kitchen", notes: "", position: 1 }]
+    );
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+    await screen.findByDisplayValue("Wall Faucet");
+
+    expect(screen.getByLabelText("Project")).toHaveValue("project-1");
+    expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-1");
+  });
+
   it("does not show undo while creating a new proposal", async () => {
     const user = userEvent.setup();
     render(<App />);
