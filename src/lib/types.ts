@@ -10,6 +10,7 @@ export type CapturedPage = {
 export type ScheduleItem = {
   id: string;
   capturedAt: string;
+  zone?: string;
   title: string;
   manufacturer: string;
   modelNumber: string;
@@ -64,6 +65,7 @@ export type ClientInfo = {
 export type ProjectContext = {
   projectName: string;
   knownCategories: string[];
+  knownZones: string[];
   knownScheduleNames: string[];
 };
 
@@ -93,6 +95,7 @@ export type ExtractedProposal = {
   finishModelMappings: FinishModelMapping[];
   requiredAddOns: string[];
   optionalCompanions: string[];
+  zone?: string;
   suggestedScheduleName?: string;
   sourceUrl: string;
   sourceTitle: string;

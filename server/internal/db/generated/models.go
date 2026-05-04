@@ -53,6 +53,7 @@ type ScheduleItem struct {
 	Finish            string    `json:"finish"`
 	FinishModelNumber string    `json:"finish_model_number"`
 	Notes             string    `json:"notes"`
+	Zone              string    `json:"zone"`
 	SourceUrl         string    `json:"source_url"`
 	SourceTitle       string    `json:"source_title"`
 	SourceImageUrl    string    `json:"source_image_url"`

@@ -30,6 +30,7 @@ export class ExtractionError extends Error {
 type ExtractScheduleItemArgs = {
   capturedPage: CapturedPage;
   knownCategories: string[];
+  knownZones?: string[];
   knownScheduleNames?: string[];
   now?: Date;
   onProgress?: (tokenCount: number) => void;
@@ -43,6 +44,7 @@ type ExtractScheduleItemResult = {
 export async function extractScheduleItem({
   capturedPage,
   knownCategories,
+  knownZones = [],
   knownScheduleNames = [],
   now = new Date(),
   onProgress
@@ -50,6 +52,7 @@ export async function extractScheduleItem({
   const request = buildExtractSpecRequest({
     capturedPage,
     knownCategories,
+    knownZones,
     knownScheduleNames,
     now
   });
@@ -246,6 +249,7 @@ function getRuntimeConfig(): Required<SallyRuntimeConfig> {
 function buildExtractSpecRequest({
   capturedPage,
   knownCategories,
+  knownZones,
   knownScheduleNames,
   now
 }: Required<Omit<ExtractScheduleItemArgs, "onProgress">> & { now: Date }): ExtractSpecRequest {
@@ -261,6 +265,7 @@ function buildExtractSpecRequest({
     projectContext: {
       projectName: "",
       knownCategories,
+      knownZones,
       knownScheduleNames
     },
     options: {
@@ -280,6 +285,7 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
     item: {
       id: `draft-${response.requestId}`,
       capturedAt: now.toISOString(),
+      zone: proposal.zone || undefined,
       title: proposal.title,
       manufacturer: proposal.manufacturer,
       modelNumber: proposal.modelNumber,

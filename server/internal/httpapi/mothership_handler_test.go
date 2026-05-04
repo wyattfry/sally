@@ -119,3 +119,76 @@ func TestMothershipAPISavesScheduleItem(t *testing.T) {
 		t.Fatalf("unexpected created item: %#v", created)
 	}
 }
+
+func TestMothershipAPIZoneRoundTrips(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "api-zone-test@example.com",
+		Name:  "API Zone Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Zone API Project",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Appliance Schedule",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+
+	router := NewRouterWithDeps(config.Config{}, provider.NewStubExtractor(), web.Deps{
+		Queries:      q,
+		DevUserEmail: "api-zone-test@example.com",
+		DevUserName:  "API Zone Test",
+	})
+
+	body := bytes.NewBufferString(`{
+		"title":"Range Hood",
+		"zone":"Kitchen",
+		"manufacturer":"Example Co.",
+		"modelNumber":"RH-100",
+		"finish":"Stainless",
+		"sourcePdfLinks":[]
+	}`)
+	createResp := httptest.NewRecorder()
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/schedules/"+schedule.ID+"/items", body)
+	createReq.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(createResp, createReq)
+	if createResp.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d body=%s", createResp.Code, createResp.Body.String())
+	}
+
+	var created struct {
+		Zone string `json:"zone"`
+	}
+	if err := json.Unmarshal(createResp.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if created.Zone != "Kitchen" {
+		t.Fatalf("expected zone %q, got %q", "Kitchen", created.Zone)
+	}
+}

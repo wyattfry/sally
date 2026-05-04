@@ -54,10 +54,11 @@ The server listens on `:8080`, so it is reachable on the host's LAN IP or contai
 7. Add a schedule from the project detail page.
 8. Confirm the schedule detail page opens.
 9. Add an item with code, title, manufacturer, model, finish, notes, and source URL.
-10. Confirm the item appears in the schedule table.
-11. Edit the item and confirm the updated values appear in the schedule table.
-12. Use `Share` on the project page, click `Get Link`, and open the generated `/share/...` path.
-13. Confirm the public share page shows project, schedule, item, and product source link without edit controls.
+10. Add two items with zone `Kitchen` and one item with zone `Primary Bath`.
+11. Confirm the schedule table shows zone header rows separating the groups.
+12. Edit the item and confirm the updated values appear in the schedule table.
+13. Use `Share` on the project page, click `Get Link`, and open the generated `/share/...` path.
+14. Confirm the public share page shows zone headers, project, schedule, items, and product source links without edit controls.
 
 ## Confirm Extension To Mother Ship Save
 
@@ -66,31 +67,43 @@ The server listens on `:8080`, so it is reachable on the host's LAN IP or contai
    docker compose up -d --build sally-server
    ```
 2. Open `http://localhost:8080/projects`.
-3. Create a project and at least one schedule.
+3. Create a new project and a schedule inside it.
 4. Build and reload the extension:
    ```bash
    npm run build
    ```
 5. Open or refresh a product page.
 6. Click `SPEC`.
-7. Confirm Sally shows `Mother Ship Project` and `Mother Ship Schedule` selectors.
-8. Choose the target project and schedule.
-9. Click `OK`.
-10. Open the selected schedule in Mother Ship.
-11. Confirm the accepted Sally item appears in the schedule table.
-12. Click `SPEC` again, then `View Items`.
-13. Confirm the selected Mother Ship schedule opens in a new tab.
+7. Confirm the Schedule field is hidden while extraction is in progress.
+8. Confirm Sally defaults to the most recently touched project (the one just created).
+9. Confirm Sally shows the `Project` and `Schedule` selectors once the proposal appears.
+10. Confirm the `Zone` selector is pre-filled if the LLM suggested one.
+11. Choose the target project and schedule; click `OK`.
+12. Open the selected schedule in Mother Ship.
+13. Confirm the accepted item appears in the schedule table under the correct zone header.
+14. Click `SPEC` again, then `View Items`.
+15. Confirm the selected Mother Ship schedule opens in a new tab.
+
+## Confirm New Project/Schedule Modal
+
+1. Click `SPEC` on a product page.
+2. Once a proposal appears, open the Project dropdown and choose `New project...`.
+3. Confirm a modal dialog appears with an auto-focused Name input.
+4. Type a project name and press `Enter` (or click `Create`).
+5. Confirm the modal closes and the new project is selected.
+6. Repeat by choosing `New schedule...` in the Schedule dropdown.
+7. Confirm the new schedule is created and selected.
+8. Choose `New zone...` in the Zone dropdown, type a zone name, and confirm it is selected.
 
 ## Confirm Real Proposal Flow
 
-1. In Sally, confirm the header shows the project name, initially `My New Project`.
-2. Pick a `Zone`.
-3. Pick a `Category`.
-4. Edit at least `Title`.
-5. Click `OK`.
-6. Confirm the panel closes and an `Item added` toast appears.
-7. Click `SPEC` again, then `View Items`.
-8. Confirm the accepted item appears in the viewer with its thumbnail and source link.
+1. In Sally, pick a `Zone` (or accept the LLM suggestion).
+2. Pick a `Category`.
+3. Edit at least `Title`.
+4. Click `OK`.
+5. Confirm the panel closes and an `Item added` toast appears.
+6. Click `SPEC` again, then `View Items`.
+7. Confirm the selected Mother Ship schedule opens and the item appears under its zone header.
 
 ## Confirm Failure Behavior
 

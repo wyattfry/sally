@@ -42,6 +42,7 @@ function extractedItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
     id: "draft-request-123",
     capturedAt: "2026-04-24T18:30:00.000Z",
+    zone: "Primary Bath",
     title: "Wall Faucet",
     manufacturer: "Example Co.",
     modelNumber: "WF-200",
@@ -191,8 +192,8 @@ describe("App", () => {
     expect(screen.getByLabelText("Zone")).toHaveValue("Primary Bath");
 
     await user.selectOptions(screen.getByLabelText("Zone"), "__add_new__");
-    await user.type(screen.getByLabelText("New zone"), "Guest Bath");
-    await user.click(screen.getByRole("button", { name: "Add zone" }));
+    await user.type(screen.getByLabelText("Name"), "Guest Bath");
+    await user.click(screen.getByRole("button", { name: "Create" }));
 
     expect(screen.getByLabelText("Zone")).toHaveValue("Guest Bath");
   });

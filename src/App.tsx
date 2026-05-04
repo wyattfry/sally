@@ -261,6 +261,7 @@ export default function App() {
           panel={panel}
           projects={projects}
           schedules={schedules}
+          zones={[]}
           activeContext={activeContext}
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
           onCancel={() => setPanel({ kind: "closed" })}

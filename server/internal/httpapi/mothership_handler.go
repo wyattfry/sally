@@ -161,6 +161,7 @@ type createScheduleItemRequest struct {
 	Finish            string   `json:"finish"`
 	FinishModelNumber string   `json:"finishModelNumber"`
 	Notes             string   `json:"notes"`
+	Zone              string   `json:"zone"`
 	SourceURL         string   `json:"sourceUrl"`
 	SourceTitle       string   `json:"sourceTitle"`
 	SourceImageURL    string   `json:"sourceImageUrl"`
@@ -203,6 +204,7 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 		Finish:            strings.TrimSpace(req.Finish),
 		FinishModelNumber: strings.TrimSpace(req.FinishModelNumber),
 		Notes:             strings.TrimSpace(req.Notes),
+		Zone:              strings.TrimSpace(req.Zone),
 		SourceUrl:         strings.TrimSpace(req.SourceURL),
 		SourceTitle:       strings.TrimSpace(req.SourceTitle),
 		SourceImageUrl:    strings.TrimSpace(req.SourceImageURL),
@@ -243,6 +245,7 @@ type scheduleItemResponse struct {
 	Finish            string   `json:"finish"`
 	FinishModelNumber string   `json:"finishModelNumber"`
 	Notes             string   `json:"notes"`
+	Zone              string   `json:"zone"`
 	SourceURL         string   `json:"sourceUrl"`
 	SourceTitle       string   `json:"sourceTitle"`
 	SourceImageURL    string   `json:"sourceImageUrl"`
@@ -281,6 +284,7 @@ func toScheduleItemResponse(item queries.ScheduleItem) scheduleItemResponse {
 		Finish:            item.Finish,
 		FinishModelNumber: item.FinishModelNumber,
 		Notes:             item.Notes,
+		Zone:              item.Zone,
 		SourceURL:         item.SourceUrl,
 		SourceTitle:       item.SourceTitle,
 		SourceImageURL:    item.SourceImageUrl,

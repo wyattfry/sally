@@ -299,6 +299,17 @@ details.schedule-section:not([open]) > summary .summary-toggle::before { content
   font-size: 13px;
 }
 
+.zone-row td {
+  background: #f0f3ed;
+  border-top: 2px solid #cfd8cb;
+  color: #354832;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  text-transform: uppercase;
+}
+
 .schedule-notes {
   padding: 8px 14px;
   margin: 0;

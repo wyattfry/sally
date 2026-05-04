@@ -304,3 +304,84 @@ func TestItemPagesUpdateAndDeleteItem(t *testing.T) {
 		t.Fatalf("expected deleted item to be absent from project page, got %s", deletedResp.Body.String())
 	}
 }
+
+func TestItemZoneAppearsOnProjectPage(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "item-zone-test@example.com",
+		Name:  "Item Zone Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Zone Test Project " + time.Now().Format("150405.000000"),
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Appliance Schedule",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "item-zone-test@example.com",
+		DevUserName:  "Item Zone Test",
+	})
+
+	// Create an item via the web form with a zone.
+	form := url.Values{}
+	form.Set("title", "Range Hood")
+	form.Set("zone", "Kitchen")
+	form.Set("manufacturer", "Example Co.")
+
+	path := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items"
+	createReq := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	createReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	createResp := httptest.NewRecorder()
+	router.ServeHTTP(createResp, createReq)
+	if createResp.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d", createResp.Code)
+	}
+
+	// Verify the zone header appears on the project page.
+	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
+	showResp := httptest.NewRecorder()
+	router.ServeHTTP(showResp, showReq)
+	if showResp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", showResp.Code)
+	}
+	body := showResp.Body.String()
+	if !strings.Contains(body, "Range Hood") {
+		t.Fatalf("expected item title in project page, got:\n%s", body)
+	}
+	if !strings.Contains(body, "Kitchen") {
+		t.Fatalf("expected zone header on project page, got:\n%s", body)
+	}
+	if !strings.Contains(body, "zone-row") {
+		t.Fatalf("expected zone-row CSS class on project page, got:\n%s", body)
+	}
+}

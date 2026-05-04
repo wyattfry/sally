@@ -22,6 +22,7 @@ insert into schedule_items (
     finish,
     finish_model_number,
     notes,
+    zone,
     source_url,
     source_title,
     source_image_url,
@@ -30,9 +31,9 @@ insert into schedule_items (
 )
 values (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12, $13, $14
+    $8, $9, $10, $11, $12, $13, $14, $15
 )
-returning id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+returning id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
 `
 
 type CreateScheduleItemParams struct {
@@ -45,6 +46,7 @@ type CreateScheduleItemParams struct {
 	Finish            string   `json:"finish"`
 	FinishModelNumber string   `json:"finish_model_number"`
 	Notes             string   `json:"notes"`
+	Zone              string   `json:"zone"`
 	SourceUrl         string   `json:"source_url"`
 	SourceTitle       string   `json:"source_title"`
 	SourceImageUrl    string   `json:"source_image_url"`
@@ -63,6 +65,7 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 		arg.Finish,
 		arg.FinishModelNumber,
 		arg.Notes,
+		arg.Zone,
 		arg.SourceUrl,
 		arg.SourceTitle,
 		arg.SourceImageUrl,
@@ -81,6 +84,7 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 		&i.Finish,
 		&i.FinishModelNumber,
 		&i.Notes,
+		&i.Zone,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
@@ -103,7 +107,7 @@ func (q *Queries) DeleteScheduleItem(ctx context.Context, id string) error {
 }
 
 const getScheduleItem = `-- name: GetScheduleItem :one
-select id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+select id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
 from schedule_items
 where id = $1
 `
@@ -122,6 +126,7 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 		&i.Finish,
 		&i.FinishModelNumber,
 		&i.Notes,
+		&i.Zone,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
@@ -134,10 +139,10 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 }
 
 const listScheduleItems = `-- name: ListScheduleItems :many
-select id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+select id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
 from schedule_items
 where schedule_id = $1
-order by position asc, created_at asc
+order by zone asc, position asc, created_at asc
 `
 
 func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]ScheduleItem, error) {
@@ -160,6 +165,7 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 			&i.Finish,
 			&i.FinishModelNumber,
 			&i.Notes,
+			&i.Zone,
 			&i.SourceUrl,
 			&i.SourceTitle,
 			&i.SourceImageUrl,
@@ -191,14 +197,15 @@ set code = $2,
     finish = $7,
     finish_model_number = $8,
     notes = $9,
-    source_url = $10,
-    source_title = $11,
-    source_image_url = $12,
-    source_pdf_links = $13,
-    position = $14,
+    zone = $10,
+    source_url = $11,
+    source_title = $12,
+    source_image_url = $13,
+    source_pdf_links = $14,
+    position = $15,
     updated_at = now()
 where id = $1
-returning id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
+returning id, schedule_id, code, title, description, manufacturer, model_number, finish, finish_model_number, notes, zone, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at
 `
 
 type UpdateScheduleItemParams struct {
@@ -211,6 +218,7 @@ type UpdateScheduleItemParams struct {
 	Finish            string   `json:"finish"`
 	FinishModelNumber string   `json:"finish_model_number"`
 	Notes             string   `json:"notes"`
+	Zone              string   `json:"zone"`
 	SourceUrl         string   `json:"source_url"`
 	SourceTitle       string   `json:"source_title"`
 	SourceImageUrl    string   `json:"source_image_url"`
@@ -229,6 +237,7 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 		arg.Finish,
 		arg.FinishModelNumber,
 		arg.Notes,
+		arg.Zone,
 		arg.SourceUrl,
 		arg.SourceTitle,
 		arg.SourceImageUrl,
@@ -247,6 +256,7 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 		&i.Finish,
 		&i.FinishModelNumber,
 		&i.Notes,
+		&i.Zone,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,

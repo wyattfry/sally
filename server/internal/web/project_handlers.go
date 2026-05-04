@@ -164,15 +164,15 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var firstItemImage string
+outer:
 	for _, sw := range schedules {
-		for _, item := range sw.Items {
-			if item.SourceImageUrl != "" {
-				firstItemImage = item.SourceImageUrl
-				break
+		for _, g := range sw.Groups {
+			for _, item := range g.Items {
+				if item.SourceImageUrl != "" {
+					firstItemImage = item.SourceImageUrl
+					break outer
+				}
 			}
-		}
-		if firstItemImage != "" {
-			break
 		}
 	}
 
@@ -400,6 +400,7 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 		Finish:            strings.TrimSpace(r.Form.Get("finish")),
 		FinishModelNumber: strings.TrimSpace(r.Form.Get("finish_model_number")),
 		Notes:             strings.TrimSpace(r.Form.Get("notes")),
+		Zone:              strings.TrimSpace(r.Form.Get("zone")),
 		SourceUrl:         strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:       strings.TrimSpace(r.Form.Get("source_title")),
 		SourceImageUrl:    strings.TrimSpace(r.Form.Get("source_image_url")),
@@ -455,6 +456,7 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 		Finish:            strings.TrimSpace(r.Form.Get("finish")),
 		FinishModelNumber: strings.TrimSpace(r.Form.Get("finish_model_number")),
 		Notes:             strings.TrimSpace(r.Form.Get("notes")),
+		Zone:              strings.TrimSpace(r.Form.Get("zone")),
 		SourceUrl:         strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:       strings.TrimSpace(r.Form.Get("source_title")),
 		SourceImageUrl:    strings.TrimSpace(r.Form.Get("source_image_url")),
@@ -756,9 +758,28 @@ type publicSharePage struct {
 	Schedules []scheduleWithItems
 }
 
+type zoneGroup struct {
+	Zone  string
+	Items []queries.ScheduleItem
+}
+
 type scheduleWithItems struct {
 	Schedule queries.Schedule
-	Items    []queries.ScheduleItem
+	Groups   []zoneGroup
+}
+
+func groupByZone(items []queries.ScheduleItem) []zoneGroup {
+	seen := map[string]int{}
+	var groups []zoneGroup
+	for _, item := range items {
+		if idx, ok := seen[item.Zone]; ok {
+			groups[idx].Items = append(groups[idx].Items, item)
+		} else {
+			seen[item.Zone] = len(groups)
+			groups = append(groups, zoneGroup{Zone: item.Zone, Items: []queries.ScheduleItem{item}})
+		}
+	}
+	return groups
 }
 
 func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]scheduleWithItems, error) {
@@ -772,7 +793,7 @@ func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]schedu
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, scheduleWithItems{Schedule: schedule, Items: items})
+		result = append(result, scheduleWithItems{Schedule: schedule, Groups: groupByZone(items)})
 	}
 	return result, nil
 }
@@ -912,20 +933,23 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
                 <a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/edit">Edit Schedule</a>
               </div>
               {{if $s.Notes}}<p class="schedule-notes">{{$s.Notes}}</p>{{end}}
-              {{if .Items}}
+              {{if .Groups}}
                 <table>
                   <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th></th></tr></thead>
                   <tbody>
-                    {{range .Items}}
-                      <tr>
-                        <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
-                        <td>{{.Code}}</td>
-                        <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
-                        <td>{{.Manufacturer}} {{.ModelNumber}}</td>
-                        <td>{{.Finish}}</td>
-                        <td>{{.Notes}}</td>
-                        <td><a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{.ID}}/edit">Edit</a></td>
-                      </tr>
+                    {{range .Groups}}
+                      {{if .Zone}}<tr class="zone-row"><td colspan="7">{{.Zone}}</td></tr>{{end}}
+                      {{range .Items}}
+                        <tr>
+                          <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
+                          <td>{{.Code}}</td>
+                          <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
+                          <td>{{.Manufacturer}} {{.ModelNumber}}</td>
+                          <td>{{.Finish}}</td>
+                          <td>{{.Notes}}</td>
+                          <td><a href="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{.ID}}/edit">Edit</a></td>
+                        </tr>
+                      {{end}}
                     {{end}}
                   </tbody>
                 </table>
@@ -968,6 +992,8 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
     <h1>Edit Item</h1>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
+      <input type="hidden" name="position" value="{{.Item.Position}}">
+      <label>Zone <input name="zone" value="{{.Item.Zone}}" placeholder="e.g. Kitchen, Primary Bath"></label>
       <label>Code <input name="code" value="{{.Item.Code}}"></label>
       <label>Title <input name="title" value="{{.Item.Title}}" required></label>
       <label>Description <input name="description" value="{{.Item.Description}}"></label>
@@ -977,7 +1003,6 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
       <label>Finish Model Number <input name="finish_model_number" value="{{.Item.FinishModelNumber}}"></label>
       <label>Notes <input name="notes" value="{{.Item.Notes}}"></label>
       <label>Source URL <input name="source_url" value="{{.Item.SourceUrl}}"></label>
-      <label>Position <input name="position" value="{{.Item.Position}}"></label>
       <button type="submit">Update Item</button>
     </form>
     <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/delete">
@@ -1007,20 +1032,23 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
     {{range .Schedules}}
       <h2>{{.Schedule.Name}}</h2>
       {{if .Schedule.Notes}}<p class="schedule-notes">{{.Schedule.Notes}}</p>{{end}}
-      {{if .Items}}
+      {{if .Groups}}
         <table>
           <thead><tr><th></th><th>Code</th><th>Description</th><th>Manufacturer</th><th>Finish</th><th>Notes</th><th>Source</th></tr></thead>
           <tbody>
-            {{range .Items}}
-              <tr>
-                <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
-                <td>{{.Code}}</td>
-                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
-                <td>{{.Manufacturer}} {{.ModelNumber}}</td>
-                <td>{{.Finish}}</td>
-                <td>{{.Notes}}</td>
-                <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">Product Page</a>{{end}}</td>
-              </tr>
+            {{range .Groups}}
+              {{if .Zone}}<tr class="zone-row"><td colspan="7">{{.Zone}}</td></tr>{{end}}
+              {{range .Items}}
+                <tr>
+                  <td>{{if .SourceImageUrl}}<img class="item-thumb" src="{{.SourceImageUrl}}" alt="">{{end}}</td>
+                  <td>{{.Code}}</td>
+                  <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}<br><span class="muted item-desc">{{.Description}}</span></td>
+                  <td>{{.Manufacturer}} {{.ModelNumber}}</td>
+                  <td>{{.Finish}}</td>
+                  <td>{{.Notes}}</td>
+                  <td>{{if .SourceUrl}}<a href="{{.SourceUrl}}">Product Page</a>{{end}}</td>
+                </tr>
+              {{end}}
             {{end}}
           </tbody>
         </table>

@@ -89,6 +89,7 @@ describe("extractScheduleItem", () => {
     expect(body.projectContext).toEqual({
       projectName: "",
       knownCategories: ["Plumbing Fixture", "Lighting"],
+      knownZones: [],
       knownScheduleNames: []
     });
     expect(body.options).toEqual({

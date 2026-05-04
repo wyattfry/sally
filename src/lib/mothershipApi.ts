@@ -46,6 +46,7 @@ export async function saveMothershipScheduleItem(
       finish: item.finish,
       finishModelNumber: item.finishModelNumber ?? "",
       notes: [...item.requiredAddOns, ...item.optionalCompanions].join("; "),
+      zone: item.zone ?? "",
       sourceUrl: item.sourceUrl,
       sourceTitle: item.sourceTitle,
       sourceImageUrl: item.sourceImageUrl ?? "",
