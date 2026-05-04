@@ -61,6 +61,16 @@ func getSessionEmail(r *http.Request, secret []byte) (string, bool) {
 	return verifySignedCookieValue(secret, cookie.Value)
 }
 
+// GetSessionEmail is the exported form of getSessionEmail for use by other packages.
+func GetSessionEmail(r *http.Request, secret []byte) (string, bool) {
+	return getSessionEmail(r, secret)
+}
+
+// ValidateSessionToken validates a raw signed session value (e.g. from a header).
+func ValidateSessionToken(secret []byte, token string) (string, bool) {
+	return verifySignedCookieValue(secret, token)
+}
+
 func newOAuthState() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {

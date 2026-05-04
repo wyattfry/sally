@@ -4,6 +4,8 @@ import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
 import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
 import {
+  checkAuth,
+  getSignInUrl,
   getMothershipScheduleUrl,
   listMothershipProjects,
   createMothershipProject,
@@ -21,6 +23,7 @@ import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } f
 
 type PanelState =
   | { kind: "closed" }
+  | { kind: "signed-out" }
   | { kind: "thinking"; tokenCount: number }
   | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string }
   | { kind: "minimized"; draft: ScheduleItem }
@@ -123,7 +126,12 @@ export default function App() {
     }
   }
 
-  function handleSpecClick() {
+  async function handleSpecClick() {
+    const ok = await checkAuth();
+    if (!ok) {
+      setPanel({ kind: "signed-out" });
+      return;
+    }
     setPanel({ kind: "thinking", tokenCount: 0 });
     refreshContext();
     window.setTimeout(async () => {
@@ -270,7 +278,29 @@ export default function App() {
           Restore Sally draft
         </button>
       ) : null}
-      {panel.kind !== "closed" && panel.kind !== "minimized" ? (
+      {panel.kind === "signed-out" ? (
+        <aside className="sally-panel" aria-label="Sally">
+          <div className="panel-header">
+            <div className="panel-title">Sally</div>
+          </div>
+          <div className="panel-body">
+            <p>Sign in to save items to your Sally projects.</p>
+            <a
+              className="action-button primary"
+              href={getSignInUrl()}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Sign in with Google
+            </a>
+          </div>
+          <div className="panel-actions">
+            <button className="action-button secondary" type="button" onClick={() => setPanel({ kind: "closed" })}>
+              Cancel
+            </button>
+          </div>
+        </aside>
+      ) : panel.kind !== "closed" && panel.kind !== "minimized" ? (
         <SallyPanel
           panel={panel}
           projects={projects}

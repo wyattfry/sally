@@ -6,6 +6,19 @@ type SallyRuntimeConfig = {
   backendBaseUrl?: string;
 };
 
+export async function checkAuth(): Promise<boolean> {
+  try {
+    await fetchJSON<unknown>("/api/v1/me");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getSignInUrl(): string {
+  return `${getBackendBaseUrl()}/auth/google`;
+}
+
 export async function listMothershipProjects(): Promise<Project[]> {
   return fetchJSON<Project[]>("/api/v1/projects");
 }
@@ -56,13 +69,35 @@ export function getMothershipScheduleUrl(projectId: string, scheduleId: string):
   return `${getBackendBaseUrl()}/projects/${encodeURIComponent(projectId)}/schedules/${encodeURIComponent(scheduleId)}`;
 }
 
+async function getSessionToken(): Promise<string | null> {
+  if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) return null;
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { type: "GET_COOKIE", url: getBackendBaseUrl(), name: "sally_session" },
+      (result) => {
+        if (chrome.runtime.lastError) { resolve(null); return; }
+        resolve(result?.value ?? null);
+      }
+    );
+  });
+}
+
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${getBackendBaseUrl()}${path}`;
 
   if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+    const sessionToken = await getSessionToken();
+    const mergedInit: RequestInit = {
+      ...init,
+      headers: {
+        ...(sessionToken ? { "X-Session-Token": sessionToken } : {}),
+        ...(init?.headers ?? {}),
+      },
+    };
+
     const response = await new Promise<any>((resolve, reject) => {
       chrome.runtime.sendMessage(
-        { type: "PROXY_FETCH", url, init },
+        { type: "PROXY_FETCH", url, init: mergedInit },
         (result) => {
           if (chrome.runtime.lastError) {
             return reject(new Error(chrome.runtime.lastError.message));

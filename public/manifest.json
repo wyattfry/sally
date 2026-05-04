@@ -10,6 +10,7 @@
   },
   "permissions": [
     "contextMenus",
+    "cookies",
     "storage"
   ],
   "host_permissions": [

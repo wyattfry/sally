@@ -116,16 +116,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     fetch(message.url, message.init)
       .then(async (response) => {
         const text = await response.text();
-        sendResponse({
-          ok: response.ok,
-          status: response.status,
-          text: text
-        });
+        sendResponse({ ok: response.ok, status: response.status, text });
       })
       .catch((error) => {
         sendResponse({ error: error.message });
       });
-    return true; // Keep the message channel open for the async response
+    return true;
+  }
+  if (message.type === "GET_COOKIE") {
+    chrome.cookies.get({ url: message.url, name: message.name }, (cookie) => {
+      sendResponse({ value: cookie?.value ?? null });
+    });
+    return true;
   }
 });
 

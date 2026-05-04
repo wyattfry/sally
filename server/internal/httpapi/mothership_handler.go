@@ -13,9 +13,11 @@ import (
 )
 
 type mothershipAPI struct {
-	queries      *queries.Queries
-	devUserEmail string
-	devUserName  string
+	queries       *queries.Queries
+	devUserEmail  string
+	devUserName   string
+	sessionSecret []byte
+	oauthEnabled  bool
 }
 
 func registerMothershipAPI(mux *http.ServeMux, deps web.Deps) {
@@ -23,10 +25,13 @@ func registerMothershipAPI(mux *http.ServeMux, deps web.Deps) {
 		return
 	}
 	api := mothershipAPI{
-		queries:      deps.Queries,
-		devUserEmail: firstNonEmpty(deps.DevUserEmail, "dev@spexxtool.local"),
-		devUserName:  firstNonEmpty(deps.DevUserName, "Development User"),
+		queries:       deps.Queries,
+		devUserEmail:  firstNonEmpty(deps.DevUserEmail, "dev@spexxtool.local"),
+		devUserName:   firstNonEmpty(deps.DevUserName, "Development User"),
+		sessionSecret: deps.SessionSecret,
+		oauthEnabled:  deps.OAuthConfig != nil,
 	}
+	mux.HandleFunc("GET /api/v1/me", api.getMe)
 	mux.HandleFunc("GET /api/v1/projects", api.listProjects)
 	mux.HandleFunc("POST /api/v1/projects", api.createProject)
 	mux.HandleFunc("GET /api/v1/projects/{projectID}/schedules", api.listSchedules)
@@ -36,7 +41,7 @@ func registerMothershipAPI(mux *http.ServeMux, deps web.Deps) {
 }
 
 func (api mothershipAPI) listProjects(w http.ResponseWriter, r *http.Request) {
-	user, ok := api.requireDevUser(w, r)
+	user, ok := api.requireUser(w, r)
 	if !ok {
 		return
 	}
@@ -58,7 +63,7 @@ type createProjectRequest struct {
 }
 
 func (api mothershipAPI) createProject(w http.ResponseWriter, r *http.Request) {
-	user, ok := api.requireDevUser(w, r)
+	user, ok := api.requireUser(w, r)
 	if !ok {
 		return
 	}
@@ -88,12 +93,21 @@ func (api mothershipAPI) createProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api mothershipAPI) listSchedules(w http.ResponseWriter, r *http.Request) {
+	user, ok := api.requireUser(w, r)
+	if !ok {
+		return
+	}
 	projectID := r.PathValue("projectID")
-	if _, err := api.queries.GetProject(r.Context(), projectID); errors.Is(err, sql.ErrNoRows) {
+	project, err := api.queries.GetProject(r.Context(), projectID)
+	if errors.Is(err, sql.ErrNoRows) {
 		writeJSONError(w, http.StatusNotFound, "project not found")
 		return
 	} else if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "could not load project")
+		return
+	}
+	if api.oauthEnabled && project.OwnerUserID != user.ID {
+		writeJSONError(w, http.StatusNotFound, "project not found")
 		return
 	}
 
@@ -116,12 +130,21 @@ type createScheduleRequest struct {
 }
 
 func (api mothershipAPI) createSchedule(w http.ResponseWriter, r *http.Request) {
+	user, ok := api.requireUser(w, r)
+	if !ok {
+		return
+	}
 	projectID := r.PathValue("projectID")
-	if _, err := api.queries.GetProject(r.Context(), projectID); errors.Is(err, sql.ErrNoRows) {
+	project, err := api.queries.GetProject(r.Context(), projectID)
+	if errors.Is(err, sql.ErrNoRows) {
 		writeJSONError(w, http.StatusNotFound, "project not found")
 		return
 	} else if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "could not load project")
+		return
+	}
+	if api.oauthEnabled && project.OwnerUserID != user.ID {
+		writeJSONError(w, http.StatusNotFound, "project not found")
 		return
 	}
 
@@ -349,7 +372,26 @@ func toScheduleItemResponse(item queries.ScheduleItem) scheduleItemResponse {
 	}
 }
 
-func (api mothershipAPI) requireDevUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
+func (api mothershipAPI) requireUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
+	if api.oauthEnabled {
+		var email string
+		var ok bool
+		if token := r.Header.Get("X-Session-Token"); token != "" {
+			email, ok = web.ValidateSessionToken(api.sessionSecret, token)
+		} else {
+			email, ok = web.GetSessionEmail(r, api.sessionSecret)
+		}
+		if !ok {
+			writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+			return queries.User{}, false
+		}
+		user, err := api.queries.GetUserByEmail(r.Context(), email)
+		if err != nil {
+			writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+			return queries.User{}, false
+		}
+		return user, true
+	}
 	user, err := api.queries.CreateUser(r.Context(), queries.CreateUserParams{
 		Email: api.devUserEmail,
 		Name:  api.devUserName,
@@ -359,6 +401,20 @@ func (api mothershipAPI) requireDevUser(w http.ResponseWriter, r *http.Request) 
 		return queries.User{}, false
 	}
 	return user, true
+}
+
+type meResponse struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+func (api mothershipAPI) getMe(w http.ResponseWriter, r *http.Request) {
+	user, ok := api.requireUser(w, r)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, meResponse{ID: user.ID, Name: user.Name, Email: user.Email})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

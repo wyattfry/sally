@@ -46,10 +46,11 @@ func withCORS(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 			requestHeaders := strings.TrimSpace(r.Header.Get("Access-Control-Request-Headers"))
 			if requestHeaders == "" {
-				requestHeaders = "Content-Type"
+				requestHeaders = "Content-Type, X-Session-Token"
 			}
 			w.Header().Set("Access-Control-Allow-Headers", requestHeaders)
 		}
