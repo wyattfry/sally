@@ -94,6 +94,7 @@
   font-weight: 800;
   line-height: 1.1;
   margin-top: 4px;
+  margin-bottom: 10px;
 }
 
 .project-name-button {
@@ -330,9 +331,14 @@
 }
 
 .action-button.primary {
-  background: #1f7a3a;
-  border-color: #1f7a3a;
-  color: #fff;
+    display: inline-block;
+    padding: 8px 12px;
+    border: 1px solid #145f43;
+    background: #b7f3c5;
+    color: #102015;
+    text-decoration: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 .action-button:disabled {

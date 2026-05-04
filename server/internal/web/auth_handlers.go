@@ -7,11 +7,13 @@ import (
 	"log"
 	"net/http"
 
-	"golang.org/x/oauth2"
 	queries "sally/server/internal/db/generated"
+
+	"golang.org/x/oauth2"
 )
 
 func (a app) loginPage(w http.ResponseWriter, r *http.Request) {
+	// TODO this redirect-to-projects-if-logged-in might not be working, I can login, go to /login and not be redirected
 	if a.oauthConfig == nil {
 		http.Redirect(w, r, "/projects", http.StatusSeeOther)
 		return

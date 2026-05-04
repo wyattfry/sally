@@ -137,6 +137,7 @@ export function SallyPanel({
       ) : null}
 
       <div className="panel-header">
+        <div className="panel-title">Add item to schedule</div>
         <div className="panel-context">
           <div className="field">
             <label htmlFor="sally-project">Project</label>
@@ -190,8 +191,6 @@ export function SallyPanel({
             </div>
           ) : null}
         </div>
-        <div className="panel-title">{panel.kind === "thinking" ? "Reading page" : panel.kind === "error" ? "Error" : "Add item to schedule"}</div>
-        {draft ? <div className="panel-source">{draft.sourceTitle}</div> : null}
       </div>
 
       <div className="panel-body">
