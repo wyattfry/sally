@@ -99,3 +99,26 @@ func clearOAuthStateCookie(w http.ResponseWriter) {
 		MaxAge:   -1,
 	})
 }
+
+const postAuthCookieName = "sally_post_auth"
+
+func setPostAuthCookie(w http.ResponseWriter, destination string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     postAuthCookieName,
+		Value:    destination,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   600,
+	})
+}
+
+func clearPostAuthCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     postAuthCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+	})
+}

@@ -35,6 +35,9 @@ func (a app) startGoogleOAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setOAuthStateCookie(w, state)
+	if r.URL.Query().Get("next") == "done" {
+		setPostAuthCookie(w, "done")
+	}
 	http.Redirect(w, r, a.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOnline), http.StatusSeeOther)
 }
 
@@ -74,7 +77,13 @@ func (a app) oauthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setSessionCookie(w, a.sessionSecret, email)
-	http.Redirect(w, r, "/auth/done", http.StatusSeeOther)
+
+	postAuth := "/projects"
+	if c, err := r.Cookie(postAuthCookieName); err == nil && c.Value == "done" {
+		postAuth = "/auth/done"
+	}
+	clearPostAuthCookie(w)
+	http.Redirect(w, r, postAuth, http.StatusSeeOther)
 }
 
 func (a app) authDone(w http.ResponseWriter, r *http.Request) {

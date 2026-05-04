@@ -16,7 +16,7 @@ export async function checkAuth(): Promise<boolean> {
 }
 
 export function getSignInUrl(): string {
-  return `${getBackendBaseUrl()}/auth/google`;
+  return `${getBackendBaseUrl()}/auth/google?next=done`;
 }
 
 export async function listMothershipProjects(): Promise<Project[]> {
