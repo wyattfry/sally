@@ -24,6 +24,7 @@ import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } f
 type PanelState =
   | { kind: "closed" }
   | { kind: "signed-out" }
+  | { kind: "signing-in" }
   | { kind: "thinking"; tokenCount: number }
   | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string }
   | { kind: "minimized"; draft: ScheduleItem }
@@ -256,6 +257,7 @@ export default function App() {
       "width=500,height=650,scrollbars=yes,resizable=yes"
     );
     if (!popup) return;
+    setPanel({ kind: "signing-in" });
 
     const interval = setInterval(async () => {
       if (popup.closed) {
@@ -264,6 +266,8 @@ export default function App() {
         if (ok) {
           setPanel({ kind: "closed" });
           refreshContext();
+        } else {
+          setPanel({ kind: "signed-out" });
         }
         return;
       }
@@ -306,16 +310,22 @@ export default function App() {
           Restore Sally draft
         </button>
       ) : null}
-      {panel.kind === "signed-out" ? (
+      {panel.kind === "signed-out" || panel.kind === "signing-in" ? (
         <aside className="sally-panel" aria-label="Sally">
           <div className="panel-header">
             <div className="panel-title">Sally</div>
           </div>
           <div className="panel-body">
-            <p>Sign in to save items to your Sally projects.</p>
-            <button className="action-button primary" type="button" onClick={handleSignIn}>
-              Sign in with Google
-            </button>
+            {panel.kind === "signing-in" ? (
+              <p>Waiting for sign-in in the popup&hellip;</p>
+            ) : (
+              <>
+                <p>Sign in to save items to your Sally projects.</p>
+                <button className="action-button primary" type="button" onClick={handleSignIn}>
+                  Sign in with Google
+                </button>
+              </>
+            )}
           </div>
           <div className="panel-actions">
             <button className="action-button secondary" type="button" onClick={() => setPanel({ kind: "closed" })}>

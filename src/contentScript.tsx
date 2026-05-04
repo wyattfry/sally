@@ -6,6 +6,9 @@ import cssText from "./styles.css?inline";
 const HOST_ID = "sally-spec-root";
 
 function mountSally() {
+  if (window.name === "sally-signin") {
+    return;
+  }
   if (document.getElementById(HOST_ID)) {
     return;
   }
