@@ -125,6 +125,26 @@ describe("extractScheduleItem", () => {
     expect(item.id).toBeTruthy();
   });
 
+  it("strips <UNKNOWN> zone sentinel from the proposal", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          sseDone(successResponse({ proposal: { ...successResponse().proposal!, zone: "<UNKNOWN>" } })),
+          { status: 200, headers: { "Content-Type": "text/event-stream" } }
+        )
+      )
+    );
+
+    const { item } = await extractScheduleItem({
+      capturedPage: capturedPage(),
+      knownCategories: [],
+      now: FIXED_NOW
+    });
+
+    expect(item.zone).toBeUndefined();
+  });
+
   it("throws on non-OK backend responses", async () => {
     vi.stubGlobal(
       "fetch",

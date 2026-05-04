@@ -340,23 +340,6 @@ describe("App", () => {
     expect(screen.queryByLabelText("Captured schedule")).not.toBeInTheDocument();
   });
 
-  it("opens the selected Mother Ship schedule from the Sally panel", async () => {
-    const user = userEvent.setup();
-    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
-
-    render(<App />);
-
-    await user.click(await screen.findByRole("button", { name: "SPEC" }));
-    await screen.findByDisplayValue("Wall Faucet");
-    await user.click(screen.getByRole("button", { name: "View Items" }));
-
-    expect(openSpy).toHaveBeenCalledWith(
-      "http://localhost:8080/projects/project-1/schedules/schedule-1",
-      "_blank"
-    );
-    expect(screen.queryByLabelText("Captured schedule")).not.toBeInTheDocument();
-  });
-
   it("removes only one duplicate item from the viewer", async () => {
     const user = userEvent.setup();
     vi.mocked(listMothershipProjects).mockResolvedValue([]);

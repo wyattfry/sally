@@ -285,7 +285,7 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
     item: {
       id: `draft-${response.requestId}`,
       capturedAt: now.toISOString(),
-      zone: proposal.zone || undefined,
+      zone: proposal.zone && proposal.zone !== "<UNKNOWN>" ? proposal.zone : undefined,
       title: proposal.title,
       manufacturer: proposal.manufacturer,
       modelNumber: proposal.modelNumber,

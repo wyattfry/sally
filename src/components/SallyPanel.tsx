@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { EXTRACT_TIMEOUT_MS } from "../lib/extractApi";
 import type { ActiveContext, Project, Schedule, ScheduleItem } from "../lib/types";
-
-const TOTAL_TIMEOUT_SECONDS = Math.ceil(EXTRACT_TIMEOUT_MS / 1000);
 
 type PanelState =
   | { kind: "thinking"; tokenCount: number }
@@ -23,7 +20,6 @@ type SallyPanelProps = {
   onCreateSchedule: (name: string) => Promise<string | null>;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
-  onViewItems: () => void;
 };
 
 const textFields = [
@@ -59,7 +55,6 @@ export function SallyPanel({
   onCreateSchedule,
   onAccept,
   onCancel,
-  onViewItems
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
   const [modal, setModal] = useState<null | "project" | "schedule" | "zone">(null);
@@ -83,22 +78,6 @@ export function SallyPanel({
     }
   }, [modal]);
 
-  const [secondsLeft, setSecondsLeft] = useState(TOTAL_TIMEOUT_SECONDS);
-  const intervalRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (panel.kind !== "thinking") {
-      setSecondsLeft(TOTAL_TIMEOUT_SECONDS);
-      return;
-    }
-    setSecondsLeft(TOTAL_TIMEOUT_SECONDS);
-    intervalRef.current = window.setInterval(() => {
-      setSecondsLeft((s) => Math.max(0, s - 1));
-    }, 1000);
-    return () => {
-      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
-    };
-  }, [panel.kind]);
 
   function updateField<Key extends keyof ScheduleItem>(key: Key, value: ScheduleItem[Key]) {
     if (!draft) return;
@@ -244,9 +223,6 @@ export function SallyPanel({
                 ? `Generating response… (${panel.tokenCount} tokens)`
                 : "Reading product information and drafting a schedule item."}
             </p>
-            <div className={`thinking-countdown${secondsLeft <= 10 ? " thinking-countdown--urgent" : ""}`}>
-              {secondsLeft}s remaining
-            </div>
           </div>
         ) : (
           <>
@@ -351,9 +327,6 @@ export function SallyPanel({
       </div>
 
       <div className="panel-actions">
-        <button className="action-button secondary" type="button" onClick={onViewItems}>
-          View Items
-        </button>
         <button className="action-button secondary" type="button" onClick={onCancel}>
           Cancel
         </button>

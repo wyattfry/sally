@@ -277,7 +277,6 @@ export default function App() {
           onCreateProject={handleCreateProject}
           onCreateSchedule={handleCreateSchedule}
           onAccept={handleAccept}
-          onViewItems={handleViewItems}
         />
       ) : null}
     </div>
