@@ -95,6 +95,37 @@ func TestLoginRendersSignInPageWhenOAuthConfigured(t *testing.T) {
 	}
 }
 
+func TestLoginRedirectsToProjectsWhenAlreadySignedIn(t *testing.T) {
+	secret := []byte("test-secret")
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		OAuthConfig: &oauth2.Config{
+			ClientID:    "test-client",
+			RedirectURL: "http://localhost/auth/callback",
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://accounts.google.test/o/oauth2/auth",
+				TokenURL: "https://oauth2.googleapis.test/token",
+			},
+		},
+		SessionSecret: secret,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  sessionCookieName,
+		Value: signedCookieValue(secret, "already@signed.in"),
+	})
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d", resp.Code)
+	}
+	if resp.Header().Get("Location") != "/projects" {
+		t.Fatalf("expected redirect to /projects, got %q", resp.Header().Get("Location"))
+	}
+}
+
 func TestStartGoogleOAuthRedirectsToProvider(t *testing.T) {
 	authEndpoint := "https://accounts.google.test/o/oauth2/auth"
 	router := http.NewServeMux()
