@@ -370,6 +370,198 @@ details.schedule-section table {
   text-align: center;
 }
 
+/* Page header (projects list) */
+.page-header {
+  align-items: baseline;
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.page-header h1 {
+  margin: 0;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  color: var(--c-text-muted);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.breadcrumb a {
+  color: var(--c-text-muted);
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+.breadcrumb-sep {
+  margin: 0 5px;
+  opacity: 0.5;
+}
+
+/* Project header */
+.project-header {
+  border-bottom: 1px solid var(--c-border);
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+}
+.project-header-body {
+  align-items: flex-start;
+  display: flex;
+  gap: 20px;
+}
+.project-header-text {
+  flex: 1;
+  min-width: 0;
+}
+.project-header-text h1 {
+  margin: 0 0 6px;
+}
+.project-address {
+  color: var(--c-text-muted);
+  margin: 0 0 4px;
+}
+.project-desc {
+  margin: 0;
+}
+.project-hero-img {
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  flex-shrink: 0;
+  height: 90px;
+  object-fit: cover;
+  width: 120px;
+}
+.project-header-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Button size variant */
+.button-sm {
+  font-size: 13px;
+  padding: 5px 10px;
+}
+
+/* Add-schedule disclosure (sidebar) */
+.add-schedule {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.add-schedule > summary {
+  background: var(--c-surface-raised);
+  color: var(--c-primary-mid);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+  padding: 8px 12px;
+  user-select: none;
+}
+.add-schedule > summary::-webkit-details-marker {
+  display: none;
+}
+.add-schedule > summary:hover {
+  background: var(--c-surface-hover);
+}
+.add-schedule-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+.add-schedule-form label {
+  color: var(--c-text-label);
+  font-size: 11px;
+  font-weight: 800;
+  margin: 0;
+  text-transform: uppercase;
+}
+.add-schedule-form input,
+.add-schedule-form select,
+.add-schedule-form textarea {
+  border-radius: 4px;
+  margin-top: 3px;
+}
+.add-schedule-form button[type="submit"] {
+  margin-top: 2px;
+  width: 100%;
+}
+
+/* Empty-state schedule prompt */
+.schedule-empty-state {
+  padding: 24px 0;
+}
+.schedule-empty-state > .muted {
+  margin-bottom: 12px;
+}
+.schedule-empty-state .add-schedule {
+  max-width: 360px;
+}
+
+/* Edit links in schedule rows and headers */
+.schedule-edit-link {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  color: var(--c-text-muted);
+  font-size: 12px;
+  padding: 2px 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.schedule-edit-link:hover {
+  border-color: var(--c-border-strong);
+  color: var(--c-text);
+}
+
+/* Form pages (new/edit views) */
+.form-page {
+  max-width: 560px;
+}
+.form-page h1 {
+  margin: 0 0 16px;
+}
+.form-card {
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 24px;
+}
+.form-fields {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.form-fields label {
+  margin: 0;
+}
+
+/* Danger zone */
+.danger-zone {
+  background: var(--c-danger-bg);
+  border: 1px solid var(--c-danger-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.danger-zone h3 {
+  color: var(--c-danger-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+.danger-zone p {
+  color: var(--c-danger-text);
+  font-size: 13px;
+  margin: 0;
+}
+
 @media print {
   body {
     background: white;

@@ -11,7 +11,6 @@
   <link rel="stylesheet" href="/static/app.css">
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="icon" type="image/png" sizes="128x128" href="/static/icon-128.png" />
-
 </head>
 <body>
   <header>
@@ -30,8 +29,10 @@
 
 {{define "content"}}
   {{if eq .Kind "projects"}}
-    <h1>Projects</h1>
-    <p class="actions"><a class="button" href="/projects/new">New Project</a></p>
+    <div class="page-header">
+      <h1>Projects</h1>
+      <a class="button" href="/projects/new">New Project</a>
+    </div>
     {{if .Projects}}
       <div class="project-cards">
         {{range .Projects}}
@@ -61,40 +62,43 @@
     {{else}}
       <p class="muted">No projects yet.</p>
     {{end}}
+
   {{else if eq .Kind "new-project"}}
-    <h1>New Project</h1>
-    <form method="post" action="/projects">
-      <label>Project Name <input name="name" required></label>
-      <label>Address <input name="address"></label>
-      <label>Description <input name="description"></label>
-      <button type="submit">Create Project</button>
-    </form>
+    <nav class="breadcrumb"><a href="/projects">Projects</a></nav>
+    <div class="form-page">
+      <h1>New Project</h1>
+      <div class="form-card">
+        <form method="post" action="/projects">
+          <div class="form-fields">
+            <label>Project Name <input name="name" required></label>
+            <label>Address <input name="address"></label>
+            <label>Description <input name="description"></label>
+          </div>
+          <button type="submit">Create Project</button>
+        </form>
+      </div>
+    </div>
+
   {{else if eq .Kind "project"}}
-    <p><a href="/projects">Projects</a></p>
-    {{if .Project.ThumbnailUrl}}<img src="{{.Project.ThumbnailUrl}}" alt="" style="max-width:320px;display:block;margin-bottom:12px;border-radius:4px;">
-    {{else if .FirstItemImage}}<img src="{{.FirstItemImage}}" alt="" style="max-width:320px;display:block;margin-bottom:12px;border-radius:4px;">{{end}}
-    <h1>{{.Project.Name}}</h1>
-    {{if .Project.Address}}<p class="muted">{{.Project.Address}}</p>{{end}}
-    {{if .Project.Description}}<p>{{.Project.Description}}</p>{{end}}
-    <p class="actions"><a class="button" href="/projects/{{.Project.ID}}/edit">Edit</a> <a class="button" href="/projects/{{.Project.ID}}/share">Share</a></p>
-    <form method="post" action="/projects/{{.Project.ID}}/schedules">
-      <label>New Schedule <input name="name" required></label>
-      <label>Notes <textarea name="notes" rows="2"></textarea></label>
-      <label>Type
-        <select name="preset">
-          <option value="general">General</option>
-          <option value="appliance">Appliance</option>
-          <option value="door">Door</option>
-          <option value="door_hardware">Door Hardware</option>
-          <option value="electrical_fixture">Electrical Fixture</option>
-          <option value="insulation">Insulation</option>
-          <option value="paint">Paint</option>
-          <option value="specialties">Specialties</option>
-          <option value="window">Window</option>
-        </select>
-      </label>
-      <button type="submit">Add Schedule</button>
-    </form>
+    <nav class="breadcrumb"><a href="/projects">Projects</a></nav>
+    <div class="project-header">
+      <div class="project-header-body">
+        <div class="project-header-text">
+          <h1>{{.Project.Name}}</h1>
+          {{if .Project.Address}}<p class="project-address">{{.Project.Address}}</p>{{end}}
+          {{if .Project.Description}}<p class="project-desc">{{.Project.Description}}</p>{{end}}
+        </div>
+        {{if .Project.ThumbnailUrl}}
+          <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
+        {{else if .FirstItemImage}}
+          <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
+        {{end}}
+      </div>
+      <div class="project-header-actions">
+        <a class="button button-sm" href="/projects/{{.Project.ID}}/edit">Edit project</a>
+        <a class="button button-sm" href="/projects/{{.Project.ID}}/share">Share</a>
+      </div>
+    </div>
     {{if .Schedules}}
       <div class="project-layout">
         <nav class="schedule-nav">
@@ -103,6 +107,29 @@
               <li><a href="#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></li>
             {{end}}
           </ul>
+          <details class="add-schedule">
+            <summary>+ New schedule</summary>
+            <div class="add-schedule-form">
+              <form method="post" action="/projects/{{$.Project.ID}}/schedules">
+                <label>Name <input name="name" required></label>
+                <label>Notes <textarea name="notes" rows="2"></textarea></label>
+                <label>Type
+                  <select name="preset">
+                    <option value="general">General</option>
+                    <option value="appliance">Appliance</option>
+                    <option value="door">Door</option>
+                    <option value="door_hardware">Door Hardware</option>
+                    <option value="electrical_fixture">Electrical Fixture</option>
+                    <option value="insulation">Insulation</option>
+                    <option value="paint">Paint</option>
+                    <option value="specialties">Specialties</option>
+                    <option value="window">Window</option>
+                  </select>
+                </label>
+                <button type="submit">Add schedule</button>
+              </form>
+            </div>
+          </details>
         </nav>
         <div class="schedule-content">
           {{range .Schedules}}
@@ -113,7 +140,7 @@
                 <span class="summary-toggle"></span>
               </summary>
               <div class="schedule-actions">
-                <a href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/edit">Edit Schedule</a>
+                <a class="schedule-edit-link" href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/edit">Edit schedule</a>
               </div>
               {{if $sw.Schedule.Notes}}<p class="schedule-notes">{{$sw.Schedule.Notes}}</p>{{end}}
               {{if eq $sw.Schedule.Kind "note"}}
@@ -142,7 +169,7 @@
                               <td><div class="cell-clamp">{{if and (eq .Key "title") $item.SourceUrl}}<a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>{{else}}{{index $item.DataMap .Key}}{{end}}</div></td>
                             {{end}}
                           {{end}}
-                          <td><a href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/edit">Edit</a></td>
+                          <td><a class="schedule-edit-link" href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/edit">Edit</a></td>
                         </tr>
                       {{end}}
                     {{end}}
@@ -156,113 +183,199 @@
         </div>
       </div>
     {{else}}
-      <p class="muted">No schedules yet.</p>
-    {{end}}
-  {{else if eq .Kind "edit-project"}}
-    <p><a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
-    <h1>Edit Project</h1>
-    <form method="post" action="/projects/{{.Project.ID}}/edit">
-      <label>Project Name <input name="name" value="{{.Project.Name}}" required></label>
-      <label>Address <input name="address" value="{{.Project.Address}}"></label>
-      <label>Description <input name="description" value="{{.Project.Description}}"></label>
-      <label>Thumbnail URL <input name="thumbnail_url" value="{{.Project.ThumbnailUrl}}" placeholder="https://… (leave blank to use item images)"></label>
-      <button type="submit">Update Project</button>
-    </form>
-    <form method="post" action="/projects/{{.Project.ID}}/delete">
-      <button type="submit">Delete Project</button>
-    </form>
-  {{else if eq .Kind "edit-schedule"}}
-    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
-    <h1>Edit Schedule</h1>
-    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
-      <input type="hidden" name="position" value="{{.Schedule.Position}}">
-      <input type="hidden" name="kind" value="{{.Schedule.Kind}}">
-      <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
-      <label>Notes <textarea name="notes" rows="3">{{.Schedule.Notes}}</textarea></label>
-      <button type="submit">Update Schedule</button>
-    </form>
-    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/delete">
-      <button type="submit">Delete Schedule</button>
-    </form>
-  {{else if eq .Kind "edit-item"}}
-    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> / <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a></p>
-    <h1>Edit Item</h1>
-    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
-      <input type="hidden" name="position" value="{{.Item.Position}}">
-      <input type="hidden" name="source_title" value="{{.Item.SourceTitle}}">
-      <input type="hidden" name="source_image_url" value="{{.Item.SourceImageUrl}}">
-      <textarea name="source_pdf_links" style="display:none">{{range .Item.SourcePdfLinks}}{{.}}
-{{end}}</textarea>
-      <label>Zone <input name="zone" value="{{.Item.Zone}}" placeholder="e.g. Kitchen, Primary Bath"></label>
-      {{range .Columns}}
-        <label>{{.Label}} <input name="col_{{.Key}}" value="{{index $.Item.DataMap .Key}}"></label>
-      {{end}}
-      <label>Source URL <input name="source_url" value="{{.Item.SourceUrl}}"></label>
-      <button type="submit">Update Item</button>
-    </form>
-    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/delete">
-      <button type="submit">Delete Item</button>
-    </form>
-  {{else if eq .Kind "share-manage"}}
-    <p><a href="/projects">Projects</a> / <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a></p>
-    <h1>Share</h1>
-    {{if .ActiveLink}}
-      <p class="share-status">Sharing is <strong>enabled</strong>. Copy the link below and send it to your contractor or client.</p>
-      <div class="share-url-row">
-        <input id="share-url-input" class="share-url-input" type="text" readonly value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}">
-        <button type="button" class="copy-button" onclick="(function(){var i=document.getElementById('share-url-input');i.select();navigator.clipboard.writeText(i.value).catch(function(){document.execCommand('copy')});})()">Copy</button>
+      <div class="schedule-empty-state">
+        <p class="muted">No schedules yet.</p>
+        <details class="add-schedule" open>
+          <summary>+ New schedule</summary>
+          <div class="add-schedule-form">
+            <form method="post" action="/projects/{{.Project.ID}}/schedules">
+              <label>Name <input name="name" required></label>
+              <label>Notes <textarea name="notes" rows="2"></textarea></label>
+              <label>Type
+                <select name="preset">
+                  <option value="general">General</option>
+                  <option value="appliance">Appliance</option>
+                  <option value="door">Door</option>
+                  <option value="door_hardware">Door Hardware</option>
+                  <option value="electrical_fixture">Electrical Fixture</option>
+                  <option value="insulation">Insulation</option>
+                  <option value="paint">Paint</option>
+                  <option value="specialties">Specialties</option>
+                  <option value="window">Window</option>
+                </select>
+              </label>
+              <button type="submit">Add schedule</button>
+            </form>
+          </div>
+        </details>
       </div>
-      <form method="post" action="/projects/{{.Project.ID}}/share-links/deactivate" class="share-action-form">
-        <button type="submit" class="button-danger">Disable sharing</button>
-      </form>
-    {{else}}
-      <p class="muted">Share a read-only link with contractors and clients so they can view the schedule.</p>
-      <form method="post" action="/projects/{{.Project.ID}}/share-links">
-        <button type="submit">Enable sharing</button>
-      </form>
     {{end}}
+
+  {{else if eq .Kind "edit-project"}}
+    <nav class="breadcrumb">
+      <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
+      <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
+      Edit
+    </nav>
+    <div class="form-page">
+      <h1>Edit Project</h1>
+      <div class="form-card">
+        <form method="post" action="/projects/{{.Project.ID}}/edit">
+          <div class="form-fields">
+            <label>Project Name <input name="name" value="{{.Project.Name}}" required></label>
+            <label>Address <input name="address" value="{{.Project.Address}}"></label>
+            <label>Description <input name="description" value="{{.Project.Description}}"></label>
+            <label>Thumbnail URL <input name="thumbnail_url" value="{{.Project.ThumbnailUrl}}" placeholder="https://… (leave blank to use item images)"></label>
+          </div>
+          <button type="submit">Update Project</button>
+        </form>
+      </div>
+      <div class="danger-zone">
+        <h3>Danger zone</h3>
+        <p>Permanently delete this project and all its schedules and items.</p>
+        <form method="post" action="/projects/{{.Project.ID}}/delete" style="margin-top:12px;">
+          <button type="submit" class="button-danger">Delete project</button>
+        </form>
+      </div>
+    </div>
+
+  {{else if eq .Kind "edit-schedule"}}
+    <nav class="breadcrumb">
+      <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
+      <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
+      <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a> <span class="breadcrumb-sep">/</span>
+      Edit
+    </nav>
+    <div class="form-page">
+      <h1>Edit Schedule</h1>
+      <div class="form-card">
+        <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/edit">
+          <input type="hidden" name="position" value="{{.Schedule.Position}}">
+          <input type="hidden" name="kind" value="{{.Schedule.Kind}}">
+          <div class="form-fields">
+            <label>Schedule Name <input name="name" value="{{.Schedule.Name}}" required></label>
+            <label>Notes <textarea name="notes" rows="3">{{.Schedule.Notes}}</textarea></label>
+          </div>
+          <button type="submit">Update Schedule</button>
+        </form>
+      </div>
+      <div class="danger-zone">
+        <h3>Danger zone</h3>
+        <p>Permanently delete this schedule and all its items.</p>
+        <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/delete" style="margin-top:12px;">
+          <button type="submit" class="button-danger">Delete schedule</button>
+        </form>
+      </div>
+    </div>
+
+  {{else if eq .Kind "edit-item"}}
+    <nav class="breadcrumb">
+      <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
+      <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
+      <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a> <span class="breadcrumb-sep">/</span>
+      Edit Item
+    </nav>
+    <div class="form-page">
+      <h1>Edit Item</h1>
+      <div class="form-card">
+        <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
+          <input type="hidden" name="position" value="{{.Item.Position}}">
+          <input type="hidden" name="source_title" value="{{.Item.SourceTitle}}">
+          <input type="hidden" name="source_image_url" value="{{.Item.SourceImageUrl}}">
+          <textarea name="source_pdf_links" style="display:none">{{range .Item.SourcePdfLinks}}{{.}}
+{{end}}</textarea>
+          <div class="form-fields">
+            <label>Zone <input name="zone" value="{{.Item.Zone}}" placeholder="e.g. Kitchen, Primary Bath"></label>
+            {{range .Columns}}
+              <label>{{.Label}} <input name="col_{{.Key}}" value="{{index $.Item.DataMap .Key}}"></label>
+            {{end}}
+            <label>Source URL <input name="source_url" value="{{.Item.SourceUrl}}"></label>
+          </div>
+          <button type="submit">Update Item</button>
+        </form>
+      </div>
+      <div class="danger-zone">
+        <h3>Danger zone</h3>
+        <p>Permanently remove this item from the schedule.</p>
+        <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/delete" style="margin-top:12px;">
+          <button type="submit" class="button-danger">Delete item</button>
+        </form>
+      </div>
+    </div>
+
+  {{else if eq .Kind "share-manage"}}
+    <nav class="breadcrumb">
+      <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
+      <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
+      Share
+    </nav>
+    <div class="form-page">
+      <h1>Share</h1>
+      {{if .ActiveLink}}
+        <p class="share-status">Sharing is <strong>enabled</strong>. Copy the link below and send it to your contractor or client.</p>
+        <div class="share-url-row">
+          <input id="share-url-input" class="share-url-input" type="text" readonly value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}">
+          <button type="button" class="copy-button" onclick="(function(){var i=document.getElementById('share-url-input');i.select();navigator.clipboard.writeText(i.value).catch(function(){document.execCommand('copy')});})()">Copy</button>
+        </div>
+        <form method="post" action="/projects/{{.Project.ID}}/share-links/deactivate" class="share-action-form">
+          <button type="submit" class="button-danger">Disable sharing</button>
+        </form>
+      {{else}}
+        <p class="muted">Share a read-only link with contractors and clients so they can view the schedule.</p>
+        <form method="post" action="/projects/{{.Project.ID}}/share-links" style="margin-top:12px;">
+          <button type="submit">Enable sharing</button>
+        </form>
+      {{end}}
+    </div>
+
   {{else if eq .Kind "public-share"}}
     <h1>{{.Project.Name}}</h1>
-    {{if .Project.Address}}<p>{{.Project.Address}}</p>{{end}}
+    {{if .Project.Address}}<p class="project-address">{{.Project.Address}}</p>{{end}}
     {{range .Schedules}}
       {{$sw := .}}
-      <h2>{{$sw.Schedule.Name}}</h2>
       {{if eq $sw.Schedule.Kind "note"}}
         <div class="schedule-note-content">{{$sw.Schedule.Notes}}</div>
       {{else if $sw.Groups}}
-        <table class="schedule-table">
-          <thead>
-            <tr>
-              <th></th>
-              {{range $sw.Columns}}<th{{if eq .Key "code"}} class="col-code"{{end}}>{{.Label}}</th>{{end}}
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range $sw.Groups}}
-              {{$g := .}}
-              {{if $g.Zone}}<tr class="zone-row"><td colspan="{{len $sw.Columns | add 2}}">{{$g.Zone}}</td></tr>{{end}}
-              {{range $g.Items}}
-                {{$item := .}}
-                <tr>
-                  <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
-                  {{range $sw.Columns}}
-                    {{if eq .Key "code"}}
-                      <td class="col-code">{{index $item.DataMap .Key}}</td>
-                    {{else}}
-                      <td><div class="cell-clamp">{{if and (eq .Key "title") $item.SourceUrl}}<a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>{{else}}{{index $item.DataMap .Key}}{{end}}</div></td>
+        <details class="schedule-section" open>
+          <summary>
+            <h2>{{$sw.Schedule.Name}}</h2>
+            <span class="summary-toggle"></span>
+          </summary>
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th></th>
+                {{range $sw.Columns}}<th{{if eq .Key "code"}} class="col-code"{{end}}>{{.Label}}</th>{{end}}
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range $sw.Groups}}
+                {{$g := .}}
+                {{if $g.Zone}}<tr class="zone-row"><td colspan="{{len $sw.Columns | add 2}}">{{$g.Zone}}</td></tr>{{end}}
+                {{range $g.Items}}
+                  {{$item := .}}
+                  <tr>
+                    <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
+                    {{range $sw.Columns}}
+                      {{if eq .Key "code"}}
+                        <td class="col-code">{{index $item.DataMap .Key}}</td>
+                      {{else}}
+                        <td><div class="cell-clamp">{{if and (eq .Key "title") $item.SourceUrl}}<a href="{{$item.SourceUrl}}">{{index $item.DataMap .Key}}</a>{{else}}{{index $item.DataMap .Key}}{{end}}</div></td>
+                      {{end}}
                     {{end}}
-                  {{end}}
-                  <td>{{if $item.SourceUrl}}<a href="{{$item.SourceUrl}}">Product Page</a>{{end}}</td>
-                </tr>
+                    <td>{{if $item.SourceUrl}}<a href="{{$item.SourceUrl}}">Product page</a>{{end}}</td>
+                  </tr>
+                {{end}}
               {{end}}
-            {{end}}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </details>
       {{else}}
         <p class="muted">No items.</p>
       {{end}}
     {{end}}
+
   {{else if eq .Kind "login"}}
     <div class="login-page">
       <h1>Sally</h1>
