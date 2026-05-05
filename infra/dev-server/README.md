@@ -22,6 +22,7 @@ Docker Compose for the app runtime.
 - `scripts/inspect-proxmox-nodes.sh` compares Proxmox node capacity.
 - `scripts/create-proxmox-vm.sh` creates an Ubuntu cloud-init VM suitable for Docker.
 - `scripts/bootstrap-guest.sh` installs Docker, Cloudflared, Git, and a deploy user.
+- `scripts/install-github-runner.sh` installs the VM-local GitHub Actions runner.
 - `templates/docker-compose.sally-dev.yml` runs Sally, Postgres, and Cloudflared.
 - `templates/sally-compose.service` keeps the Compose stack running under systemd.
 - `templates/deploy-sally-dev.sh` is the host-side deploy script GitHub Actions can call.
@@ -76,9 +77,18 @@ ssh wyatt@<guest-ip> 'cd /opt/sally && ./infra/dev-server/templates/deploy-sally
 The live workflow is `.github/workflows/deploy-sally-dev.yml`; the copy in
 `github-actions/` is kept as a portable template.
 
+The deploy workflow runs on a self-hosted runner labeled `sally-dev` on the VM.
+This is required because the VM address is private RFC1918 space and is not
+reachable from GitHub-hosted runners. To install or converge the runner:
+
+```bash
+GITHUB_RUNNER_TOKEN="$(gh api -X POST repos/wyattfry/sally/actions/runners/registration-token -q .token)" \
+  GUEST_HOST=wyatt@<guest-ip> \
+  infra/dev-server/scripts/install-github-runner.sh
+```
+
 The workflow reads these `development` environment secrets:
 
-- `SALLY_DEV_SSH_PRIVATE_KEY`
 - `SALLY_DEV_POSTGRES_PASSWORD`
 - `CLOUDFLARED_TUNNEL_TOKEN`
 - `SESSION_SECRET`
@@ -87,8 +97,6 @@ The workflow reads these `development` environment secrets:
 
 The workflow reads these `development` environment variables:
 
-- `SALLY_DEV_SSH_HOST`
-- `SALLY_DEV_SSH_USER`
 - `VITE_SALLY_BACKEND_BASE_URL`
 - `LLM_PROVIDER`
 - optional provider/OAuth variables such as `OPENAI_MODEL`, `OPENAI_BASE_URL`,

@@ -13,12 +13,10 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, sally-dev]
     environment: development
 
     env:
-      SSH_HOST: ${{ vars.SALLY_DEV_SSH_HOST }}
-      SSH_USER: ${{ vars.SALLY_DEV_SSH_USER || 'wyatt' }}
       PUBLIC_BASE_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
       LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'stub' }}
       OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
@@ -36,14 +34,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run server tests
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+
+      - name: Run Go tests
         working-directory: server
         run: go test ./...
 
       - name: Validate required deployment settings
         run: |
           missing=0
-          for name in SSH_HOST SSH_USER PUBLIC_BASE_URL POSTGRES_PASSWORD SESSION_SECRET CLOUDFLARED_TUNNEL_TOKEN; do
+          for name in PUBLIC_BASE_URL POSTGRES_PASSWORD SESSION_SECRET CLOUDFLARED_TUNNEL_TOKEN; do
             if [ -z "${!name}" ]; then
               echo "$name is required" >&2
               missing=1
@@ -53,23 +55,11 @@ jobs:
             exit 1
           fi
 
-      - name: Configure SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SALLY_DEV_SSH_PRIVATE_KEY }}
+      - name: Write deployment environment
         run: |
-          if [ -z "$SSH_PRIVATE_KEY" ]; then
-            echo "SALLY_DEV_SSH_PRIVATE_KEY is required" >&2
-            exit 1
-          fi
-
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/sally-dev
-          chmod 600 ~/.ssh/sally-dev
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-
-      - name: Write remote environment
-        run: |
-          ssh -i ~/.ssh/sally-dev "$SSH_USER@$SSH_HOST" 'sudo install -d -o "$USER" -g "$USER" -m 755 /opt/sally && umask 077 && cat > /opt/sally/.env' <<ENV
+          sudo install -d -o "$USER" -g "$USER" -m 755 /opt/sally
+          umask 077
+          cat > /opt/sally/.env <<ENV
           PORT=8080
           POSTGRES_DB=sally
           POSTGRES_USER=sally
@@ -88,10 +78,10 @@ jobs:
           CLOUDFLARED_TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
           ENV
 
-      - name: Deploy on VM
+      - name: Deploy
         run: |
-          ssh -i ~/.ssh/sally-dev "$SSH_USER@$SSH_HOST" \
-            'cd /opt/sally && bash infra/dev-server/templates/deploy-sally-dev.sh'
+          cd /opt/sally
+          bash infra/dev-server/templates/deploy-sally-dev.sh
 
       - name: Verify public tunnel health
         run: |
