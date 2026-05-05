@@ -1,0 +1,112 @@
+name: Deploy Sally Dev Server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "migrations/**"
+      - "docker-compose.yml"
+      - "infra/dev-server/**"
+      - ".github/workflows/deploy-sally-dev.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: development
+
+    env:
+      SSH_HOST: ${{ vars.SALLY_DEV_SSH_HOST }}
+      SSH_USER: ${{ vars.SALLY_DEV_SSH_USER || 'wyatt' }}
+      PUBLIC_BASE_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'stub' }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      GOOGLE_REDIRECT_URL: ${{ vars.GOOGLE_REDIRECT_URL }}
+      POSTGRES_PASSWORD: ${{ secrets.SALLY_DEV_POSTGRES_PASSWORD }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      CLOUDFLARED_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARED_TUNNEL_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run server tests
+        working-directory: server
+        run: go test ./...
+
+      - name: Validate required deployment settings
+        run: |
+          missing=0
+          for name in SSH_HOST SSH_USER PUBLIC_BASE_URL POSTGRES_PASSWORD SESSION_SECRET CLOUDFLARED_TUNNEL_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "$name is required" >&2
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SALLY_DEV_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "SALLY_DEV_SSH_PRIVATE_KEY is required" >&2
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/sally-dev
+          chmod 600 ~/.ssh/sally-dev
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Write remote environment
+        run: |
+          ssh -i ~/.ssh/sally-dev "$SSH_USER@$SSH_HOST" 'sudo install -d -o "$USER" -g "$USER" -m 755 /opt/sally && umask 077 && cat > /opt/sally/.env' <<ENV
+          PORT=8080
+          POSTGRES_DB=sally
+          POSTGRES_USER=sally
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          LLM_PROVIDER=${LLM_PROVIDER}
+          OPENAI_API_KEY=${OPENAI_API_KEY}
+          OPENAI_MODEL=${OPENAI_MODEL}
+          OPENAI_BASE_URL=${OPENAI_BASE_URL}
+          ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+          ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
+          GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+          GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+          GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL}
+          SESSION_SECRET=${SESSION_SECRET}
+          VITE_SALLY_BACKEND_BASE_URL=${PUBLIC_BASE_URL}
+          CLOUDFLARED_TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+          ENV
+
+      - name: Deploy on VM
+        run: |
+          ssh -i ~/.ssh/sally-dev "$SSH_USER@$SSH_HOST" \
+            'cd /opt/sally && bash infra/dev-server/templates/deploy-sally-dev.sh'
+
+      - name: Verify public tunnel health
+        run: |
+          health_url="${PUBLIC_BASE_URL%/}/healthz"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            body_file="$(mktemp)"
+            status_code="$(curl -sS -o "$body_file" -w '%{http_code}' "$health_url" || true)"
+            if [ "$status_code" = "200" ] && grep -qx 'ok' "$body_file"; then
+              echo "Verified tunnel health at $health_url"
+              rm -f "$body_file"
+              exit 0
+            fi
+            echo "Health check attempt $attempt failed for $health_url with status ${status_code:-curl-error}" >&2
+            cat "$body_file" >&2 || true
+            rm -f "$body_file"
+            sleep 3
+          done
+          exit 1

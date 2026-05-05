@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: sally-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sally}
+      POSTGRES_USER: ${POSTGRES_USER:-sally}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - sally-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sally} -d ${POSTGRES_DB:-sally}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  sally-server:
+    build:
+      context: ../../../server
+      dockerfile: Dockerfile
+    container_name: sally-server
+    env_file:
+      - path: ../../../.env
+        required: false
+    environment:
+      PORT: ${PORT:-8080}
+      DATABASE_URL: postgres://${POSTGRES_USER:-sally}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sally}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${PORT:-8080}:${PORT:-8080}"
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: sally-cloudflared
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN:?CLOUDFLARED_TUNNEL_TOKEN is required}
+    network_mode: host
+    depends_on:
+      - sally-server
+    restart: unless-stopped
+
+volumes:
+  sally-postgres-data:

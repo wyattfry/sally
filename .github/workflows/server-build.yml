@@ -1,20 +1,24 @@
-name: Build And Deploy Extension Backend Server
+name: Server Build
 
 on:
   push:
     branches: [main]
     paths:
       - "server/**"
-      - "scripts/deploy-dev-server.sh"
-      - "scripts/deploy-cloudflared.sh"
+      - "infra/dev-server/**"
+      - "docker-compose.yml"
+      - ".github/workflows/server-build.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - "infra/dev-server/**"
       - "docker-compose.yml"
       - ".github/workflows/server-build.yml"
   workflow_dispatch:
 
 jobs:
   server-build:
-    runs-on: self-hosted
-    environment: development
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -27,87 +31,19 @@ jobs:
         working-directory: server
         run: go test ./...
 
-      - name: Run tunnel deploy script tests
-        run: bash scripts/test-deploy-cloudflared.sh
-
-      - name: Build server binary
-        working-directory: server
+      - name: Check dev-server shell scripts
         run: |
-          mkdir -p ../artifacts
-          go build -o ../artifacts/sally-server ./cmd/sally-server
+          bash -n infra/dev-server/scripts/inspect-proxmox-nodes.sh
+          bash -n infra/dev-server/scripts/create-proxmox-vm.sh
+          bash -n infra/dev-server/scripts/bootstrap-guest.sh
+          bash -n infra/dev-server/templates/deploy-sally-dev.sh
 
-      - name: Detect Docker usability
-        id: docker
-        run: |
-          if docker run --rm hello-world >/dev/null 2>&1; then
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Validate dev-server Compose file
+        env:
+          POSTGRES_PASSWORD: ci_postgres_password
+          CLOUDFLARED_TUNNEL_TOKEN: ci_tunnel_token
+        run: docker compose --env-file infra/dev-server/env.example -f infra/dev-server/templates/docker-compose.sally-dev.yml config >/tmp/sally-dev-compose.yml
 
       - name: Build server image
-        if: steps.docker.outputs.usable == 'true'
         working-directory: server
-        run: docker build -t sally-server:dev .
-
-      - name: Save image tarball
-        if: steps.docker.outputs.usable == 'true'
-        run: docker save sally-server:dev -o artifacts/sally-server-dev.tar
-
-      - name: Upload server artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: sally-server-dev
-          path: artifacts/
-
-      - name: Deploy server directly on runner host
-        env:
-          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
-          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
-          OLLAMA_BASE_URL: ${{ vars.OLLAMA_BASE_URL }}
-          OLLAMA_MODEL: ${{ vars.OLLAMA_MODEL }}
-          PORT: ${{ vars.SALLY_SERVER_PORT }}
-          DEPLOY_ROOT: ${{ vars.SALLY_SERVER_DEPLOY_ROOT }}
-        run: bash ./scripts/deploy-dev-server.sh
-
-      - name: Ensure Cloudflare tunnel is running
-        env:
-          CLOUDFLARED_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARED_TUNNEL_TOKEN }}
-          CLOUDFLARED_TUNNEL_NAME: ${{ vars.CLOUDFLARED_TUNNEL_NAME }}
-          CLOUDFLARED_PUBLIC_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
-        run: |
-          if [ -n "$CLOUDFLARED_TUNNEL_TOKEN" ]; then
-            chmod +x scripts/deploy-cloudflared.sh
-            ./scripts/deploy-cloudflared.sh
-          else
-            echo "CLOUDFLARED_TUNNEL_TOKEN is not configured; skipping tunnel deploy"
-          fi
-
-      - name: Verify public tunnel health
-        env:
-          PUBLIC_BASE_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
-        run: |
-          if [ -z "$PUBLIC_BASE_URL" ]; then
-            echo "VITE_SALLY_BACKEND_BASE_URL is not configured in the development environment" >&2
-            exit 1
-          fi
-
-          health_url="${PUBLIC_BASE_URL%/}/healthz"
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            body_file="$(mktemp)"
-            status_code="$(curl -sS -o "$body_file" -w '%{http_code}' "$health_url" || true)"
-            if [ "$status_code" = "200" ] && grep -qx 'ok' "$body_file"; then
-              echo "Verified tunnel health at $health_url"
-              rm -f "$body_file"
-              exit 0
-            fi
-            echo "Tunnel health check attempt $attempt failed for $health_url with status ${status_code:-curl-error}" >&2
-            cat "$body_file" >&2 || true
-            rm -f "$body_file"
-            sleep 3
-          done
-
-          echo "Timed out waiting for public tunnel health at $health_url" >&2
-          exit 1
+        run: docker build -t sally-server:ci .
