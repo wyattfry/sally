@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,9 +11,16 @@ import (
 
 	"sally/server/internal/extract"
 	"sally/server/internal/provider"
+
+	queries "sally/server/internal/db/generated"
 )
 
-func NewExtractHandler(extractor provider.Extractor) http.HandlerFunc {
+type scheduleQuerier interface {
+	GetSchedule(ctx context.Context, id string) (queries.Schedule, error)
+	ListScheduleItems(ctx context.Context, scheduleID string) ([]queries.ScheduleItem, error)
+}
+
+func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req extract.ExtractSpecRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -27,6 +35,15 @@ func NewExtractHandler(extractor provider.Extractor) http.HandlerFunc {
 
 		log.Printf("[extract] %s: received page=%q", req.RequestID, req.Page.URL)
 		start := time.Now()
+
+		var computedNextCode string
+		if q != nil && req.ScheduleID != "" {
+			if schedule, err := q.GetSchedule(r.Context(), req.ScheduleID); err == nil {
+				if items, err := q.ListScheduleItems(r.Context(), req.ScheduleID); err == nil {
+					computedNextCode = nextCode(items, schedule.Name)
+				}
+			}
+		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
@@ -61,6 +78,7 @@ func NewExtractHandler(extractor provider.Extractor) http.HandlerFunc {
 		}
 
 		log.Printf("[extract] %s: ok in %dms", req.RequestID, elapsed.Milliseconds())
+		resp.NextCode = computedNextCode
 		data, _ := json.Marshal(resp)
 		sendEvent("done", data)
 	}

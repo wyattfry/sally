@@ -55,6 +55,7 @@ export type ExtractSpecRequest = {
   client: ClientInfo;
   page: CapturedPage;
   projectContext: ProjectContext;
+  scheduleId?: string;
   options: ExtractSpecOptions;
 };
 
@@ -83,6 +84,7 @@ export type ExtractSpecResponse = {
   analysis?: ExtractAnalysis;
   error?: ExtractErrorPayload;
   meta: ExtractResponseMeta;
+  nextCode?: string;
 };
 
 export type ExtractedProposal = {

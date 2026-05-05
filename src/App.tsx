@@ -146,6 +146,7 @@ export default function App() {
           capturedPage: captured,
           knownCategories: [],
           knownScheduleNames,
+          scheduleId: activeContext?.scheduleId,
           onProgress: (tokenCount) => {
             setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
           }

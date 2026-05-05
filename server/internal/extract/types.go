@@ -8,6 +8,7 @@ type ExtractSpecRequest struct {
 	Client         ClientInfo         `json:"client"`
 	Page           PagePayload        `json:"page"`
 	ProjectContext ProjectContext     `json:"projectContext"`
+	ScheduleID     string             `json:"scheduleId,omitempty"`
 	Options        ExtractSpecOptions `json:"options"`
 }
 
@@ -45,6 +46,7 @@ type ExtractSpecResponse struct {
 	Analysis  *Analysis     `json:"analysis,omitempty"`
 	Error     *ErrorPayload `json:"error,omitempty"`
 	Meta      ResponseMeta  `json:"meta"`
+	NextCode  string        `json:"nextCode,omitempty"`
 }
 
 type Proposal struct {

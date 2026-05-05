@@ -32,6 +32,7 @@ type ExtractScheduleItemArgs = {
   knownCategories: string[];
   knownZones?: string[];
   knownScheduleNames?: string[];
+  scheduleId?: string;
   now?: Date;
   onProgress?: (tokenCount: number) => void;
 };
@@ -46,6 +47,7 @@ export async function extractScheduleItem({
   knownCategories,
   knownZones = [],
   knownScheduleNames = [],
+  scheduleId,
   now = new Date(),
   onProgress
 }: ExtractScheduleItemArgs): Promise<ExtractScheduleItemResult> {
@@ -54,6 +56,7 @@ export async function extractScheduleItem({
     knownCategories,
     knownZones,
     knownScheduleNames,
+    scheduleId,
     now
   });
 
@@ -251,8 +254,9 @@ function buildExtractSpecRequest({
   knownCategories,
   knownZones,
   knownScheduleNames,
+  scheduleId,
   now
-}: Required<Omit<ExtractScheduleItemArgs, "onProgress">> & { now: Date }): ExtractSpecRequest {
+}: Required<Omit<ExtractScheduleItemArgs, "onProgress" | "scheduleId">> & { scheduleId?: string; now: Date }): ExtractSpecRequest {
   return {
     requestId: createId(),
     sentAt: now.toISOString(),
@@ -268,6 +272,7 @@ function buildExtractSpecRequest({
       knownZones,
       knownScheduleNames
     },
+    scheduleId,
     options: {
       includeDebug: true,
       returnAlternatives: false
@@ -282,6 +287,7 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
   }
 
   const data: Record<string, string> = {};
+  if (response.nextCode) data.code = response.nextCode;
   if (proposal.title) data.title = proposal.title;
   if (proposal.manufacturer) data.manufacturer = proposal.manufacturer;
   if (proposal.modelNumber) data.model_number = proposal.modelNumber;

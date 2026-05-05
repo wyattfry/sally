@@ -12,18 +12,19 @@ func TestScheduleCodePrefix(t *testing.T) {
 		name string
 		want string
 	}{
-		{"Paint", "PA"},
-		{"Appliance", "AP"},
-		{"Door", "DO"},
-		{"Window", "WI"},
-		{"General", "GE"},
-		{"Insulation", "IN"},
-		{"Specialties", "SP"},
-		{"Electrical Fixture", "EF"},
-		{"Door Hardware", "DH"},
-		{"Door Hardware Schedule", "DHS"},
+		{"Paint", "P"},
+		{"Appliance", "A"},
+		{"Appliance Schedule", "A"},
+		{"Door", "D"},
+		{"Window", "W"},
+		{"General", "G"},
+		{"Insulation", "I"},
+		{"Specialties", "S"},
+		{"Electrical Fixture", "E"},
+		{"Door Hardware", "D"},
+		{"Door Hardware Schedule", "D"},
 		{"", "X"},
-		{"A", "A"},
+		{"123 Paint", "P"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -35,62 +36,95 @@ func TestScheduleCodePrefix(t *testing.T) {
 	}
 }
 
+func TestExistingPrefix(t *testing.T) {
+	makeItem := func(code string) queries.ScheduleItem {
+		data, _ := json.Marshal(map[string]string{"code": code})
+		return queries.ScheduleItem{Data: data}
+	}
+
+	t.Run("no items returns empty", func(t *testing.T) {
+		if got := existingPrefix(nil); got != "" {
+			t.Errorf("got %q, want empty", got)
+		}
+	})
+
+	t.Run("detects single-letter prefix", func(t *testing.T) {
+		items := []queries.ScheduleItem{makeItem("A-1"), makeItem("A-2"), makeItem("A-3")}
+		if got := existingPrefix(items); got != "A" {
+			t.Errorf("got %q, want A", got)
+		}
+	})
+
+	t.Run("detects multi-char prefix", func(t *testing.T) {
+		items := []queries.ScheduleItem{makeItem("EF-1"), makeItem("EF-2")}
+		if got := existingPrefix(items); got != "EF" {
+			t.Errorf("got %q, want EF", got)
+		}
+	})
+
+	t.Run("ignores codes without numeric suffix", func(t *testing.T) {
+		items := []queries.ScheduleItem{makeItem("A-1"), makeItem("A-two"), makeItem("A-3")}
+		if got := existingPrefix(items); got != "A" {
+			t.Errorf("got %q, want A", got)
+		}
+	})
+
+	t.Run("returns most common when mixed", func(t *testing.T) {
+		items := []queries.ScheduleItem{
+			makeItem("A-1"), makeItem("A-2"), makeItem("A-3"),
+			makeItem("B-1"),
+		}
+		if got := existingPrefix(items); got != "A" {
+			t.Errorf("got %q, want A", got)
+		}
+	})
+}
+
 func TestNextCode(t *testing.T) {
 	makeItem := func(code string) queries.ScheduleItem {
 		data, _ := json.Marshal(map[string]string{"code": code})
 		return queries.ScheduleItem{Data: data}
 	}
 
-	t.Run("empty schedule starts at 1", func(t *testing.T) {
-		got := nextCode(nil, "PA")
-		if got != "PA-1" {
-			t.Errorf("got %q, want PA-1", got)
+	t.Run("empty schedule derives from name", func(t *testing.T) {
+		got := nextCode(nil, "Appliance Schedule")
+		if got != "A-1" {
+			t.Errorf("got %q, want A-1", got)
 		}
 	})
 
-	t.Run("increments past existing", func(t *testing.T) {
-		items := []queries.ScheduleItem{
-			makeItem("PA-1"),
-			makeItem("PA-2"),
-			makeItem("PA-3"),
-		}
-		got := nextCode(items, "PA")
-		if got != "PA-4" {
-			t.Errorf("got %q, want PA-4", got)
+	t.Run("follows existing prefix not schedule name", func(t *testing.T) {
+		// Items were manually coded "AP-1", "AP-2" — respect that, ignore name
+		items := []queries.ScheduleItem{makeItem("AP-1"), makeItem("AP-2")}
+		got := nextCode(items, "Appliance Schedule")
+		if got != "AP-3" {
+			t.Errorf("got %q, want AP-3", got)
 		}
 	})
 
-	t.Run("ignores different prefix", func(t *testing.T) {
-		items := []queries.ScheduleItem{
-			makeItem("DO-1"),
-			makeItem("DO-2"),
-		}
-		got := nextCode(items, "PA")
-		if got != "PA-1" {
-			t.Errorf("got %q, want PA-1", got)
+	t.Run("increments past max not count", func(t *testing.T) {
+		// A-2 was deleted; next should be A-4 not A-3
+		items := []queries.ScheduleItem{makeItem("A-1"), makeItem("A-3")}
+		got := nextCode(items, "Appliance")
+		if got != "A-4" {
+			t.Errorf("got %q, want A-4", got)
 		}
 	})
 
-	t.Run("ignores non-numeric suffix", func(t *testing.T) {
-		items := []queries.ScheduleItem{
-			makeItem("PA-1"),
-			makeItem("PA-abc"),
-			makeItem("PA-2"),
-		}
-		got := nextCode(items, "PA")
-		if got != "PA-3" {
-			t.Errorf("got %q, want PA-3", got)
+	t.Run("follows established prefix over schedule name", func(t *testing.T) {
+		// Items were coded D-1/D-2; honor that even if schedule name starts with P
+		items := []queries.ScheduleItem{makeItem("D-1"), makeItem("D-2")}
+		got := nextCode(items, "Paint")
+		if got != "D-3" {
+			t.Errorf("got %q, want D-3", got)
 		}
 	})
 
-	t.Run("ignores empty data", func(t *testing.T) {
-		items := []queries.ScheduleItem{
-			{Data: nil},
-			makeItem("PA-5"),
-		}
-		got := nextCode(items, "PA")
-		if got != "PA-6" {
-			t.Errorf("got %q, want PA-6", got)
+	t.Run("ignores nil data", func(t *testing.T) {
+		items := []queries.ScheduleItem{{Data: nil}, makeItem("A-5")}
+		got := nextCode(items, "Appliance")
+		if got != "A-6" {
+			t.Errorf("got %q, want A-6", got)
 		}
 	})
 }

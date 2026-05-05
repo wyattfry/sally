@@ -9,38 +9,57 @@ import (
 	queries "sally/server/internal/db/generated"
 )
 
-// scheduleCodePrefix derives a short uppercase prefix from a schedule name.
-// Single word  → first two letters  ("Paint" → "PA", "Door" → "DO").
-// Multi-word   → initials, up to 3  ("Door Hardware" → "DH", "Electrical Fixture Schedule" → "EFS").
+// scheduleCodePrefix derives a single uppercase letter from the schedule name
+// (first alphabetic character of the first word).
 func scheduleCodePrefix(name string) string {
-	words := strings.Fields(name)
-	if len(words) == 0 {
-		return "X"
-	}
-	if len(words) == 1 {
-		w := strings.ToUpper(words[0])
-		if len(w) >= 2 {
-			return w[:2]
-		}
-		return w
-	}
-	var sb strings.Builder
-	for i, w := range words {
-		if i >= 3 {
-			break
-		}
-		uw := strings.ToUpper(w)
-		if len(uw) > 0 {
-			sb.WriteByte(uw[0])
+	for _, r := range strings.ToUpper(strings.TrimSpace(name)) {
+		if r >= 'A' && r <= 'Z' {
+			return string(r)
 		}
 	}
-	return sb.String()
+	return "X"
 }
 
-// nextCode returns the next sequential code for prefix by scanning existing
-// items. It finds the highest numeric suffix already in use (e.g. "PA-3")
-// and returns prefix-N+1. Returns prefix-1 when no matching codes exist.
-func nextCode(items []queries.ScheduleItem, prefix string) string {
+// existingPrefix scans items for an established "PREFIX-N" code pattern and
+// returns the most common prefix. Returns "" when no pattern is found.
+func existingPrefix(items []queries.ScheduleItem) string {
+	counts := map[string]int{}
+	for _, item := range items {
+		if len(item.Data) == 0 {
+			continue
+		}
+		var data map[string]string
+		if err := json.Unmarshal(item.Data, &data); err != nil {
+			continue
+		}
+		code := strings.TrimSpace(data["code"])
+		i := strings.LastIndex(code, "-")
+		if i <= 0 {
+			continue
+		}
+		if _, err := strconv.Atoi(code[i+1:]); err != nil {
+			continue
+		}
+		counts[code[:i]]++
+	}
+	best, bestCount := "", 0
+	for prefix, count := range counts {
+		if count > bestCount || (count == bestCount && prefix < best) {
+			best, bestCount = prefix, count
+		}
+	}
+	return best
+}
+
+// nextCode returns the next sequential code for a schedule.
+// It first looks for an established prefix in existing items; only falls back
+// to deriving from scheduleName when the schedule has no items yet.
+func nextCode(items []queries.ScheduleItem, scheduleName string) string {
+	prefix := existingPrefix(items)
+	if prefix == "" {
+		prefix = scheduleCodePrefix(scheduleName)
+	}
+
 	max := 0
 	needle := prefix + "-"
 	for _, item := range items {

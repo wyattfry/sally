@@ -259,8 +259,7 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 	}
 
 	if req.Data["code"] == "" {
-		prefix := scheduleCodePrefix(schedule.Name)
-		req.Data["code"] = nextCode(existingItems, prefix)
+		req.Data["code"] = nextCode(existingItems, schedule.Name)
 	}
 
 	dataJSON, err := json.Marshal(req.Data)
