@@ -231,7 +231,8 @@ type createScheduleItemRequest struct {
 
 func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	scheduleID := r.PathValue("scheduleID")
-	if _, err := api.queries.GetSchedule(r.Context(), scheduleID); errors.Is(err, sql.ErrNoRows) {
+	schedule, err := api.queries.GetSchedule(r.Context(), scheduleID)
+	if errors.Is(err, sql.ErrNoRows) {
 		writeJSONError(w, http.StatusNotFound, "schedule not found")
 		return
 	} else if err != nil {
@@ -251,17 +252,23 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 		req.SourcePDFLinks = []string{}
 	}
 
+	existingItems, err := api.queries.ListScheduleItems(r.Context(), scheduleID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not load items")
+		return
+	}
+
+	if req.Data["code"] == "" {
+		prefix := scheduleCodePrefix(schedule.Name)
+		req.Data["code"] = nextCode(existingItems, prefix)
+	}
+
 	dataJSON, err := json.Marshal(req.Data)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "could not encode data")
 		return
 	}
 
-	existingItems, err := api.queries.ListScheduleItems(r.Context(), scheduleID)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "could not load items")
-		return
-	}
 	item, err := api.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
 		ScheduleID:     scheduleID,
 		Data:           dataJSON,
