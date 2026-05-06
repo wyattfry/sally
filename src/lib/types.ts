@@ -49,6 +49,11 @@ export type ActiveContext = {
   scheduleId: string;
 };
 
+export type ColumnDefinition = {
+  key: string;
+  label: string;
+};
+
 export type ExtractSpecRequest = {
   requestId: string;
   sentAt: string;
@@ -56,6 +61,7 @@ export type ExtractSpecRequest = {
   page: CapturedPage;
   projectContext: ProjectContext;
   scheduleId?: string;
+  customColumns?: ColumnDefinition[];
   options: ExtractSpecOptions;
 };
 
@@ -106,6 +112,7 @@ export type ExtractedProposal = {
   sourceTitle: string;
   sourceImageUrl?: string;
   sourcePdfLinks: string[];
+  customFields?: Record<string, string>;
 };
 
 export type FinishModelMapping = {

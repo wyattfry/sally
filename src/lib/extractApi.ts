@@ -1,7 +1,9 @@
 import type {
   CapturedPage,
+  ColumnDefinition,
   ExtractSpecRequest,
   ExtractSpecResponse,
+  ScheduleColumn,
   ScheduleItem
 } from "./types";
 
@@ -32,6 +34,7 @@ type ExtractScheduleItemArgs = {
   knownCategories: string[];
   knownZones?: string[];
   knownScheduleNames?: string[];
+  columns?: ScheduleColumn[];
   scheduleId?: string;
   now?: Date;
   onProgress?: (tokenCount: number) => void;
@@ -48,6 +51,7 @@ export async function extractScheduleItem({
   knownCategories,
   knownZones = [],
   knownScheduleNames = [],
+  columns = [],
   scheduleId,
   now = new Date(),
   onProgress
@@ -57,6 +61,7 @@ export async function extractScheduleItem({
     knownCategories,
     knownZones,
     knownScheduleNames,
+    columns,
     scheduleId,
     now
   });
@@ -255,9 +260,14 @@ function buildExtractSpecRequest({
   knownCategories,
   knownZones,
   knownScheduleNames,
+  columns,
   scheduleId,
   now
 }: Required<Omit<ExtractScheduleItemArgs, "onProgress" | "scheduleId">> & { scheduleId?: string; now: Date }): ExtractSpecRequest {
+  const customColumns: ColumnDefinition[] = columns
+    .filter((c) => c.key !== "zone")
+    .map((c) => ({ key: c.key, label: c.label }));
+
   return {
     requestId: createId(),
     sentAt: now.toISOString(),
@@ -274,6 +284,7 @@ function buildExtractSpecRequest({
       knownScheduleNames
     },
     scheduleId,
+    customColumns: customColumns.length > 0 ? customColumns : undefined,
     options: {
       includeDebug: true,
       returnAlternatives: false
@@ -299,6 +310,11 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
     .filter(Boolean)
     .join("; ");
   if (notes) data.notes = notes;
+  if (proposal.customFields) {
+    for (const [key, value] of Object.entries(proposal.customFields)) {
+      if (value) data[key] = value;
+    }
+  }
 
   return {
     item: {

@@ -120,6 +120,7 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 			SourceTitle:           req.Page.Title,
 			SourceImageURL:        req.Page.MainImageURL,
 			SourcePDFLinks:        req.Page.PDFLinks,
+			CustomFields:          output.CustomFields,
 		},
 		Analysis: output.Analysis,
 		Meta:     meta,
@@ -193,6 +194,7 @@ type openAIExtractionOutput struct {
 	Zone                  string                       `json:"zone"`
 	SuggestedScheduleName string                       `json:"suggestedScheduleName"`
 	Analysis              *extract.Analysis            `json:"analysis"`
+	CustomFields          map[string]string            `json:"customFields,omitempty"`
 }
 
 func buildOpenAIRequest(req extract.ExtractSpecRequest, model string) openAIRequest {
@@ -229,7 +231,7 @@ func buildOpenAIRequest(req extract.ExtractSpecRequest, model string) openAIRequ
 				Type:   "json_schema",
 				Name:   "sally_extraction",
 				Strict: true,
-				Schema: extractionSchema(),
+				Schema: extractionSchema(req.CustomColumns),
 			},
 		},
 	}
@@ -261,102 +263,134 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 			"Known schedule names: " + string(knownScheduleNames) + " — pick the best match for suggestedScheduleName, or propose a new descriptive name if none fit."
 	}
 
-	return strings.Join([]string{
+	parts := []string{
 		"Project: " + req.ProjectContext.ProjectName,
 		scheduleContext,
 		"Known categories: " + string(knownCategories),
-		"Page title: " + req.Page.Title,
-		"Page URL: " + req.Page.URL,
-		"Visible text: " + req.Page.VisibleText,
-		"Structured data: " + string(structuredData),
-		"PDF links: " + string(pdfLinks),
-	}, "\n")
+	}
+
+	if len(req.CustomColumns) > 0 {
+		lines := make([]string, 0, len(req.CustomColumns))
+		for _, col := range req.CustomColumns {
+			lines = append(lines, fmt.Sprintf("  - %s (key: %s)", col.Label, col.Key))
+		}
+		parts = append(parts, "Custom columns to extract for this schedule (populate customFields in output):\n"+strings.Join(lines, "\n"))
+	}
+
+	parts = append(parts,
+		"Page title: "+req.Page.Title,
+		"Page URL: "+req.Page.URL,
+		"Visible text: "+req.Page.VisibleText,
+		"Structured data: "+string(structuredData),
+		"PDF links: "+string(pdfLinks),
+	)
+	return strings.Join(parts, "\n")
 }
 
-func extractionSchema() map[string]any {
-	return map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"title":             map[string]any{"type": "string"},
-			"manufacturer":      map[string]any{"type": "string"},
-			"modelNumber":       map[string]any{"type": "string"},
-			"category":          map[string]any{"type": "string"},
-			"description":       map[string]any{"type": "string"},
-			"finish":            map[string]any{"type": "string"},
-			"finishModelNumber": map[string]any{"type": "string"},
-			"availableFinishes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-			"finishModelMappings": map[string]any{
-				"type": "array",
-				"items": map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"finish":      map[string]any{"type": "string"},
-						"modelNumber": map[string]any{"type": "string"},
-					},
-					"required":             []string{"finish", "modelNumber"},
-					"additionalProperties": false,
-				},
-			},
-			"requiredAddOns":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-			"optionalCompanions":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-			"zone":                  map[string]any{"type": "string"},
-			"suggestedScheduleName": map[string]any{"type": "string"},
-			"analysis": map[string]any{
+func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
+	properties := map[string]any{
+		"title":             map[string]any{"type": "string"},
+		"manufacturer":      map[string]any{"type": "string"},
+		"modelNumber":       map[string]any{"type": "string"},
+		"category":          map[string]any{"type": "string"},
+		"description":       map[string]any{"type": "string"},
+		"finish":            map[string]any{"type": "string"},
+		"finishModelNumber": map[string]any{"type": "string"},
+		"availableFinishes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"finishModelMappings": map[string]any{
+			"type": "array",
+			"items": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"missingFields": map[string]any{
-						"type":  "array",
-						"items": map[string]any{"type": "string"},
-					},
-					"warnings": map[string]any{
-						"type":  "array",
-						"items": map[string]any{"type": "string"},
-					},
-					"confidence": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"overall":        map[string]any{"type": "number"},
-							"title":          map[string]any{"type": "number"},
-							"manufacturer":   map[string]any{"type": "number"},
-							"modelNumber":    map[string]any{"type": "number"},
-							"category":       map[string]any{"type": "number"},
-							"description":    map[string]any{"type": "number"},
-							"finish":         map[string]any{"type": "number"},
-							"requiredAddOns": map[string]any{"type": "number"},
-						},
-						"required": []string{
-							"overall",
-							"title",
-							"manufacturer",
-							"modelNumber",
-							"category",
-							"description",
-							"finish",
-							"requiredAddOns",
-						},
-						"additionalProperties": false,
-					},
+					"finish":      map[string]any{"type": "string"},
+					"modelNumber": map[string]any{"type": "string"},
 				},
-				"required":             []string{"missingFields", "warnings", "confidence"},
+				"required":             []string{"finish", "modelNumber"},
 				"additionalProperties": false,
 			},
 		},
-		"required": []string{
-			"title",
-			"manufacturer",
-			"modelNumber",
-			"category",
-			"description",
-			"finish",
-			"finishModelNumber",
-			"availableFinishes",
-			"finishModelMappings",
-			"requiredAddOns",
-			"optionalCompanions",
-			"zone",
-			"suggestedScheduleName",
-			"analysis",
+		"requiredAddOns":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"optionalCompanions":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"zone":                  map[string]any{"type": "string"},
+		"suggestedScheduleName": map[string]any{"type": "string"},
+		"analysis": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"missingFields": map[string]any{
+					"type":  "array",
+					"items": map[string]any{"type": "string"},
+				},
+				"warnings": map[string]any{
+					"type":  "array",
+					"items": map[string]any{"type": "string"},
+				},
+				"confidence": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"overall":        map[string]any{"type": "number"},
+						"title":          map[string]any{"type": "number"},
+						"manufacturer":   map[string]any{"type": "number"},
+						"modelNumber":    map[string]any{"type": "number"},
+						"category":       map[string]any{"type": "number"},
+						"description":    map[string]any{"type": "number"},
+						"finish":         map[string]any{"type": "number"},
+						"requiredAddOns": map[string]any{"type": "number"},
+					},
+					"required": []string{
+						"overall",
+						"title",
+						"manufacturer",
+						"modelNumber",
+						"category",
+						"description",
+						"finish",
+						"requiredAddOns",
+					},
+					"additionalProperties": false,
+				},
+			},
+			"required":             []string{"missingFields", "warnings", "confidence"},
+			"additionalProperties": false,
 		},
+	}
+
+	required := []string{
+		"title",
+		"manufacturer",
+		"modelNumber",
+		"category",
+		"description",
+		"finish",
+		"finishModelNumber",
+		"availableFinishes",
+		"finishModelMappings",
+		"requiredAddOns",
+		"optionalCompanions",
+		"zone",
+		"suggestedScheduleName",
+		"analysis",
+	}
+
+	if len(customColumns) > 0 {
+		customProps := make(map[string]any, len(customColumns))
+		customRequired := make([]string, 0, len(customColumns))
+		for _, col := range customColumns {
+			customProps[col.Key] = map[string]any{"type": "string", "description": col.Label}
+			customRequired = append(customRequired, col.Key)
+		}
+		properties["customFields"] = map[string]any{
+			"type":                 "object",
+			"properties":          customProps,
+			"required":            customRequired,
+			"additionalProperties": false,
+		}
+		required = append(required, "customFields")
+	}
+
+	return map[string]any{
+		"type":                 "object",
+		"properties":          properties,
+		"required":             required,
 		"additionalProperties": false,
 	}
 }

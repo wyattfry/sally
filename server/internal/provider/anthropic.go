@@ -134,6 +134,7 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 			SourceTitle:           req.Page.Title,
 			SourceImageURL:        req.Page.MainImageURL,
 			SourcePDFLinks:        req.Page.PDFLinks,
+			CustomFields:          output.CustomFields,
 		},
 		Analysis: output.Analysis,
 		Meta:     meta,
@@ -159,7 +160,7 @@ func buildAnthropicRequest(req extract.ExtractSpecRequest, model string) anthrop
 		Tools: []anthropicTool{{
 			Name:        "extract_spec",
 			Description: "Extract one architectural schedule item from the product page content",
-			InputSchema: extractionSchema(),
+			InputSchema: extractionSchema(req.CustomColumns),
 		}},
 		ToolChoice: anthropicToolChoice{Type: "tool", Name: "extract_spec"},
 	}

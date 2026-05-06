@@ -45,7 +45,7 @@ func (o OllamaExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 		"model":  o.model,
 		"prompt": buildOllamaPrompt(req),
 		"stream": false,
-		"format": extractionSchema(),
+		"format": extractionSchema(req.CustomColumns),
 	})
 	if err != nil {
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: marshal request: %v", ErrFailure, err)
@@ -119,6 +119,7 @@ func (o OllamaExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 			SourceTitle:         req.Page.Title,
 			SourceImageURL:      req.Page.MainImageURL,
 			SourcePDFLinks:      req.Page.PDFLinks,
+			CustomFields:        output.CustomFields,
 		},
 		Analysis: output.Analysis,
 		Meta:     meta,
@@ -132,7 +133,7 @@ func (o OllamaExtractor) ExtractStreaming(ctx context.Context, req extract.Extra
 		"model":  o.model,
 		"prompt": buildOllamaPrompt(req),
 		"stream": true,
-		"format": extractionSchema(),
+		"format": extractionSchema(req.CustomColumns),
 	})
 	if err != nil {
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: marshal request: %v", ErrFailure, err)
@@ -239,6 +240,7 @@ func (o OllamaExtractor) ExtractStreaming(ctx context.Context, req extract.Extra
 			SourceTitle:         req.Page.Title,
 			SourceImageURL:      req.Page.MainImageURL,
 			SourcePDFLinks:      req.Page.PDFLinks,
+			CustomFields:        output.CustomFields,
 		},
 		Analysis: output.Analysis,
 		Meta:     meta,

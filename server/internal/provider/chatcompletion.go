@@ -124,6 +124,7 @@ func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.Extrac
 			SourceTitle:           req.Page.Title,
 			SourceImageURL:        req.Page.MainImageURL,
 			SourcePDFLinks:        req.Page.PDFLinks,
+			CustomFields:          output.CustomFields,
 		},
 		Analysis: output.Analysis,
 		Meta:     meta,
@@ -141,7 +142,7 @@ func buildChatCompletionRequest(req extract.ExtractSpecRequest, model, responseF
 			JSONSchema: &chatJSONSchema{
 				Name:   "sally_extraction",
 				Strict: true,
-				Schema: extractionSchema(),
+				Schema: extractionSchema(req.CustomColumns),
 			},
 		}
 	default: // "json_object" or any unrecognised value — embed the field list so the model knows what to return

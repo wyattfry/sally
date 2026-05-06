@@ -9,7 +9,13 @@ type ExtractSpecRequest struct {
 	Page           PagePayload        `json:"page"`
 	ProjectContext ProjectContext     `json:"projectContext"`
 	ScheduleID     string             `json:"scheduleId,omitempty"`
+	CustomColumns  []ColumnDefinition `json:"customColumns,omitempty"`
 	Options        ExtractSpecOptions `json:"options"`
+}
+
+type ColumnDefinition struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
 }
 
 type ClientInfo struct {
@@ -70,12 +76,13 @@ type Proposal struct {
 	FinishModelMappings []FinishModelMapping `json:"finishModelMappings"`
 	RequiredAddOns      []string             `json:"requiredAddOns"`
 	OptionalCompanions  []string             `json:"optionalCompanions"`
-	Zone                    string               `json:"zone"`
-	SuggestedScheduleName   string               `json:"suggestedScheduleName"`
-	SourceURL               string               `json:"sourceUrl"`
-	SourceTitle         string               `json:"sourceTitle"`
-	SourceImageURL      string               `json:"sourceImageUrl,omitempty"`
-	SourcePDFLinks      []string             `json:"sourcePdfLinks"`
+	Zone                  string               `json:"zone"`
+	SuggestedScheduleName string               `json:"suggestedScheduleName"`
+	SourceURL             string               `json:"sourceUrl"`
+	SourceTitle           string               `json:"sourceTitle"`
+	SourceImageURL        string               `json:"sourceImageUrl,omitempty"`
+	SourcePDFLinks        []string             `json:"sourcePdfLinks"`
+	CustomFields          map[string]string    `json:"customFields,omitempty"`
 }
 
 type FinishModelMapping struct {
