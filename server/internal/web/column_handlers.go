@@ -70,19 +70,23 @@ func (a app) addScheduleColumn(w http.ResponseWriter, r *http.Request) {
 
 	// Return an HTML fragment for HTMX to append into the column list.
 	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, `<li class="col-modal-row" id="col-row-%s">
+	fmt.Fprintf(w, `<li class="col-modal-row" id="col-row-%s" data-col-id="%s">
+  <div class="col-modal-move-btns">
+    <button class="col-modal-move" type="button" onclick="moveColRow(this,-1)" title="Move up">↑</button>
+    <button class="col-modal-move" type="button" onclick="moveColRow(this,1)" title="Move down">↓</button>
+  </div>
   <input class="col-modal-label" type="text" value="%s"
     hx-post="/projects/%s/schedules/%s/columns/%s/rename"
     hx-trigger="change" hx-swap="none"
     hx-on::after-request="window.__columnsChanged=true"
     name="label">
-  <button class="col-modal-delete danger-btn" type="button"
+  <button class="col-modal-delete" type="button"
     hx-post="/projects/%s/schedules/%s/columns/%s/delete"
     hx-target="#col-row-%s" hx-swap="delete"
-    hx-on::after-request="window.__columnsChanged=true">
-    Delete
-  </button>
+    hx-confirm="Delete column &#39;%s&#39;? Existing data in this column will be hidden but not lost."
+    hx-on::before-request="window.__columnsChanged=true">Delete</button>
 </li>`,
+		template.HTMLEscapeString(col.ID),
 		template.HTMLEscapeString(col.ID),
 		template.HTMLEscapeString(col.Label),
 		template.HTMLEscapeString(projectID),
@@ -92,7 +96,25 @@ func (a app) addScheduleColumn(w http.ResponseWriter, r *http.Request) {
 		template.HTMLEscapeString(scheduleID),
 		template.HTMLEscapeString(col.ID),
 		template.HTMLEscapeString(col.ID),
+		template.HTMLEscapeString(col.Label),
 	)
+}
+
+func (a app) reorderScheduleColumns(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	scheduleID := r.PathValue("scheduleID")
+	if _, ok := a.loadProjectSchedule(w, r, projectID, scheduleID); !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+	ids := r.Form["ids"]
+	for i, id := range ids {
+		_ = a.queries.UpdateScheduleColumnPosition(r.Context(), id, int32(i+1))
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (a app) renameScheduleColumn(w http.ResponseWriter, r *http.Request) {

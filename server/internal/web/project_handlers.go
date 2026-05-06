@@ -92,6 +92,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/fields/{field}/edit", a.editScheduleField)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/fields/{field}", a.saveScheduleField)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns", a.addScheduleColumn)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns/reorder", a.reorderScheduleColumns)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns/{columnID}/rename", a.renameScheduleColumn)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns/{columnID}/delete", a.deleteScheduleColumn)
 	mux.HandleFunc("GET /admin", a.adminDashboard)
@@ -100,6 +101,8 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
 	mux.HandleFunc("POST /projects/{projectID}/share-links/deactivate", a.deactivateProjectShareLinks)
+	mux.HandleFunc("POST /projects/{projectID}/members", a.addProjectMember)
+	mux.HandleFunc("POST /projects/{projectID}/members/{memberUserID}/remove", a.removeProjectMember)
 	mux.HandleFunc("GET /share/{token}", a.showPublicShare)
 }
 
@@ -119,22 +122,28 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items := make([]projectListItem, 0, len(projects))
-	for _, p := range projects {
-		imgs, _ := a.queries.GetProjectFirstItemImages(r.Context(), p.ID)
-		padded := make([]string, 4)
-		for i, u := range imgs {
-			if i < 4 {
-				padded[i] = u
+	toListItems := func(ps []queries.Project) []projectListItem {
+		items := make([]projectListItem, 0, len(ps))
+		for _, p := range ps {
+			imgs, _ := a.queries.GetProjectFirstItemImages(r.Context(), p.ID)
+			padded := make([]string, 4)
+			for i, u := range imgs {
+				if i < 4 {
+					padded[i] = u
+				}
 			}
+			items = append(items, projectListItem{Project: p, ThumbImages: padded})
 		}
-		items = append(items, projectListItem{Project: p, ThumbImages: padded})
+		return items
 	}
 
+	sharedProjects, _ := a.queries.ListSharedProjects(r.Context(), user.ID)
+
 	render(w, projectsPage{
-		Kind:     "projects",
-		Title:    "Projects",
-		Projects: items,
+		Kind:           "projects",
+		Title:          "Projects",
+		Projects:       toListItems(projects),
+		SharedProjects: toListItems(sharedProjects),
 	})
 }
 
@@ -182,10 +191,12 @@ func (a app) createProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) showProject(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	user, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}
+
+	isOwner := project.OwnerUserID == user.ID || a.oauthConfig == nil
 
 	schedules, err := a.schedulesWithItems(r.Context(), project.ID)
 	if err != nil {
@@ -207,7 +218,7 @@ outer:
 	}
 
 	activeLink, err := a.queries.GetActiveProjectShareLinkByProject(r.Context(), project.ID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) && isOwner {
 		if token, tokenErr := share.NewToken(); tokenErr == nil {
 			if newLink, createErr := a.queries.CreateProjectShareLink(r.Context(), queries.CreateProjectShareLinkParams{
 				ProjectID: project.ID,
@@ -225,6 +236,13 @@ outer:
 		activeLinkPtr = &activeLink
 	}
 
+	var members []queries.ProjectMemberWithUser
+	if isOwner {
+		members, _ = a.queries.ListProjectMembersWithUser(r.Context(), project.ID)
+	}
+
+	memberError := r.URL.Query().Get("member_error")
+
 	render(w, projectDetailPage{
 		Kind:           "project",
 		Title:          project.Name,
@@ -233,11 +251,14 @@ outer:
 		FirstItemImage: firstItemImage,
 		ActiveLink:     activeLinkPtr,
 		ShareBaseURL:   requestBaseURL(r),
+		Members:        members,
+		IsOwner:        isOwner,
+		MemberError:    memberError,
 	})
 }
 
 func (a app) editProject(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}
@@ -251,7 +272,7 @@ func (a app) editProject(w http.ResponseWriter, r *http.Request) {
 
 func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
-	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
+	if _, _, ok := a.loadUserProjectAsOwner(w, r, projectID); !ok {
 		return
 	}
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -294,7 +315,7 @@ func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 
 func (a app) deleteProject(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
-	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
+	if _, _, ok := a.loadUserProjectAsOwner(w, r, projectID); !ok {
 		return
 	}
 	if err := a.queries.DeleteProject(r.Context(), projectID); err != nil {

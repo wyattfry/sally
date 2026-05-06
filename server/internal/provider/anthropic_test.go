@@ -69,13 +69,8 @@ func TestAnthropicExtractorRequestShape(t *testing.T) {
 	if !strings.Contains(textBlock["text"].(string), "Wall-mounted faucet rough-in dimensions") {
 		t.Fatalf("expected page text in user content, got %#v", textBlock["text"])
 	}
-	imageBlock := content[1].(map[string]any)
-	if imageBlock["type"] != "image" {
-		t.Fatalf("expected image block, got %#v", imageBlock["type"])
-	}
-	imageSource := imageBlock["source"].(map[string]any)
-	if imageSource["url"] != "https://example.com/faucet.jpg" {
-		t.Fatalf("expected image url in source, got %#v", imageSource["url"])
+	if len(content) != 1 {
+		t.Fatalf("expected only text block in content (no image), got %d blocks", len(content))
 	}
 
 	// Tool definition must use the extraction schema

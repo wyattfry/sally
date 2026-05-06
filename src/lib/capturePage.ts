@@ -38,7 +38,43 @@ function captureVisibleText(doc: Document): string {
     }
   }
 
-  return chunks.join("\n").slice(0, MAX_VISIBLE_TEXT_LENGTH);
+  const visible = chunks.join("\n");
+  if (visible.length < MAX_VISIBLE_TEXT_LENGTH) {
+    const collapsed = captureCollapsedContent(doc);
+    if (collapsed) {
+      return (visible + "\n[Collapsed sections:]\n" + collapsed).slice(0, MAX_VISIBLE_TEXT_LENGTH);
+    }
+  }
+  return visible.slice(0, MAX_VISIBLE_TEXT_LENGTH);
+}
+
+function captureCollapsedContent(doc: Document): string {
+  const chunks: string[] = [];
+
+  // Capture content from aria-controls panels that are currently hidden
+  for (const trigger of doc.querySelectorAll("[aria-controls]")) {
+    const panelId = trigger.getAttribute("aria-controls");
+    if (!panelId) continue;
+    const panel = doc.getElementById(panelId);
+    if (!panel) continue;
+    const style = panel.ownerDocument.defaultView?.getComputedStyle(panel);
+    if (!style || style.display !== "none") continue;
+    const text = panel.textContent?.replace(/\s+/g, " ").trim();
+    if (text) chunks.push(text);
+  }
+
+  // Capture content from closed <details> elements
+  for (const details of doc.querySelectorAll<HTMLDetailsElement>("details:not([open])")) {
+    const summary = details.querySelector("summary");
+    const text = Array.from(details.childNodes)
+      .filter((n) => n !== summary)
+      .map((n) => n.textContent?.replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+      .join(" ");
+    if (text) chunks.push(text);
+  }
+
+  return chunks.join("\n");
 }
 
 function isVisible(element: Element): boolean {

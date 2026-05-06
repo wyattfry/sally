@@ -84,6 +84,9 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 		if httpResp.StatusCode == http.StatusGatewayTimeout || httpResp.StatusCode == http.StatusRequestTimeout {
 			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrTimeout, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
 		}
+		if httpResp.StatusCode == http.StatusTooManyRequests || httpResp.StatusCode == 529 {
+			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrOverloaded, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
+		}
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrFailure, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
 	}
 
@@ -147,12 +150,6 @@ func buildAnthropicRequest(req extract.ExtractSpecRequest, model string) anthrop
 	userContent := []anthropicContent{
 		{Type: "text", Text: buildUserPrompt(req)},
 	}
-	if req.Page.MainImageURL != "" {
-		userContent = append(userContent, anthropicContent{
-			Type:   "image",
-			Source: &anthropicImageSource{Type: "url", URL: req.Page.MainImageURL},
-		})
-	}
 
 	return anthropicRequest{
 		Model:     model,
@@ -183,14 +180,8 @@ type anthropicMessage struct {
 }
 
 type anthropicContent struct {
-	Type   string                `json:"type"`
-	Text   string                `json:"text,omitempty"`
-	Source *anthropicImageSource `json:"source,omitempty"`
-}
-
-type anthropicImageSource struct {
 	Type string `json:"type"`
-	URL  string `json:"url,omitempty"`
+	Text string `json:"text,omitempty"`
 }
 
 type anthropicTool struct {

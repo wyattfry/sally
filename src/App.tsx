@@ -170,6 +170,7 @@ export default function App() {
           : undefined;
         if (matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId) {
           await handleSelectSchedule(matchingSchedule.id);
+          item = { ...item, data: { ...item.data, code: codePrefix(matchingSchedule.name) + "-1" } };
         }
         setZones(extracted.knownZones);
         setPanel({

@@ -81,6 +81,9 @@ func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.Extrac
 		if httpResp.StatusCode == http.StatusGatewayTimeout || httpResp.StatusCode == http.StatusRequestTimeout {
 			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrTimeout, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
 		}
+		if httpResp.StatusCode == http.StatusTooManyRequests || httpResp.StatusCode == 529 {
+			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrOverloaded, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
+		}
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrFailure, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
 	}
 

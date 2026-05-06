@@ -8,9 +8,10 @@ type projectListItem struct {
 }
 
 type projectsPage struct {
-	Kind     string
-	Title    string
-	Projects []projectListItem
+	Kind           string
+	Title          string
+	Projects       []projectListItem
+	SharedProjects []projectListItem
 }
 
 type projectDetailPage struct {
@@ -21,6 +22,9 @@ type projectDetailPage struct {
 	FirstItemImage string
 	ActiveLink     *queries.ProjectShareLink
 	ShareBaseURL   string
+	Members        []queries.ProjectMemberWithUser
+	IsOwner        bool
+	MemberError    string
 }
 
 type projectEditPage struct {

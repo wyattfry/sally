@@ -76,8 +76,46 @@
         d.addEventListener('close', function () {
           if (window.__columnsChanged) { window.__columnsChanged = false; location.reload(); }
         });
+        d.addEventListener('toggle', function () {
+          if (d.open) refreshColMoveButtons(d.querySelector('.col-modal-list'));
+        });
       });
     })();
+    function refreshColMoveButtons(list) {
+      if (!list) return;
+      var rows = list.querySelectorAll('.col-modal-row');
+      rows.forEach(function (row, i) {
+        var btns = row.querySelectorAll('.col-modal-move');
+        if (btns[0]) btns[0].disabled = (i === 0);
+        if (btns[1]) btns[1].disabled = (i === rows.length - 1);
+      });
+    }
+    function moveColRow(btn, dir) {
+      var row = btn.closest('.col-modal-row');
+      var list = row.parentElement;
+      if (dir === -1) {
+        var prev = row.previousElementSibling;
+        if (prev) list.insertBefore(row, prev);
+      } else {
+        var next = row.nextElementSibling;
+        if (next) list.insertBefore(next, row);
+      }
+      refreshColMoveButtons(list);
+      saveColOrder(list);
+    }
+    function saveColOrder(list) {
+      var ids = Array.from(list.querySelectorAll('.col-modal-row')).map(function (r) { return r.dataset.colId; });
+      var projectId = list.dataset.projectId;
+      var scheduleId = list.dataset.scheduleId;
+      var body = new URLSearchParams();
+      ids.forEach(function (id) { body.append('ids', id); });
+      fetch('/projects/' + projectId + '/schedules/' + scheduleId + '/columns/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+      window.__columnsChanged = true;
+    }
     (function () {
       var now = new Date();
       var todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -103,7 +141,7 @@
 {{define "content"}}
 {{if eq .Kind "projects"}}
 <div class="page-header">
-  <h1>Projects</h1>
+  <h1>My Projects</h1>
   <form method="post" action="/projects" style="margin:0">
     <button type="submit" class="button">New Project</button>
   </form>
@@ -137,6 +175,38 @@
 </div>
 {{else}}
 <p class="muted">No projects yet.</p>
+{{end}}
+{{if .SharedProjects}}
+<div class="page-header" style="margin-top:2rem">
+  <h2 style="font-size:1.25rem;font-weight:600;margin:0">Shared with me</h2>
+</div>
+<div class="project-cards">
+  {{range .SharedProjects}}
+  <a class="project-card" href="/projects/{{.Project.ID}}">
+    <div class="project-thumb-wrap">
+      {{if .Project.ThumbnailUrl}}
+      <img src="{{.Project.ThumbnailUrl}}" alt="">
+      {{else if index .ThumbImages 0}}
+      <div class="project-thumb-grid">
+        {{range .ThumbImages}}
+        {{if .}}<img src="{{.}}" alt="">{{else}}<div class="project-thumb-cell"></div>{{end}}
+        {{end}}
+      </div>
+      {{else}}
+      <div class="project-thumb-initial">{{printf "%.1s" .Project.Name}}</div>
+      {{end}}
+    </div>
+    <div class="project-card-body">
+      <h2>{{.Project.Name}}</h2>
+      {{if .Project.Address}}<p class="project-card-meta">{{.Project.Address}}</p>{{end}}
+      {{if .Project.Description}}<p class="project-card-description">{{.Project.Description}}</p>{{end}}
+      <p class="project-card-meta">Updated <time class="local-time"
+          datetime="{{isoTime .Project.UpdatedAt}}">{{humanTime .Project.UpdatedAt}}</time></p>
+      <p class="project-card-meta"><span class="badge-shared">Shared with you</span></p>
+    </div>
+  </a>
+  {{end}}
+</div>
 {{end}}
 
 {{else if eq .Kind "project"}}
@@ -184,15 +254,56 @@
           <button type="button" class="actions-menu-item" onclick="copySallyShareLink()">Copy share link</button>
           {{end}}
           <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
+          {{if .IsOwner}}
           <div class="actions-menu-divider"></div>
           <form method="post" action="/projects/{{.Project.ID}}/delete"
             onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
             <button type="submit" class="actions-menu-item actions-menu-item--danger">Delete project</button>
           </form>
+          {{end}}
         </div>
       </details>
     </div>
   </div>
+  {{if .IsOwner}}
+  <div class="collaborators-section">
+    <details class="collaborators-details">
+      <summary class="collaborators-summary">
+        Collaborators{{if .Members}} ({{len .Members}}){{end}}
+      </summary>
+      <div class="collaborators-body">
+        {{if eq .MemberError "notfound"}}
+        <p class="collaborators-error">No account found for that email. They need to sign in to Sally first.</p>
+        {{else if eq .MemberError "own"}}
+        <p class="collaborators-error">You can't add yourself as a collaborator.</p>
+        {{end}}
+        <form method="post" action="/projects/{{.Project.ID}}/members" class="collaborators-add-form">
+          <input type="email" name="email" placeholder="collaborator@example.com" required class="collaborators-email-input">
+          <button type="submit" class="button button--small">Add</button>
+        </form>
+        {{if .Members}}
+        <ul class="collaborators-list">
+          {{range .Members}}
+          <li class="collaborators-item">
+            <span class="collaborators-name">{{if .UserName}}{{.UserName}}{{else}}{{.UserEmail}}{{end}}</span>
+            <span class="collaborators-email muted">{{if .UserName}}{{.UserEmail}}{{end}}</span>
+            <form method="post" action="/projects/{{$.Project.ID}}/members/{{.UserID}}/remove" style="margin:0">
+              <button type="submit" class="collaborators-remove-btn">Remove</button>
+            </form>
+          </li>
+          {{end}}
+        </ul>
+        {{else}}
+        <p class="muted collaborators-empty">No collaborators yet.</p>
+        {{end}}
+      </div>
+    </details>
+  </div>
+  {{else}}
+  <div class="collaborators-section collaborators-section--member">
+    <span class="badge-shared">Shared with you — editor access</span>
+  </div>
+  {{end}}
 </div>
 <div id="copy-toast" class="copy-toast" aria-live="polite"></div>
 <div class="project-layout">
@@ -302,9 +413,14 @@
       <dialog class="columns-modal" id="col-modal-{{$sw.Schedule.ID}}">
         <div class="columns-modal-inner">
           <h3 class="columns-modal-title">Edit Columns</h3>
-          <ul class="col-modal-list" id="col-modal-list-{{$sw.Schedule.ID}}">
+          <ul class="col-modal-list" id="col-modal-list-{{$sw.Schedule.ID}}"
+              data-project-id="{{$.Project.ID}}" data-schedule-id="{{$sw.Schedule.ID}}">
             {{range $sw.Columns}}
-            <li class="col-modal-row" id="col-row-{{.ID}}">
+            <li class="col-modal-row" id="col-row-{{.ID}}" data-col-id="{{.ID}}">
+              <div class="col-modal-move-btns">
+                <button class="col-modal-move" type="button" onclick="moveColRow(this,-1)" title="Move up">↑</button>
+                <button class="col-modal-move" type="button" onclick="moveColRow(this,1)" title="Move down">↓</button>
+              </div>
               <input class="col-modal-label" type="text" value="{{.Label}}"
                 hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/columns/{{.ID}}/rename"
                 hx-trigger="change" hx-swap="none"
@@ -320,7 +436,7 @@
           </ul>
           <form hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/columns"
             hx-target="#col-modal-list-{{$sw.Schedule.ID}}" hx-swap="beforeend"
-            hx-on::after-request="window.__columnsChanged=true; this.reset()"
+            hx-on::after-request="window.__columnsChanged=true; this.reset(); refreshColMoveButtons(this.closest('.columns-modal-inner').querySelector('.col-modal-list'))"
             class="col-modal-add-form">
             <input type="text" name="label" placeholder="Column name" required class="col-modal-new-input">
             <button type="submit" class="button button-sm">Add</button>

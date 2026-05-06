@@ -11,7 +11,7 @@ import (
 
 func (a app) uploadProjectThumbnail(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")
-	_, project, ok := a.loadUserProject(w, r, projectID)
+	_, project, ok := a.loadUserProjectAsOwner(w, r, projectID)
 	if !ok {
 		return
 	}

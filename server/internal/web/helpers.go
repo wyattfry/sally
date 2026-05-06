@@ -17,7 +17,41 @@ type projectSchedule struct {
 	schedule queries.Schedule
 }
 
+// loadUserProject allows access for the project owner or any editor member.
 func (a app) loadUserProject(w http.ResponseWriter, r *http.Request, projectID string) (queries.User, queries.Project, bool) {
+	user, ok := a.requireUser(w, r)
+	if !ok {
+		return queries.User{}, queries.Project{}, false
+	}
+	project, err := a.queries.GetProject(r.Context(), projectID)
+	if errors.Is(err, sql.ErrNoRows) {
+		renderNotFound(w)
+		return queries.User{}, queries.Project{}, false
+	}
+	if err != nil {
+		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return queries.User{}, queries.Project{}, false
+	}
+	if a.oauthConfig != nil && project.OwnerUserID != user.ID {
+		_, memberErr := a.queries.GetProjectMember(r.Context(), queries.GetProjectMemberParams{
+			ProjectID: projectID,
+			UserID:    user.ID,
+		})
+		if errors.Is(memberErr, sql.ErrNoRows) {
+			renderNotFound(w)
+			return queries.User{}, queries.Project{}, false
+		}
+		if memberErr != nil {
+			http.Error(w, "could not verify access", http.StatusInternalServerError)
+			return queries.User{}, queries.Project{}, false
+		}
+	}
+	return user, project, true
+}
+
+// loadUserProjectAsOwner requires the current user to be the project owner.
+// Use this for destructive or administrative operations.
+func (a app) loadUserProjectAsOwner(w http.ResponseWriter, r *http.Request, projectID string) (queries.User, queries.Project, bool) {
 	user, ok := a.requireUser(w, r)
 	if !ok {
 		return queries.User{}, queries.Project{}, false

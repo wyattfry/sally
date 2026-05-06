@@ -78,6 +78,9 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 		if httpResp.StatusCode == http.StatusGatewayTimeout || httpResp.StatusCode == http.StatusRequestTimeout {
 			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrTimeout, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
 		}
+		if httpResp.StatusCode == http.StatusTooManyRequests || httpResp.StatusCode == 529 {
+			return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrOverloaded, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
+		}
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: upstream status %d: %s", ErrFailure, httpResp.StatusCode, summarizeUpstreamBody(responseBody))
 	}
 
@@ -256,15 +259,19 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 	var scheduleContext string
 	if len(req.ProjectContext.Schedules) > 0 {
 		lines := make([]string, 0, len(req.ProjectContext.Schedules))
+		var selectedName string
 		for _, s := range req.ProjectContext.Schedules {
 			zonesJSON, _ := json.Marshal(s.Zones)
-			label := s.Name
 			if s.IsSelected {
-				label += " [currently selected]"
+				selectedName = s.Name
 			}
-			lines = append(lines, fmt.Sprintf("  - %s: zones in use: %s", label, zonesJSON))
+			lines = append(lines, fmt.Sprintf("  - %s: zones in use: %s", s.Name, zonesJSON))
 		}
-		scheduleContext = "Project schedules (match suggestedScheduleName to one of these; prefer the currently selected schedule if the item fits):\n" +
+		header := `Project schedules (set suggestedScheduleName to the exact name from this list, or a new descriptive name if none fit):`
+		if selectedName != "" {
+			header += ` Currently selected: "` + selectedName + `".`
+		}
+		scheduleContext = header + "\n" +
 			strings.Join(lines, "\n") +
 			"\nFor zone: pick an existing zone from the matched schedule if the item logically belongs there, otherwise leave empty."
 	} else {
@@ -384,15 +391,12 @@ func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
 
 	if len(customColumns) > 0 {
 		customProps := make(map[string]any, len(customColumns))
-		customRequired := make([]string, 0, len(customColumns))
 		for _, col := range customColumns {
 			customProps[col.Key] = map[string]any{"type": "string", "description": col.Label}
-			customRequired = append(customRequired, col.Key)
 		}
 		properties["customFields"] = map[string]any{
 			"type":                 "object",
 			"properties":          customProps,
-			"required":            customRequired,
 			"additionalProperties": false,
 		}
 		required = append(required, "customFields")

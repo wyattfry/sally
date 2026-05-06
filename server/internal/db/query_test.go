@@ -324,3 +324,145 @@ func TestAdminQueries(t *testing.T) {
 		}
 	})
 }
+
+func TestProjectMemberQueries(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	ctx := context.Background()
+
+	owner, err := q.CreateUser(ctx, queries.CreateUserParams{
+		Email: "pm-query-owner@example.com",
+		Name:  "PM Query Owner",
+	})
+	if err != nil {
+		t.Fatalf("create owner: %v", err)
+	}
+	invitee, err := q.CreateUser(ctx, queries.CreateUserParams{
+		Email: "pm-query-invitee@example.com",
+		Name:  "PM Query Invitee",
+	})
+	if err != nil {
+		t.Fatalf("create invitee: %v", err)
+	}
+
+	project, err := q.CreateProject(ctx, queries.CreateProjectParams{
+		OwnerUserID: owner.ID,
+		Name:        "PM Query Project",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	t.Run("AddProjectMember", func(t *testing.T) {
+		err := q.AddProjectMember(ctx, queries.AddProjectMemberParams{
+			ProjectID:       project.ID,
+			UserID:          invitee.ID,
+			InvitedByUserID: owner.ID,
+		})
+		if err != nil {
+			t.Fatalf("AddProjectMember: %v", err)
+		}
+	})
+
+	t.Run("AddProjectMember idempotent", func(t *testing.T) {
+		// Second add should not error (on conflict do nothing).
+		err := q.AddProjectMember(ctx, queries.AddProjectMemberParams{
+			ProjectID:       project.ID,
+			UserID:          invitee.ID,
+			InvitedByUserID: owner.ID,
+		})
+		if err != nil {
+			t.Fatalf("AddProjectMember duplicate: %v", err)
+		}
+	})
+
+	t.Run("GetProjectMember", func(t *testing.T) {
+		m, err := q.GetProjectMember(ctx, queries.GetProjectMemberParams{
+			ProjectID: project.ID,
+			UserID:    invitee.ID,
+		})
+		if err != nil {
+			t.Fatalf("GetProjectMember: %v", err)
+		}
+		if m.UserID != invitee.ID {
+			t.Errorf("expected user_id %s, got %s", invitee.ID, m.UserID)
+		}
+		if m.InvitedByUserID != owner.ID {
+			t.Errorf("expected invited_by %s, got %s", owner.ID, m.InvitedByUserID)
+		}
+	})
+
+	t.Run("ListProjectMembersWithUser", func(t *testing.T) {
+		members, err := q.ListProjectMembersWithUser(ctx, project.ID)
+		if err != nil {
+			t.Fatalf("ListProjectMembersWithUser: %v", err)
+		}
+		if len(members) == 0 {
+			t.Fatal("expected at least one member")
+		}
+		found := false
+		for _, m := range members {
+			if m.UserID == invitee.ID {
+				found = true
+				if m.UserEmail != invitee.Email {
+					t.Errorf("expected email %s, got %s", invitee.Email, m.UserEmail)
+				}
+				if m.UserName != invitee.Name {
+					t.Errorf("expected name %s, got %s", invitee.Name, m.UserName)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("invitee not found in member list")
+		}
+	})
+
+	t.Run("ListSharedProjects", func(t *testing.T) {
+		shared, err := q.ListSharedProjects(ctx, invitee.ID)
+		if err != nil {
+			t.Fatalf("ListSharedProjects: %v", err)
+		}
+		found := false
+		for _, p := range shared {
+			if p.ID == project.ID {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("project %s not found in invitee's shared projects", project.ID)
+		}
+	})
+
+	t.Run("RemoveProjectMember", func(t *testing.T) {
+		err := q.RemoveProjectMember(ctx, queries.RemoveProjectMemberParams{
+			ProjectID: project.ID,
+			UserID:    invitee.ID,
+		})
+		if err != nil {
+			t.Fatalf("RemoveProjectMember: %v", err)
+		}
+		members, err := q.ListProjectMembersWithUser(ctx, project.ID)
+		if err != nil {
+			t.Fatalf("list after remove: %v", err)
+		}
+		for _, m := range members {
+			if m.UserID == invitee.ID {
+				t.Errorf("invitee still present after removal")
+			}
+		}
+	})
+}

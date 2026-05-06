@@ -123,8 +123,11 @@ func TestExtractHandlerMapsProviderFailureToContractError(t *testing.T) {
 	if resp.Error == nil || resp.Error.Code != "PROVIDER_ERROR" {
 		t.Fatalf("expected PROVIDER_ERROR payload, got %#v", resp.Error)
 	}
-	if !strings.Contains(resp.Error.Message, "upstream status 400") {
-		t.Fatalf("expected detailed provider error message, got %#v", resp.Error)
+	if !strings.Contains(resp.Error.Message, "Request ID:") {
+		t.Fatalf("expected request ID in error message, got %#v", resp.Error)
+	}
+	if strings.Contains(resp.Error.Message, "upstream status 400") {
+		t.Fatalf("raw provider error must not be exposed to client, got %#v", resp.Error)
 	}
 	if resp.Meta.Provider != "fake-provider" || resp.Meta.Model != "fake-model" {
 		t.Fatalf("expected provider meta from extractor, got %#v", resp.Meta)

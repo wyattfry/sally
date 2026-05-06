@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	ErrTimeout = errors.New("provider timeout")
-	ErrFailure = errors.New("provider failure")
+	ErrTimeout    = errors.New("provider timeout")
+	ErrFailure    = errors.New("provider failure")
+	ErrOverloaded = errors.New("provider overloaded")
 )
 
 type Extractor interface {

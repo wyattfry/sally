@@ -11,7 +11,7 @@ import (
 )
 
 func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}
@@ -36,7 +36,7 @@ func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}
@@ -66,7 +66,7 @@ func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) deactivateProjectShareLinks(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}

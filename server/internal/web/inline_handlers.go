@@ -203,7 +203,7 @@ func writeCellEdit(w http.ResponseWriter, saveURL, value string, multiline bool)
 // ---------------------------------------------------------------------------
 
 func (a app) editProjectField(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}
@@ -215,7 +215,7 @@ func (a app) editProjectField(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a app) saveProjectField(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
+	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}

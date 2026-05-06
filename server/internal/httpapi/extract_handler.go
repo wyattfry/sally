@@ -171,14 +171,18 @@ func validExtractSpecRequest(req extract.ExtractSpecRequest) bool {
 
 func buildErrorResponse(requestID string, meta extract.ResponseMeta, err error) extract.ExtractSpecResponse {
 	code := "PROVIDER_ERROR"
-	message := "Extraction provider failed."
-	if err != nil {
-		message = err.Error()
-	}
-	if errors.Is(err, provider.ErrTimeout) {
+	var message string
+	switch {
+	case errors.Is(err, provider.ErrTimeout):
 		code = "MODEL_TIMEOUT"
-		message = "Extraction did not complete in time."
+		message = "Extraction timed out — the AI provider took too long to respond. Please try again."
+	case errors.Is(err, provider.ErrOverloaded):
+		code = "PROVIDER_OVERLOADED"
+		message = "The AI provider is currently overloaded. Please try again in a moment."
+	default:
+		message = "Extraction failed due to an unexpected error. Please try again."
 	}
+	message += " (Request ID: " + requestID + ")"
 	return extract.ExtractSpecResponse{
 		RequestID: requestID,
 		Status:    "error",

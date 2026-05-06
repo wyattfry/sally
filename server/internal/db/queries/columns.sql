@@ -16,6 +16,9 @@ update schedule_columns set label = $2 where id = $1;
 delete from schedule_columns
 where id = $1;
 
+-- name: UpdateScheduleColumnPosition :exec
+update schedule_columns set position = $2 where id = $1;
+
 -- name: DeleteScheduleColumnsBySchedule :exec
 delete from schedule_columns
 where schedule_id = $1;

@@ -68,6 +68,14 @@ type ScheduleItem struct {
 	Data           json.RawMessage `json:"data"`
 }
 
+type ProjectMember struct {
+	ID              string    `json:"id"`
+	ProjectID       string    `json:"project_id"`
+	UserID          string    `json:"user_id"`
+	InvitedByUserID string    `json:"invited_by_user_id"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
 type User struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`

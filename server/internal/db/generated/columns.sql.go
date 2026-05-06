@@ -73,6 +73,15 @@ func (q *Queries) UpdateScheduleColumnLabel(ctx context.Context, id string, labe
 	return err
 }
 
+const updateScheduleColumnPosition = `-- name: UpdateScheduleColumnPosition :exec
+update schedule_columns set position = $2 where id = $1
+`
+
+func (q *Queries) UpdateScheduleColumnPosition(ctx context.Context, id string, position int32) error {
+	_, err := q.db.ExecContext(ctx, updateScheduleColumnPosition, id, position)
+	return err
+}
+
 const listScheduleColumns = `-- name: ListScheduleColumns :many
 select id, schedule_id, key, label, kind, position, created_at
 from schedule_columns
