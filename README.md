@@ -112,6 +112,39 @@ Expected result:
 - `HTTP/1.1 200 OK`
 - body: `ok`
 
+## Admin Dashboard
+
+Sally includes a built-in admin dashboard at `/admin`. It is a separate operator view — there is no nav link in the app UI.
+
+**Access control**
+
+| Mode | Who can access |
+|------|----------------|
+| Dev (no OAuth configured) | Always open — no auth required |
+| Production (OAuth enabled) | Only the user whose Google account email matches the `ADMIN_EMAIL` env var |
+
+Set the env var in your `.env` file or deployment environment:
+
+```
+ADMIN_EMAIL=you@example.com
+```
+
+If `ADMIN_EMAIL` is unset in production, `/admin` returns `403 Forbidden` for everyone.
+
+**What it shows**
+
+- App counts: users, projects, schedules, items (total + 7-day new)
+- LLM extraction stats: total calls, success rate, average duration, per-provider breakdown
+- Recent extraction log (last 50 calls)
+- Uploads storage usage
+
+**Netdata — host metrics**
+
+Docker Compose (both local and production) runs [Netdata](https://www.netdata.cloud/) for host-level metrics (CPU, RAM, disk, network, Docker containers). It listens on port 19999.
+
+- Local: open <http://localhost:19999> directly.
+- Production: access via SSH tunnel — `ssh -L 19999:localhost:19999 <your-server>` — then open <http://localhost:19999>.
+
 ## Dev Deployment Split
 
 - Local backend iteration: `docker compose up --build` on the current machine

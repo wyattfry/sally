@@ -112,6 +112,8 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 
 	meta := a.Meta()
 	meta.DurationMS = int(time.Since(start).Milliseconds())
+	meta.PromptTokens = upstream.Usage.InputTokens
+	meta.CompletionTokens = upstream.Usage.OutputTokens
 
 	return extract.ExtractSpecResponse{
 		RequestID: req.RequestID,
@@ -202,8 +204,14 @@ type anthropicToolChoice struct {
 	Name string `json:"name"`
 }
 
+type anthropicUsage struct {
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+}
+
 type anthropicResponse struct {
 	Content []anthropicResponseContent `json:"content"`
+	Usage   anthropicUsage             `json:"usage"`
 }
 
 type anthropicResponseContent struct {

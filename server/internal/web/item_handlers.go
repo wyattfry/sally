@@ -1,11 +1,13 @@
 package web
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	queries "sally/server/internal/db/generated"
 	"sally/server/internal/schedcodes"
@@ -28,7 +30,7 @@ func (a app) createBlankScheduleItem(w http.ResponseWriter, r *http.Request) {
 	code := schedcodes.NextCode(existingItems, loaded.schedule.Name)
 	dataJSON, _ := json.Marshal(map[string]string{"code": code})
 
-	_, err = a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
+	created, err := a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
 		ScheduleID:     scheduleID,
 		Data:           dataJSON,
 		Zone:           "",
@@ -40,6 +42,13 @@ func (a app) createBlankScheduleItem(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		http.Error(w, "could not create item", http.StatusInternalServerError)
+		return
+	}
+
+	if r.Header.Get("HX-Request") == "true" {
+		columns, _ := a.queries.ListScheduleColumns(r.Context(), scheduleID)
+		w.Header().Set("Content-Type", "text/html")
+		writeItemRow(w, projectID, scheduleID, created, columns)
 		return
 	}
 
@@ -76,19 +85,43 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
+	sourceImageUrl := strings.TrimSpace(r.Form.Get("source_image_url"))
+	created, err := a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
 		ScheduleID:     scheduleID,
 		Data:           dataJSON,
 		Zone:           strings.TrimSpace(r.Form.Get("col_zone")),
 		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
-		SourceImageUrl: strings.TrimSpace(r.Form.Get("source_image_url")),
+		SourceImageUrl: sourceImageUrl,
 		SourcePdfLinks: splitLines(r.Form.Get("source_pdf_links")),
 		Position:       int32(len(existingItems) + 1),
 	})
 	if err != nil {
 		http.Error(w, "could not create item", http.StatusInternalServerError)
 		return
+	}
+
+	// Download and cache scraped images locally so they don't rely on external URLs.
+	if strings.HasPrefix(sourceImageUrl, "http") && a.uploadsDir != "" {
+		snap := created
+		go func() {
+			localURL := downloadAndSave(snap.SourceImageUrl, a.uploadsDir)
+			if localURL == snap.SourceImageUrl {
+				return
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_, _ = a.queries.UpdateScheduleItem(ctx, queries.UpdateScheduleItemParams{
+				ID:             snap.ID,
+				Data:           snap.Data,
+				Zone:           snap.Zone,
+				SourceUrl:      snap.SourceUrl,
+				SourceTitle:    snap.SourceTitle,
+				SourceImageUrl: localURL,
+				SourcePdfLinks: snap.SourcePdfLinks,
+				Position:       snap.Position,
+			})
+		}()
 	}
 
 	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+scheduleID, http.StatusSeeOther)
@@ -121,7 +154,7 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
@@ -139,13 +172,21 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sourceImageURL := strings.TrimSpace(r.Form.Get("source_image_url"))
+	if uploaded, err := saveUploadedFile(r, "source_image_file", a.uploadsDir); err != nil {
+		http.Error(w, "could not save image: "+err.Error(), http.StatusInternalServerError)
+		return
+	} else if uploaded != "" {
+		sourceImageURL = uploaded
+	}
+
 	_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 		ID:             item.ID,
 		Data:           dataJSON,
 		Zone:           strings.TrimSpace(r.Form.Get("col_zone")),
 		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
-		SourceImageUrl: strings.TrimSpace(r.Form.Get("source_image_url")),
+		SourceImageUrl: sourceImageURL,
 		SourcePdfLinks: splitLines(r.Form.Get("source_pdf_links")),
 		Position:       parseInt32(r.Form.Get("position"), item.Position),
 	})

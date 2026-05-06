@@ -240,7 +240,7 @@ func TestOpenAIExtractorIncludesUpstreamErrorBodyInFailure(t *testing.T) {
 }
 
 func TestExtractionSchemaDefinesNestedObjectsStrictly(t *testing.T) {
-	schema := extractionSchema()
+	schema := extractionSchema(nil)
 
 	properties := schema["properties"].(map[string]any)
 	finishMappings := properties["finishModelMappings"].(map[string]any)

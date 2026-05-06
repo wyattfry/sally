@@ -113,8 +113,10 @@ type ErrorPayload struct {
 }
 
 type ResponseMeta struct {
-	Provider      string `json:"provider"`
-	Model         string `json:"model"`
-	PromptVersion string `json:"promptVersion"`
-	DurationMS    int    `json:"durationMs"`
+	Provider         string `json:"provider"`
+	Model            string `json:"model"`
+	PromptVersion    string `json:"promptVersion"`
+	DurationMS       int    `json:"durationMs"`
+	PromptTokens     int    `json:"promptTokens,omitempty"`
+	CompletionTokens int    `json:"completionTokens,omitempty"`
 }

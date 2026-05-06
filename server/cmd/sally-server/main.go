@@ -55,6 +55,11 @@ func webDeps(cfg config.Config, database *sql.DB) web.Deps {
 	if cfg.SessionSecret != "" {
 		deps.SessionSecret = []byte(cfg.SessionSecret)
 	}
+	deps.UploadsDir = cfg.UploadsDir
+	deps.AdminEmail = cfg.AdminEmail
+	if database != nil {
+		deps.DB = database
+	}
 	return deps
 }
 

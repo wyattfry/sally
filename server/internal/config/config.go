@@ -29,6 +29,8 @@ type Config struct {
 	GoogleClientSecret          string
 	GoogleRedirectURL           string
 	SessionSecret               string
+	UploadsDir                  string
+	AdminEmail                  string
 }
 
 func Load() Config {
@@ -55,6 +57,8 @@ func Load() Config {
 		GoogleClientSecret:          strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")),
 		GoogleRedirectURL:           strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URL")),
 		SessionSecret:               strings.TrimSpace(os.Getenv("SESSION_SECRET")),
+		UploadsDir:                  firstNonEmpty(strings.TrimSpace(os.Getenv("UPLOADS_DIR")), "./uploads"),
+		AdminEmail:                  strings.TrimSpace(os.Getenv("ADMIN_EMAIL")),
 	}
 }
 

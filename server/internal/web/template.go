@@ -12,7 +12,14 @@ import (
 var pageTemplateHTML string
 
 var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
-	"add": func(a, b int) int { return a + b },
+	"add":         func(a, b int) int { return a + b },
+	"formatBytes": FormatBytes,
+	"pct": func(num, den int64) string {
+		if den == 0 {
+			return "—"
+		}
+		return fmt.Sprintf("%.0f%%", float64(num)/float64(den)*100)
+	},
 	"nl2br": func(s string) template.HTML {
 		escaped := template.HTMLEscapeString(s)
 		escaped = strings.ReplaceAll(escaped, "\r\n", "\n")

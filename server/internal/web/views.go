@@ -62,3 +62,29 @@ type publicSharePage struct {
 	Project   queries.Project
 	Schedules []scheduleWithItems
 }
+
+type adminPage struct {
+	Kind                 string
+	Title                string
+	Counts               queries.AdminTableCounts
+	ExtractionSum        queries.ExtractionSummary
+	ProviderStats        []queries.ExtractionProviderStat
+	StorageBytes         int64
+	StorageDir           string
+	ItemDailyJSON        string // daily series, 7d
+	ItemHourlyJSON       string // hourly series, 24h
+	ExtractDailyJSON     string // daily series, 7d
+	ExtractHourlyJSON    string // hourly series, 24h
+}
+
+type adminUsersPage struct {
+	Kind  string
+	Title string
+	Users []queries.AdminUserRow
+}
+
+type adminExtractionsPage struct {
+	Kind       string
+	Title      string
+	RecentLogs []queries.ExtractionLogRow
+}

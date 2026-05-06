@@ -21,7 +21,11 @@ type scheduleQuerier interface {
 	ListScheduleItems(ctx context.Context, scheduleID string) ([]queries.ScheduleItem, error)
 }
 
-func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier) http.HandlerFunc {
+type extractionLogger interface {
+	InsertExtractionLog(ctx context.Context, p queries.InsertExtractionLogParams) error
+}
+
+func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger extractionLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req extract.ExtractSpecRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -88,12 +92,48 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier) http.Han
 		elapsed := time.Since(start)
 		if err != nil {
 			log.Printf("[extract] %s: failed after %dms: %v", req.RequestID, elapsed.Milliseconds(), err)
+			if logger != nil {
+				meta := extractor.Meta()
+				_ = logger.InsertExtractionLog(context.Background(), queries.InsertExtractionLogParams{
+					RequestID:     req.RequestID,
+					ScheduleID:    req.ScheduleID,
+					Provider:      meta.Provider,
+					Model:         meta.Model,
+					PromptVersion: meta.PromptVersion,
+					DurationMS:    int(elapsed.Milliseconds()),
+					Success:       false,
+					ErrorMessage:  err.Error(),
+					PageURL:       req.Page.URL,
+				})
+			}
+
 			data, _ := json.Marshal(buildErrorResponse(req.RequestID, extractor.Meta(), err))
 			sendEvent("error", data)
 			return
 		}
 
-		log.Printf("[extract] %s: ok in %dms", req.RequestID, elapsed.Milliseconds())
+		log.Printf("[extract] %s: ok in %dms prompt_tok=%d completion_tok=%d",
+			req.RequestID, elapsed.Milliseconds(), resp.Meta.PromptTokens, resp.Meta.CompletionTokens)
+		if logger != nil {
+			meta := resp.Meta
+			var missingCount int
+			if resp.Analysis != nil {
+				missingCount = len(resp.Analysis.MissingFields)
+			}
+			_ = logger.InsertExtractionLog(context.Background(), queries.InsertExtractionLogParams{
+				RequestID:         req.RequestID,
+				ScheduleID:        req.ScheduleID,
+				Provider:          meta.Provider,
+				Model:             meta.Model,
+				PromptVersion:     meta.PromptVersion,
+				DurationMS:        int(elapsed.Milliseconds()),
+				Success:           true,
+				PageURL:           req.Page.URL,
+				PromptTokens:      meta.PromptTokens,
+				CompletionTokens:  meta.CompletionTokens,
+				MissingFieldCount: missingCount,
+			})
+		}
 		resp.NextCode = computedNextCode
 		resp.KnownZones = selectedZones
 		data, _ := json.Marshal(resp)

@@ -102,6 +102,8 @@ func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.Extrac
 
 	meta := c.Meta()
 	meta.DurationMS = int(time.Since(start).Milliseconds())
+	meta.PromptTokens = upstream.Usage.PromptTokens
+	meta.CompletionTokens = upstream.Usage.CompletionTokens
 
 	return extract.ExtractSpecResponse{
 		RequestID: req.RequestID,
@@ -188,8 +190,14 @@ type chatJSONSchema struct {
 	Schema map[string]any `json:"schema"`
 }
 
+type chatUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+}
+
 type chatCompletionResponse struct {
 	Choices []chatChoice `json:"choices"`
+	Usage   chatUsage    `json:"usage"`
 }
 
 type chatChoice struct {

@@ -30,7 +30,7 @@ func NewRouterWithDeps(cfg config.Config, extractor provider.Extractor, webDeps 
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	extractHandler := NewExtractHandler(extractor, webDeps.Queries)
+	extractHandler := NewExtractHandler(extractor, webDeps.Queries, webDeps.Queries)
 	mux.HandleFunc("POST /api/v1/extract-spec", extractHandler)
 	mux.HandleFunc("POST /v1/extract-spec", extractHandler)
 

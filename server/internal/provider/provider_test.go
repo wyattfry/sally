@@ -63,7 +63,7 @@ func TestProviderSentinelErrorsMatchKinds(t *testing.T) {
 func TestExtractHandlerMapsProviderTimeoutToContractError(t *testing.T) {
 	handler := httpapi.NewExtractHandler(&fakeExtractor{
 		err: provider.ErrTimeout,
-	}, nil)
+	}, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/extract-spec", strings.NewReader(validRequestJSON))
 	rr := httptest.NewRecorder()
@@ -97,7 +97,7 @@ func TestExtractHandlerMapsProviderTimeoutToContractError(t *testing.T) {
 func TestExtractHandlerMapsProviderFailureToContractError(t *testing.T) {
 	handler := httpapi.NewExtractHandler(&fakeExtractor{
 		err: errors.Join(provider.ErrFailure, errors.New("upstream status 400: bad request")),
-	}, nil)
+	}, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/extract-spec", strings.NewReader(validRequestJSON))
 	rr := httptest.NewRecorder()
@@ -150,7 +150,7 @@ func TestExtractHandlerPassesRequestContextToProvider(t *testing.T) {
 			},
 		},
 	}
-	handler := httpapi.NewExtractHandler(&extractor, nil)
+	handler := httpapi.NewExtractHandler(&extractor, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/extract-spec", strings.NewReader(validRequestJSON))
 	req = req.WithContext(context.WithValue(req.Context(), ctxKey, "ctx-value"))

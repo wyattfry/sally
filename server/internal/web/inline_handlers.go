@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"net/http"
 	"strings"
 
@@ -104,7 +105,7 @@ func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
 	}
 	isCode := key == "code"
 	sourceURL := ""
-	if key == "title" {
+	if isCode {
 		sourceURL = item.SourceUrl
 	}
 
@@ -130,16 +131,19 @@ func itemCellURL(r *http.Request, key string) string {
 	)
 }
 
-func writeCellDisplay(w http.ResponseWriter, editURL, value, key string, isCode bool, sourceURL string) {
+func writeCellDisplay(w io.Writer, editURL, value, key string, isCode bool, sourceURL string) {
 	var inner string
 	switch {
-	case sourceURL != "":
-		inner = fmt.Sprintf(`<div class="cell-clamp"><a href="%s">%s</a></div>`,
+	case isCode && sourceURL != "":
+		inner = fmt.Sprintf(
+			`<a class="code-link" href="%s" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Go to product page">%s</a><span class="code-link-icon" aria-hidden="true">↗</span>`,
 			html.EscapeString(sourceURL), html.EscapeString(value))
 	case isCode:
 		inner = html.EscapeString(value)
 	case key == "zone" && value == "":
 		inner = `<div class="cell-clamp"><span class="cell-empty">—</span></div>`
+	case value == "":
+		inner = `<span class="cell-placeholder">Click to edit…</span>`
 	default:
 		inner = fmt.Sprintf(`<div class="cell-clamp">%s</div>`, html.EscapeString(value))
 	}
@@ -450,4 +454,43 @@ func writeScheduleNotesEdit(w http.ResponseWriter, saveURL, value string) {
 			`<textarea class="schedule-notes-input" name="value" rows="%d" data-original="%s" autofocus `+
 			`hx-post="%s" hx-trigger="blur" hx-target="closest [data-field]" hx-swap="outerHTML" hx-include="this" %s>%s</textarea></div>`,
 		rows, v, s, esc, v)
+}
+
+// writeItemRow writes a complete <tr class="item-row"> fragment, used when
+// adding a blank item inline via HTMX without a full page reload.
+func writeItemRow(w io.Writer, projectID, scheduleID string, item queries.ScheduleItem, columns []queries.ScheduleColumn) {
+	var dm map[string]string
+	_ = json.Unmarshal(item.Data, &dm)
+	if dm == nil {
+		dm = map[string]string{}
+	}
+	dm["zone"] = item.Zone
+
+	thumbUploadURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/thumbnail", projectID, scheduleID, item.ID)
+	moveURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/move", projectID, scheduleID, item.ID)
+	deleteURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/delete", projectID, scheduleID, item.ID)
+	e := html.EscapeString
+
+	fmt.Fprintf(w, `<tr class="item-row">`)
+	writeItemThumbCell(w, item.ID, item.SourceImageUrl, thumbUploadURL)
+
+	for _, col := range columns {
+		cellEditURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/cells/%s/edit",
+			projectID, scheduleID, item.ID, col.Key)
+		isCode := col.Key == "code"
+		sourceURL := ""
+		if isCode {
+			sourceURL = item.SourceUrl
+		}
+		writeCellDisplay(w, cellEditURL, dm[col.Key], col.Key, isCode, sourceURL)
+	}
+
+	fmt.Fprintf(w,
+		`<td class="row-actions">`+
+			`<form method="post" action="%s" class="move-form"><input type="hidden" name="direction" value="up"><button type="submit" class="move-btn" title="Move up">↑</button></form>`+
+			`<form method="post" action="%s" class="move-form"><input type="hidden" name="direction" value="down"><button type="submit" class="move-btn" title="Move down">↓</button></form>`+
+			`<button class="delete-row-btn" hx-post="%s" hx-target="closest tr" hx-swap="outerHTML" hx-confirm="Remove this item?">×</button>`+
+			`</td>`,
+		e(moveURL), e(moveURL), e(deleteURL))
+	fmt.Fprintf(w, `</tr>`)
 }

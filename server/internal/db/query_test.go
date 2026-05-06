@@ -173,3 +173,154 @@ func TestProjectUpdatedAtBumpsOnChildChanges(t *testing.T) {
 		t.Fatalf("expected updated_at to advance after item delete: was %v, now %v", t2, after3.UpdatedAt)
 	}
 }
+
+// TestAdminQueries exercises every hand-written admin SQL function against the
+// real schema. Any column-name typo (like owner_id vs owner_user_id) will
+// surface here rather than at runtime.
+func TestAdminQueries(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	ctx := context.Background()
+	q := queries.New(conn)
+
+	// Seed minimal data so the join-heavy queries have something to traverse.
+	user, err := q.CreateUser(ctx, queries.CreateUserParams{
+		Email: "admin-query-test@example.com",
+		Name:  "Admin Query Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(ctx, queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Admin Test Project",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(ctx, queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "Admin Test Schedule",
+		Position:  1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+	_, err = q.CreateScheduleItem(ctx, queries.CreateScheduleItemParams{
+		ScheduleID:     schedule.ID,
+		Data:           json.RawMessage(`{"title":"Test Item"}`),
+		SourcePdfLinks: []string{},
+	})
+	if err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+
+	if err := q.InsertExtractionLog(ctx, queries.InsertExtractionLogParams{
+		RequestID:        "test-req-1",
+		ScheduleID:       schedule.ID,
+		Provider:         "openai",
+		Model:            "gpt-4o",
+		DurationMS:       1234,
+		Success:          true,
+		PromptTokens:     500,
+		CompletionTokens: 120,
+	}); err != nil {
+		t.Fatalf("insert extraction log: %v", err)
+	}
+
+	t.Run("QueryAdminTableCounts", func(t *testing.T) {
+		if _, err := queries.QueryAdminTableCounts(ctx, conn); err != nil {
+			t.Fatalf("QueryAdminTableCounts: %v", err)
+		}
+	})
+
+	t.Run("QueryExtractionSummary", func(t *testing.T) {
+		if _, err := queries.QueryExtractionSummary(ctx, conn); err != nil {
+			t.Fatalf("QueryExtractionSummary: %v", err)
+		}
+	})
+
+	t.Run("QueryExtractionProviderStats", func(t *testing.T) {
+		if _, err := queries.QueryExtractionProviderStats(ctx, conn); err != nil {
+			t.Fatalf("QueryExtractionProviderStats: %v", err)
+		}
+	})
+
+	t.Run("QueryRecentExtractionLogs", func(t *testing.T) {
+		if _, err := queries.QueryRecentExtractionLogs(ctx, conn, 10); err != nil {
+			t.Fatalf("QueryRecentExtractionLogs: %v", err)
+		}
+	})
+
+	t.Run("QueryAdminUsers", func(t *testing.T) {
+		rows, err := queries.QueryAdminUsers(ctx, conn)
+		if err != nil {
+			t.Fatalf("QueryAdminUsers: %v", err)
+		}
+		var found bool
+		for _, r := range rows {
+			if r.Email == user.Email {
+				found = true
+				if r.ProjectCount < 1 {
+					t.Errorf("expected at least 1 project for test user, got %d", r.ProjectCount)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("test user not found in QueryAdminUsers result")
+		}
+	})
+
+	t.Run("QueryDailyItemSeries", func(t *testing.T) {
+		pts, err := queries.QueryDailyItemSeries(ctx, conn, 28)
+		if err != nil {
+			t.Fatalf("QueryDailyItemSeries: %v", err)
+		}
+		if len(pts) != 28 {
+			t.Errorf("expected 28 points, got %d", len(pts))
+		}
+	})
+
+	t.Run("QueryDailyExtractionSeries", func(t *testing.T) {
+		pts, err := queries.QueryDailyExtractionSeries(ctx, conn, 28)
+		if err != nil {
+			t.Fatalf("QueryDailyExtractionSeries: %v", err)
+		}
+		if len(pts) != 28 {
+			t.Errorf("expected 28 points, got %d", len(pts))
+		}
+	})
+
+	t.Run("QueryHourlyItemSeries", func(t *testing.T) {
+		pts, err := queries.QueryHourlyItemSeries(ctx, conn, 24)
+		if err != nil {
+			t.Fatalf("QueryHourlyItemSeries: %v", err)
+		}
+		if len(pts) != 24 {
+			t.Errorf("expected 24 points, got %d", len(pts))
+		}
+	})
+
+	t.Run("QueryHourlyExtractionSeries", func(t *testing.T) {
+		pts, err := queries.QueryHourlyExtractionSeries(ctx, conn, 24)
+		if err != nil {
+			t.Fatalf("QueryHourlyExtractionSeries: %v", err)
+		}
+		if len(pts) != 24 {
+			t.Errorf("expected 24 points, got %d", len(pts))
+		}
+	})
+}

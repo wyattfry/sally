@@ -98,6 +98,8 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 
 	meta := o.Meta()
 	meta.DurationMS = int(time.Since(start).Milliseconds())
+	meta.PromptTokens = upstream.Usage.InputTokens
+	meta.CompletionTokens = upstream.Usage.OutputTokens
 
 	return extract.ExtractSpecResponse{
 		RequestID: req.RequestID,
@@ -155,8 +157,14 @@ type openAIFormat struct {
 	Schema map[string]any `json:"schema"`
 }
 
+type openAIUsage struct {
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+}
+
 type openAIResponse struct {
 	Output []openAIOutput `json:"output"`
+	Usage  openAIUsage    `json:"usage"`
 }
 
 type openAIOutput struct {

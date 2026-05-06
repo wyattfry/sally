@@ -143,13 +143,22 @@
 <nav class="breadcrumb"><a href="/projects">Projects</a></nav>
 <div class="project-header">
   <div class="project-header-main">
-    {{if .Project.ThumbnailUrl}}
-    <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
-    {{else if .FirstItemImage}}
-    <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
-    {{else}}
-    <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
-    {{end}}
+    <div class="project-hero-wrap upload-target" id="proj-hero-{{.Project.ID}}"
+         onclick="this.querySelector('input[type=file]').click()" title="Click to upload a new thumbnail">
+      {{if .Project.ThumbnailUrl}}
+      <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
+      {{else if .FirstItemImage}}
+      <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
+      {{else}}
+      <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
+      {{end}}
+      <div class="upload-overlay"><span>Upload</span></div>
+      <form hx-post="/projects/{{.Project.ID}}/thumbnail" hx-target="#proj-hero-{{.Project.ID}}"
+            hx-swap="outerHTML" hx-encoding="multipart/form-data">
+        <input type="file" name="thumbnail_file" accept="image/*" style="display:none"
+               onchange="this.closest('form').requestSubmit()">
+      </form>
+    </div>
     <div class="project-header-text">
       <h1 class="editable-h1" data-field="name" hx-get="/projects/{{.Project.ID}}/fields/name/edit" hx-trigger="click"
         hx-target="this" hx-swap="outerHTML">{{.Project.Name}}</h1>
@@ -220,22 +229,45 @@
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="tbody-{{$sw.Schedule.ID}}">
             {{if $sw.Groups}}
             {{range $sw.Groups}}
             {{$g := .}}
             {{range $g.Items}}
             {{$item := .}}
             <tr class="item-row">
-              <td class="item-thumb-cell">{{if $item.SourceImageUrl}}<img class="item-thumb"
-                  src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
-              {{range $sw.Columns}}
-              {{$cellEditURL := printf "/projects/%s/schedules/%s/items/%s/cells/%s/edit" $.Project.ID $sw.Schedule.ID
-              $item.ID .Key}}
-              <td class="editable-cell col-{{.Key}}" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this"
-                hx-swap="outerHTML">
-                <div class="cell-clamp">{{index $item.DataMap .Key}}</div>
+              <td class="item-thumb-cell upload-target" id="item-thumb-{{$item.ID}}"
+                  onclick="this.querySelector('input[type=file]').click()" title="Click to upload an image">
+                {{if $item.SourceImageUrl}}
+                <img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">
+                {{else}}
+                <div class="item-thumb-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="m21 15-5-5L5 21"/>
+                  </svg>
+                </div>
+                {{end}}
+                <div class="upload-overlay"><span>↑</span></div>
+                <form hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/thumbnail"
+                      hx-target="#item-thumb-{{$item.ID}}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
+                  <input type="file" name="source_image_file" accept="image/*" style="display:none"
+                         onchange="this.closest('form').requestSubmit()">
+                </form>
               </td>
+              {{range $sw.Columns}}
+              {{$cellEditURL := printf "/projects/%s/schedules/%s/items/%s/cells/%s/edit" $.Project.ID $sw.Schedule.ID $item.ID .Key}}
+              {{if and (eq .Key "code") $item.SourceUrl}}
+              <td class="editable-cell col-code" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this" hx-swap="outerHTML">
+                <a class="code-link" href="{{$item.SourceUrl}}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Go to product page">{{index $item.DataMap .Key}}</a><span class="code-link-icon" aria-hidden="true">↗</span>
+              </td>
+              {{else}}
+              <td class="editable-cell col-{{.Key}}" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this" hx-swap="outerHTML">
+                {{$val := index $item.DataMap .Key}}
+                {{if $val}}<div class="cell-clamp">{{$val}}</div>{{else if eq .Key "zone"}}<div class="cell-clamp"><span class="cell-empty">—</span></div>{{else}}<span class="cell-placeholder">Click to edit…</span>{{end}}
+              </td>
+              {{end}}
               {{end}}
               <td class="row-actions">
                 <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/move" class="move-form">
@@ -254,16 +286,19 @@
             {{end}}
             {{end}}
             {{else}}
-            <tr><td colspan="{{add (len $sw.Columns) 2}}" class="schedule-empty muted">No items yet.</td></tr>
+            <tr class="item-row-empty"><td colspan="{{add (len $sw.Columns) 2}}" class="schedule-empty muted">No items yet.</td></tr>
             {{end}}
           </tbody>
         </table>
       </div>
       {{end}}
       {{if ne $sw.Schedule.Kind "note"}}
-      <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/blank" class="add-item-form">
-        <button type="submit" class="add-item-btn">+ Add item</button>
-      </form>
+      <div class="add-item-row">
+        <form hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/blank"
+              hx-target="#tbody-{{$sw.Schedule.ID}}" hx-swap="beforeend">
+          <button type="submit" class="button button-sm">+ Add item</button>
+        </form>
+      </div>
       <dialog class="columns-modal" id="col-modal-{{$sw.Schedule.ID}}">
         <div class="columns-modal-inner">
           <h3 class="columns-modal-title">Edit Columns</h3>
@@ -318,13 +353,14 @@
 <div class="form-page">
   <h1>Edit Project</h1>
   <div class="form-card">
-    <form method="post" action="/projects/{{.Project.ID}}/edit">
+    <form method="post" action="/projects/{{.Project.ID}}/edit" enctype="multipart/form-data">
       <div class="form-fields">
         <label>Project Name <input name="name" value="{{.Project.Name}}" required></label>
         <label>Address <input name="address" value="{{.Project.Address}}"></label>
         <label>Description <input name="description" value="{{.Project.Description}}"></label>
         <label>Thumbnail URL <input name="thumbnail_url" value="{{.Project.ThumbnailUrl}}"
             placeholder="https://… (leave blank to use item images)"></label>
+        <label>Upload Thumbnail <input type="file" name="thumbnail_file" accept="image/*"></label>
       </div>
       <button type="submit">Update Project</button>
     </form>
@@ -349,10 +385,9 @@
 <div class="form-page">
   <h1>Edit Item</h1>
   <div class="form-card">
-    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit">
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit" enctype="multipart/form-data">
       <input type="hidden" name="position" value="{{.Item.Position}}">
       <input type="hidden" name="source_title" value="{{.Item.SourceTitle}}">
-      <input type="hidden" name="source_image_url" value="{{.Item.SourceImageUrl}}">
       <textarea name="source_pdf_links" style="display:none">{{range .Item.SourcePdfLinks}}{{.}}
 {{end}}</textarea>
       <div class="form-fields">
@@ -360,6 +395,8 @@
         <label>{{.Label}} <input name="col_{{.Key}}" value="{{index $.Item.DataMap .Key}}" autocomplete="off"></label>
         {{end}}
         <label>Source URL <input name="source_url" value="{{.Item.SourceUrl}}"></label>
+        <label>Image URL <input name="source_image_url" value="{{.Item.SourceImageUrl}}" placeholder="https://…"></label>
+        <label>Upload Image <input type="file" name="source_image_file" accept="image/*"></label>
       </div>
       <button type="submit">Update Item</button>
     </form>
@@ -411,7 +448,8 @@
       {{if .Project.Address}}<p class="share-project-address">{{.Project.Address}}</p>{{end}}
       {{if .Project.Description}}<p class="share-project-description">{{.Project.Description}}</p>{{end}}
     </div>
-    <input type="search" id="share-search" class="share-search" placeholder="Search items…" autocomplete="off">
+    <!-- Search doesnt seem to work ATM, address later -->
+    <!-- <input type="search" id="share-search" class="share-search" placeholder="Search items…" autocomplete="off"> -->
   </div>
   {{range .Schedules}}
   {{$sw := .}}
@@ -471,5 +509,253 @@
   <p class="not-found-message">This link may have expired or the project may have been deleted.</p>
   <a class="button" href="/projects">Go to my projects</a>
 </div>
+
+{{else if eq .Kind "admin"}}
+<div class="page-header">
+  <h1>Admin</h1>
+</div>
+
+<section class="admin-section">
+  <h2 class="admin-section-title">Overview</h2>
+  <div class="admin-stat-grid">
+    <a class="admin-stat-card admin-stat-card-link" href="/admin/users">
+      <div class="admin-stat-value">{{.Counts.Users}}</div>
+      <div class="admin-stat-label">Users</div>
+      {{if .Counts.NewUsers7d}}<div class="admin-stat-sub">+{{.Counts.NewUsers7d}} this week</div>{{end}}
+    </a>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.Counts.Projects}}</div>
+      <div class="admin-stat-label">Projects</div>
+      {{if .Counts.NewProjects7d}}<div class="admin-stat-sub">+{{.Counts.NewProjects7d}} this week</div>{{end}}
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.Counts.Schedules}}</div>
+      <div class="admin-stat-label">Schedules</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.Counts.Items}}</div>
+      <div class="admin-stat-label">Items</div>
+      {{if .Counts.NewItems7d}}<div class="admin-stat-sub">+{{.Counts.NewItems7d}} this week</div>{{end}}
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{formatBytes .StorageBytes}}</div>
+      <div class="admin-stat-label">Uploads storage</div>
+      <div class="admin-stat-sub">{{.StorageDir}}</div>
+    </div>
+  </div>
+  <div class="admin-chart-row">
+    <div class="admin-chart-wrap">
+      <div class="admin-chart-header">
+        <span class="admin-chart-title">Items added</span>
+        <div class="admin-range-btns" id="items-range-btns">
+          <button class="admin-range-btn" data-range="1h">1h</button>
+          <button class="admin-range-btn" data-range="3h">3h</button>
+          <button class="admin-range-btn active" data-range="24h">24h</button>
+          <button class="admin-range-btn" data-range="7d">7d</button>
+        </div>
+      </div>
+      <canvas id="chart-items" height="120"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="admin-section">
+  <h2 class="admin-section-title">LLM extractions</h2>
+  <div class="admin-stat-grid">
+    <a class="admin-stat-card admin-stat-card-link" href="/admin/extractions">
+      <div class="admin-stat-value">{{.ExtractionSum.Total}}</div>
+      <div class="admin-stat-label">Total calls ↗</div>
+    </a>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{pct .ExtractionSum.Successes .ExtractionSum.Total}}</div>
+      <div class="admin-stat-label">Success rate</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{printf "%.0f" .ExtractionSum.AvgDurMS}}<span class="admin-stat-unit">ms</span></div>
+      <div class="admin-stat-label">Avg duration</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.Last24h}}</div>
+      <div class="admin-stat-label">Last 24 h</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.Last7d}}</div>
+      <div class="admin-stat-label">Last 7 days</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.TotalPromptTok}}</div>
+      <div class="admin-stat-label">Prompt tokens</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.TotalCompleteTok}}</div>
+      <div class="admin-stat-label">Completion tokens</div>
+    </div>
+  </div>
+
+  <div class="admin-chart-row">
+    <div class="admin-chart-wrap">
+      <div class="admin-chart-header">
+        <span class="admin-chart-title">Extractions</span>
+        <div class="admin-range-btns" id="extract-range-btns">
+          <button class="admin-range-btn" data-range="1h">1h</button>
+          <button class="admin-range-btn" data-range="3h">3h</button>
+          <button class="admin-range-btn active" data-range="24h">24h</button>
+          <button class="admin-range-btn" data-range="7d">7d</button>
+        </div>
+      </div>
+      <canvas id="chart-extractions" height="120"></canvas>
+    </div>
+  </div>
+
+  {{if .ProviderStats}}
+  <table class="admin-table" style="margin-top:16px">
+    <thead><tr><th>Provider</th><th>Model</th><th>Calls</th><th>Success rate</th><th>Avg ms</th></tr></thead>
+    <tbody>
+      {{range .ProviderStats}}
+      <tr>
+        <td>{{.Provider}}</td>
+        <td class="admin-mono">{{.Model}}</td>
+        <td>{{.Total}}</td>
+        <td>{{pct .Successes .Total}}</td>
+        <td class="admin-mono">{{printf "%.0f" .AvgDurMS}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  var green = getComputedStyle(document.documentElement).getPropertyValue('--c-green').trim() || '#22c55e';
+  var red   = '#ef4444';
+  var muted = getComputedStyle(document.documentElement).getPropertyValue('--c-text-muted').trim() || '#888';
+
+  var itemHourly  = {{.ItemHourlyJSON}};
+  var itemDaily   = {{.ItemDailyJSON}};
+  var exHourly    = {{.ExtractHourlyJSON}};
+  var exDaily     = {{.ExtractDailyJSON}};
+
+  var rangeSlices = { '1h': -1, '3h': -3, '24h': null, '7d': null };
+
+  function slice(arr, range) {
+    var n = rangeSlices[range];
+    return n ? arr.slice(n) : arr;
+  }
+
+  function mkDataset(pts, color, label) {
+    return { label: label, data: pts.map(function(p){ return p.Count; }),
+      borderColor: color, backgroundColor: color + '22',
+      fill: true, tension: 0.3, pointRadius: 2 };
+  }
+  function mkErrDataset(pts, color) {
+    return { label: 'Errors', data: pts.map(function(p){ return p.Extra; }),
+      borderColor: color, backgroundColor: color + '22',
+      fill: true, tension: 0.3, pointRadius: 2 };
+  }
+
+  function makeChart(id, pts, extraDataset) {
+    var datasets = [mkDataset(pts, green, 'Total')];
+    if (extraDataset) datasets.push(extraDataset);
+    return new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels: pts.map(function(p){ return p.Date; }), datasets: datasets },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: !!extraDataset, labels: { color: muted } } },
+        scales: {
+          x: { ticks: { color: muted, maxTicksLimit: 7, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: muted, precision: 0 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  var initPts = slice(itemHourly, '24h');
+  var itemChart = makeChart('chart-items', initPts, null);
+
+  var exInitPts = slice(exHourly, '24h');
+  var exChart = makeChart('chart-extractions', exInitPts, mkErrDataset(exInitPts, red));
+
+  function applyRange(range, chart, hourly, daily, withErrors) {
+    var pts = (range === '7d') ? daily : slice(hourly, range);
+    chart.data.labels = pts.map(function(p){ return p.Date; });
+    chart.data.datasets[0].data = pts.map(function(p){ return p.Count; });
+    if (withErrors) chart.data.datasets[1].data = pts.map(function(p){ return p.Extra; });
+    chart.update();
+  }
+
+  document.getElementById('items-range-btns').addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-range-btn');
+    if (!btn) return;
+    this.querySelectorAll('.admin-range-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    applyRange(btn.dataset.range, itemChart, itemHourly, itemDaily, false);
+  });
+
+  document.getElementById('extract-range-btns').addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-range-btn');
+    if (!btn) return;
+    this.querySelectorAll('.admin-range-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    applyRange(btn.dataset.range, exChart, exHourly, exDaily, true);
+  });
+})();
+</script>
+
+{{else if eq .Kind "admin-users"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / Users</div>
+  <h1>Users</h1>
+</div>
+<section class="admin-section">
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>Email</th><th>Name</th><th>Joined</th><th>Projects</th><th>Schedules</th><th>Items</th><th>Last item</th></tr></thead>
+      <tbody>
+        {{range .Users}}
+        <tr>
+          <td class="admin-mono">{{.Email}}</td>
+          <td>{{.Name}}</td>
+          <td class="admin-mono">{{.CreatedAt}}</td>
+          <td>{{.ProjectCount}}</td>
+          <td>{{.ScheduleCount}}</td>
+          <td>{{.ItemCount}}</td>
+          <td class="admin-mono">{{if .LastItemAt}}{{.LastItemAt}}{{else}}—{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{{else if eq .Kind "admin-extractions"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / Extractions</div>
+  <h1>Extraction calls</h1>
+</div>
+<section class="admin-section">
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>Time (UTC)</th><th>Provider / Model</th><th>ms</th><th>In tok</th><th>Out tok</th><th>Missing fields</th><th>Status</th><th>Page</th></tr></thead>
+      <tbody>
+        {{range .RecentLogs}}
+        <tr class="{{if .Success}}{{else}}admin-row-error{{end}}">
+          <td class="admin-mono">{{.CreatedAt}}</td>
+          <td class="admin-mono">{{.Provider}} / {{.Model}}</td>
+          <td class="admin-mono">{{.DurationMS}}</td>
+          <td class="admin-mono">{{if .PromptTokens}}{{.PromptTokens}}{{else}}—{{end}}</td>
+          <td class="admin-mono">{{if .CompletionTokens}}{{.CompletionTokens}}{{else}}—{{end}}</td>
+          <td class="admin-mono">{{if .MissingFieldCount}}<span class="admin-badge admin-badge-warn">{{.MissingFieldCount}}</span>{{else}}0{{end}}</td>
+          <td>{{if .Success}}<span class="admin-badge admin-badge-ok">ok</span>{{else}}<span class="admin-badge admin-badge-err" title="{{.Error}}">error</span>{{end}}</td>
+          <td class="admin-url">{{if .PageURL}}<a href="{{.PageURL}}" target="_blank" rel="noopener" title="{{.PageURL}}">{{.PageURL}}</a>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
 {{end}}
 {{end}}

@@ -20,31 +20,46 @@ var staticFiles embed.FS
 
 type Deps struct {
 	Queries       *queries.Queries
+	DB            *sql.DB
 	DevUserEmail  string
 	DevUserName   string
 	OAuthConfig   *oauth2.Config
 	SessionSecret []byte
+	UploadsDir    string
+	AdminEmail    string
 }
 
 type app struct {
 	queries       *queries.Queries
+	db            *sql.DB
 	devUserEmail  string
 	devUserName   string
 	oauthConfig   *oauth2.Config
 	sessionSecret []byte
+	uploadsDir    string
+	adminEmail    string
 }
 
 func RegisterRoutes(mux *http.ServeMux, deps Deps) {
+	uploadsDir := deps.UploadsDir
+	if uploadsDir == "" {
+		uploadsDir = "./uploads"
+	}
+
 	a := app{
 		queries:       deps.Queries,
+		db:            deps.DB,
 		devUserEmail:  firstNonEmpty(deps.DevUserEmail, "dev@spexxtool.local"),
 		devUserName:   firstNonEmpty(deps.DevUserName, "Development User"),
 		oauthConfig:   deps.OAuthConfig,
 		sessionSecret: deps.SessionSecret,
+		uploadsDir:    uploadsDir,
+		adminEmail:    deps.AdminEmail,
 	}
 
 	staticFS, _ := fs.Sub(staticFiles, "static")
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 	mux.HandleFunc("GET /login", a.loginPage)
 	mux.HandleFunc("GET /auth/google", a.startGoogleOAuth)
 	mux.HandleFunc("GET /auth/callback", a.oauthCallback)
@@ -56,6 +71,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /projects/{projectID}", a.showProject)
 	mux.HandleFunc("GET /projects/{projectID}/edit", a.editProject)
 	mux.HandleFunc("POST /projects/{projectID}/edit", a.updateProject)
+	mux.HandleFunc("POST /projects/{projectID}/thumbnail", a.uploadProjectThumbnail)
 	mux.HandleFunc("POST /projects/{projectID}/delete", a.deleteProject)
 	mux.HandleFunc("POST /projects/{projectID}/schedules", a.createSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/notes", a.createNote)
@@ -65,6 +81,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/blank", a.createBlankScheduleItem)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.editScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.updateScheduleItem)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/thumbnail", a.uploadItemImage)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/delete", a.deleteScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/move", a.moveScheduleItem)
 	mux.HandleFunc("GET /projects/{projectID}/export.csv", a.exportProjectCSV)
@@ -77,6 +94,9 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns", a.addScheduleColumn)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns/{columnID}/rename", a.renameScheduleColumn)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns/{columnID}/delete", a.deleteScheduleColumn)
+	mux.HandleFunc("GET /admin", a.adminDashboard)
+	mux.HandleFunc("GET /admin/users", a.adminUsers)
+	mux.HandleFunc("GET /admin/extractions", a.adminExtractions)
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
 	mux.HandleFunc("POST /projects/{projectID}/share-links/deactivate", a.deactivateProjectShareLinks)
@@ -234,7 +254,7 @@ func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
 		return
 	}
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
@@ -245,12 +265,20 @@ func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	thumbnailURL := strings.TrimSpace(r.Form.Get("thumbnail_url"))
+	if uploaded, err := saveUploadedFile(r, "thumbnail_file", a.uploadsDir); err != nil {
+		http.Error(w, "could not save thumbnail: "+err.Error(), http.StatusInternalServerError)
+		return
+	} else if uploaded != "" {
+		thumbnailURL = uploaded
+	}
+
 	_, err := a.queries.UpdateProject(r.Context(), queries.UpdateProjectParams{
 		ID:           projectID,
 		Name:         name,
 		Address:      strings.TrimSpace(r.Form.Get("address")),
 		Description:  strings.TrimSpace(r.Form.Get("description")),
-		ThumbnailUrl: strings.TrimSpace(r.Form.Get("thumbnail_url")),
+		ThumbnailUrl: thumbnailURL,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		renderNotFound(w)
