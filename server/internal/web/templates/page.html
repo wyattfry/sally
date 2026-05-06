@@ -189,7 +189,7 @@
         <span class="schedule-summary-actions">
 <button type="button" class="schedule-delete-btn" onclick="event.stopPropagation()"
             hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/delete"
-            hx-confirm="Delete this schedule and all its items? This cannot be undone.">Delete schedule</button>
+            hx-confirm="{{if eq $sw.Schedule.Kind `note`}}Delete this note? This cannot be undone.{{else}}Delete this schedule and all its items? This cannot be undone.{{end}}">{{if eq $sw.Schedule.Kind "note"}}Delete note{{else}}Delete schedule{{end}}</button>
         </span>
         <span class="summary-toggle"></span>
       </summary>
