@@ -73,8 +73,12 @@ td {
 
 th {
   font-size: 12px;
+  max-width: 200px;
   text-transform: uppercase;
   background: var(--c-surface-raised);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 input {
@@ -574,6 +578,114 @@ details.schedule-section > summary:hover .schedule-summary-actions {
 .schedule-delete-btn:hover {
   background: var(--c-danger-bg, #fee2e2);
   border-color: var(--c-danger-text, #dc2626);
+}
+.col-actions-header {
+  width: 1%;
+  white-space: nowrap;
+}
+.edit-columns-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0;
+  padding: 2px 6px;
+  transition: opacity 0.1s;
+  white-space: nowrap;
+}
+thead:hover .edit-columns-btn {
+  opacity: 1;
+}
+.edit-columns-btn:hover {
+  background: var(--c-bg-subtle, #f3f4f6);
+  border-color: var(--c-border);
+  color: var(--c-text);
+  opacity: 1;
+}
+
+/* Columns modal */
+.columns-modal {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 0;
+  width: min(420px, 90vw);
+}
+.columns-modal::backdrop {
+  background: rgba(0,0,0,0.35);
+}
+.columns-modal-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+.columns-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.col-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.col-modal-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.col-modal-label {
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  flex: 1;
+  font-size: 14px;
+  padding: 5px 8px;
+}
+.col-modal-label:focus {
+  border-color: var(--c-green-mid, #2f7c57);
+  outline: none;
+}
+.col-modal-delete {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--c-danger-text, #dc2626);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 13px;
+  padding: 4px 8px;
+}
+.col-modal-delete:hover {
+  background: var(--c-danger-bg, #fee2e2);
+  border-color: var(--c-danger-text, #dc2626);
+}
+.col-modal-add-form {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.col-modal-new-input {
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  flex: 1;
+  font-size: 14px;
+  padding: 5px 8px;
+}
+.col-modal-new-input:focus {
+  border-color: var(--c-green-mid, #2f7c57);
+  outline: none;
+}
+.col-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .add-item-form {

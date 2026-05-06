@@ -64,6 +64,15 @@ func (q *Queries) DeleteScheduleColumnsBySchedule(ctx context.Context, scheduleI
 	return err
 }
 
+const updateScheduleColumnLabel = `-- name: UpdateScheduleColumnLabel :exec
+update schedule_columns set label = $2 where id = $1
+`
+
+func (q *Queries) UpdateScheduleColumnLabel(ctx context.Context, id string, label string) error {
+	_, err := q.db.ExecContext(ctx, updateScheduleColumnLabel, id, label)
+	return err
+}
+
 const listScheduleColumns = `-- name: ListScheduleColumns :many
 select id, schedule_id, key, label, kind, position, created_at
 from schedule_columns

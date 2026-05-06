@@ -9,6 +9,9 @@ from schedule_columns
 where schedule_id = $1
 order by position asc, created_at asc;
 
+-- name: UpdateScheduleColumnLabel :exec
+update schedule_columns set label = $2 where id = $1;
+
 -- name: DeleteScheduleColumn :exec
 delete from schedule_columns
 where id = $1;

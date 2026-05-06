@@ -30,39 +30,43 @@
     3. Model
     4. Finish
     5. Notes
+- [x] on projects/[id]: the "New Schedule [field] Add Schedule" fields / form is confusing, the create-schedule flow should use more conventional CRUD webapp UI
+- [x] add link to chrome extension in mothership somewhere, maybe the footer? add a footer
+- [x] make the View-Only mobile / tablet friendly, maybe more card-like than table-like?
+- [x] support note-type schedules
+- [x] human friendly 404 page on mothership, e.g. if you try to go to a share link for a deleted project
+- [x] project csv export?
+- [x] add custom item to a schedule / manual entry, e.g. if no online page exists for the product, or if it is an owner-provided item
 
+Critical Path
 - [ ] restore some signal of an item being added, idk what the best UX is, maybe change SPEC button to say "Captured!" and a few seconds later, goes back to SPEC? Or something else? I haven't decided on a good way to offer the user a way to go from an ecommerce page to the mothership page
-- [ ] pressing Enter in any field in the SallyPanel should submit the form
-- [ ] update mothership web ui to use custom columns, support note-type schedules
-- [ ] in sallypanel, project selection might feel better as text with a 'select different project' button that brings up a modal or something? it doesn't feel right as a combo box
-- [ ] on projects/[id]: the "New Schedule [field] Add Schedule" fields / form is confusing, the create-schedule flow should use more conventional CRUD webapp UI
-- [ ] see what happens if you try adding different finishes of a product, If the product page supports it, "finish" should be a combobox with two-way binding to MODEL
-- [ ] schedule item tables: drag to re-order schedules, drag to re-order items, click headers to sort by, 
+- [ ] update mothership web ui to use custom columns
 - [ ] built in blob storage for saving images so images don't have to be fetched from remotes every time
-- [ ] breadcrumbs no longer needed, can be removed from views etc
-- [ ] add link to chrome extension in mothership somewhere, maybe the footer? add a footer
-- [ ] add link to mothership in chrome extension description
 - [ ] user account page, dummy billing, stripe?
-- [ ] how much to charge? how often? monthly or by use?
-- [ ] make the View-Only mobile / tablet friendly
+- [ ] notes to support images, png / svg / ???
+- [ ] notes to support multiple "rows" or inner-sections?
+- [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
+- [ ] add link to mothership in chrome extension description
+- [ ] a feature to delete all of a users data / opt-out
+- [ ] refine the "Add item" UX, it requires a page reload, the page jumps, the Add Item button awkwardly spans the entire width, the row is unexpectedly added in the highest location, not appended, as i was expecting, to the bottom. Maybe the empty fields could show a hint "Click to edit" as is done elsewhere on the site.
 
+Nice To Have
+- [ ] make the project detail page's project name, address, desc narrower, atm they fill the available width, which is awkwardly wide. And their background color shold be slightly different than the page to show the user the clickable / editable area
+- [ ] pressing Enter in any field in the SallyPanel should submit the form
+- [ ] in sallypanel, project selection might feel better as text with a 'select different project' button that brings up a modal or something? it doesn't feel right as a combo box
+- [ ] see what happens if you try adding different finishes of a product, If the product page supports it, "finish" should be a combobox with two-way binding to MODEL
+- [ ] breadcrumbs no longer needed, can be removed from views etc
+- [ ] alternative to google sign-in
+- [ ] optimize LLM spend, both for development and data extraction
+- [ ] would a 'duplicate item' feature be useful?
+- [ ] how much to charge? how often? monthly or by use?
+- [ ] print view version of shared page?
 
 Hypothetical Flow for Extension:
 1. get project with latest change, if none, make one?
 2. does this item fit logically in an existing schedule? if not make one with some columns that would be common for that type of schedule
 3. ask the LLM to return fields that match the columns of the selected schdule
 
-
-schedyuels sohuld start with these default columsn:
-1. locator number
-    e.g. F-1, x-0 = owner, don't suffix a later
-    windows can be W-1, W-2
-    duplicate codes are unusual, default to incrementing
-    doors can just be D-x
-2. manufacturer
-3. model number
-4. finish
-5. notes
 
 contractor needs to accurately convey to hteir supplier on the phone
 what they need
