@@ -36,6 +36,9 @@ set data             = $2,
 where id = $1
 returning *;
 
+-- name: UpdateScheduleItemPosition :exec
+update schedule_items set position = $2, updated_at = now() where id = $1;
+
 -- name: DeleteScheduleItem :exec
 delete from schedule_items
 where id = $1;

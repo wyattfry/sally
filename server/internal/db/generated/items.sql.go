@@ -66,6 +66,15 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 	return i, err
 }
 
+const updateScheduleItemPosition = `-- name: UpdateScheduleItemPosition :exec
+update schedule_items set position = $2, updated_at = now() where id = $1
+`
+
+func (q *Queries) UpdateScheduleItemPosition(ctx context.Context, id string, position int32) error {
+	_, err := q.db.ExecContext(ctx, updateScheduleItemPosition, id, position)
+	return err
+}
+
 const deleteScheduleItem = `-- name: DeleteScheduleItem :exec
 delete from schedule_items
 where id = $1

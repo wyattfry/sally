@@ -47,6 +47,41 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
 }
 
+func (a app) createNote(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
+		return
+	}
+
+	existing, err := a.queries.ListSchedulesByProject(r.Context(), projectID)
+	if err != nil {
+		http.Error(w, "could not load schedules", http.StatusInternalServerError)
+		return
+	}
+
+	taken := make(map[string]bool, len(existing))
+	for _, s := range existing {
+		taken[s.Name] = true
+	}
+	name := "Notes"
+	for i := 2; taken[name]; i++ {
+		name = fmt.Sprintf("Notes %d", i)
+	}
+
+	schedule, err := a.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
+		ProjectID: projectID,
+		Name:      name,
+		Kind:      "note",
+		Position:  int32(len(existing) + 1),
+	})
+	if err != nil {
+		http.Error(w, "could not create note", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
+}
+
 func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 	loaded, ok := a.loadProjectSchedule(w, r, r.PathValue("projectID"), r.PathValue("scheduleID"))
 	if !ok {

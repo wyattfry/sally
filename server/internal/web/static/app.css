@@ -320,7 +320,30 @@ button,
 .row-actions {
   padding: 0 4px;
   vertical-align: middle;
-  width: 28px;
+  white-space: nowrap;
+  width: 1%;
+}
+.move-form {
+  display: none;
+  margin: 0;
+}
+.item-row:hover .move-form {
+  display: inline;
+}
+.move-btn {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--c-text-label);
+  cursor: pointer;
+  font-size: 13px;
+  height: 22px;
+  line-height: 1;
+  padding: 0 3px;
+}
+.move-btn:hover {
+  background: var(--c-surface-hover);
+  color: var(--c-text);
 }
 .delete-row-btn {
   align-items: center;
@@ -558,8 +581,29 @@ details.schedule-section > summary:hover .schedule-summary-actions {
 
 .add-schedule-row {
   display: flex;
+  gap: 8px;
   justify-content: center;
   padding: 20px 0 8px;
+}
+.button-secondary {
+  background: var(--c-surface);
+  border-color: var(--c-border);
+  color: var(--c-text-muted);
+}
+.schedule-export-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 8px;
+  text-decoration: none;
+}
+.schedule-export-btn:hover {
+  background: var(--c-surface);
+  border-color: var(--c-border);
+  color: var(--c-text);
 }
 
 footer {
