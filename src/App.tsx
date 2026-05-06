@@ -142,7 +142,7 @@ export default function App() {
         ...schedules.map((s) => s.name).filter((n) => !SUGGESTED_SCHEDULE_NAMES.includes(n))
       ];
       try {
-        const { item, suggestedScheduleName } = await extractScheduleItem({
+        const extracted = await extractScheduleItem({
           capturedPage: captured,
           knownCategories: [],
           knownScheduleNames,
@@ -151,6 +151,17 @@ export default function App() {
             setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
           }
         });
+        const { suggestedScheduleName } = extracted;
+        let { item } = extracted;
+
+        if (!item.data.code) {
+          const nameFallback = suggestedScheduleName
+            || schedules.find(s => s.id === activeContext?.scheduleId)?.name;
+          if (nameFallback) {
+            item = { ...item, data: { ...item.data, code: codePrefix(nameFallback) + "-1" } };
+          }
+        }
+
         const matchingSchedule = suggestedScheduleName
           ? schedules.find((s) => s.name.toLowerCase() === suggestedScheduleName.toLowerCase())
           : undefined;
@@ -357,6 +368,13 @@ export default function App() {
       ) : null}
     </div>
   );
+}
+
+function codePrefix(scheduleName: string): string {
+  for (const char of scheduleName.toUpperCase()) {
+    if (char >= "A" && char <= "Z") return char;
+  }
+  return "X";
 }
 
 function isSpecMessage(message: unknown): message is { type: string } {

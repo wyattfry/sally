@@ -2,7 +2,7 @@
 :host {
   all: initial;
 
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 
   --c-header-bg:     #0f2f24;
   --c-primary:       #1f7a3a;
@@ -265,6 +265,45 @@
 .field textarea {
   min-height: 84px;
   resize: vertical;
+}
+
+.code-field {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--c-border-mid);
+  border-radius: 6px;
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+}
+
+.code-prefix {
+  background: var(--c-surface-raised);
+  border-right: 1px solid var(--c-border-mid);
+  color: var(--c-text-muted);
+  font-family: monospace;
+  padding: 9px 8px 9px 10px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.code-suffix {
+  background: transparent;
+  border: none;
+  color: var(--c-text);
+  flex: 1;
+  font: inherit;
+  line-height: 1.35;
+  min-width: 0;
+  outline: none;
+  padding: 9px 10px;
+  width: 100%;
+}
+
+.code-field:focus-within {
+  border-color: var(--c-border-strong);
+  outline: 2px solid var(--c-primary-light);
+  outline-offset: 0;
 }
 
 .panel-modal-backdrop {
