@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
@@ -50,7 +51,6 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /logout", a.logout)
 	mux.HandleFunc("GET /", a.redirectHome)
 	mux.HandleFunc("GET /projects", a.listProjects)
-	mux.HandleFunc("GET /projects/new", a.newProject)
 	mux.HandleFunc("POST /projects", a.createProject)
 	mux.HandleFunc("GET /projects/{projectID}", a.showProject)
 	mux.HandleFunc("GET /projects/{projectID}/edit", a.editProject)
@@ -58,13 +58,17 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/delete", a.deleteProject)
 	mux.HandleFunc("POST /projects/{projectID}/schedules", a.createSchedule)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}", a.showSchedule)
-	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/edit", a.editSchedule)
-	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/edit", a.updateSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/delete", a.deleteSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items", a.createScheduleItem)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.editScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.updateScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/delete", a.deleteScheduleItem)
+	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/cells/{key}/edit", a.editItemCell)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/cells/{key}", a.saveItemCell)
+	mux.HandleFunc("GET /projects/{projectID}/fields/{field}/edit", a.editProjectField)
+	mux.HandleFunc("POST /projects/{projectID}/fields/{field}", a.saveProjectField)
+	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/fields/{field}/edit", a.editScheduleField)
+	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/fields/{field}", a.saveScheduleField)
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
 	mux.HandleFunc("POST /projects/{projectID}/share-links/deactivate", a.deactivateProjectShareLinks)
@@ -106,35 +110,44 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (a app) newProject(w http.ResponseWriter, _ *http.Request) {
-	render(w, projectFormPage{Kind: "new-project", Title: "New Project"})
-}
-
 func (a app) createProject(w http.ResponseWriter, r *http.Request) {
 	user, ok := a.requireUser(w, r)
 	if !ok {
 		return
 	}
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "invalid form", http.StatusBadRequest)
+
+	existing, err := a.queries.ListProjectsByOwner(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "could not load projects", http.StatusInternalServerError)
 		return
 	}
-
-	name := strings.TrimSpace(r.Form.Get("name"))
-	if name == "" {
-		http.Error(w, "project name is required", http.StatusBadRequest)
-		return
+	taken := make(map[string]bool, len(existing))
+	for _, p := range existing {
+		taken[p.Name] = true
+	}
+	name := "New Project"
+	for i := 2; taken[name]; i++ {
+		name = fmt.Sprintf("New Project %d", i)
 	}
 
 	project, err := a.queries.CreateProject(r.Context(), queries.CreateProjectParams{
 		OwnerUserID: user.ID,
 		Name:        name,
-		Address:     strings.TrimSpace(r.Form.Get("address")),
-		Description: strings.TrimSpace(r.Form.Get("description")),
 	})
 	if err != nil {
 		http.Error(w, "could not create project", http.StatusInternalServerError)
 		return
+	}
+
+	// Seed a default schedule so the project detail page isn't empty.
+	schedule, err := a.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
+		ProjectID: project.ID,
+		Name:      "New Schedule",
+		Kind:      "items",
+		Position:  1,
+	})
+	if err == nil {
+		_ = seedColumns(r.Context(), a.queries, schedule.ID, "general")
 	}
 
 	http.Redirect(w, r, "/projects/"+project.ID, http.StatusSeeOther)
@@ -165,12 +178,20 @@ outer:
 		}
 	}
 
+	activeLink, err := a.queries.GetActiveProjectShareLinkByProject(r.Context(), project.ID)
+	var activeLinkPtr *queries.ProjectShareLink
+	if err == nil {
+		activeLinkPtr = &activeLink
+	}
+
 	render(w, projectDetailPage{
 		Kind:           "project",
 		Title:          project.Name,
 		Project:        project,
 		Schedules:      schedules,
 		FirstItemImage: firstItemImage,
+		ActiveLink:     activeLinkPtr,
+		ShareBaseURL:   requestBaseURL(r),
 	})
 }
 

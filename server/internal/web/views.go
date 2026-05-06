@@ -13,30 +13,20 @@ type projectsPage struct {
 	Projects []projectListItem
 }
 
-type projectFormPage struct {
-	Kind  string
-	Title string
-}
-
 type projectDetailPage struct {
 	Kind           string
 	Title          string
 	Project        queries.Project
 	Schedules      []scheduleWithItems
 	FirstItemImage string
+	ActiveLink     *queries.ProjectShareLink
+	ShareBaseURL   string
 }
 
 type projectEditPage struct {
 	Kind    string
 	Title   string
 	Project queries.Project
-}
-
-type scheduleEditPage struct {
-	Kind     string
-	Title    string
-	Project  queries.Project
-	Schedule queries.Schedule
 }
 
 type itemEditPage struct {
