@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Sally SPEC PoC",
   "description": "Capture product page specs into an editable Sally schedule proposal.",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "icons": {
     "16": "icon-16.png",
     "48": "icon-48.png",
@@ -21,8 +21,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["fonts/*.woff2"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "content_scripts": [
