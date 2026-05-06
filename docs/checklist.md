@@ -37,20 +37,21 @@
 - [x] human friendly 404 page on mothership, e.g. if you try to go to a share link for a deleted project
 - [x] project csv export?
 - [x] add custom item to a schedule / manual entry, e.g. if no online page exists for the product, or if it is an owner-provided item
+- [x] update mothership web ui to use custom columns
 
 Critical Path
+- [ ] refine the "Add item" UX, it requires a page reload, the page jumps, the Add Item button awkwardly spans the entire width, the row is unexpectedly added in the highest location, not appended, as i was expecting, to the bottom. Maybe the empty fields could show a hint "Click to edit" as is done elsewhere on the site.
 - [ ] restore some signal of an item being added, idk what the best UX is, maybe change SPEC button to say "Captured!" and a few seconds later, goes back to SPEC? Or something else? I haven't decided on a good way to offer the user a way to go from an ecommerce page to the mothership page
-- [ ] update mothership web ui to use custom columns
-- [ ] built in blob storage for saving images so images don't have to be fetched from remotes every time
+- [ ] built in storage for saving images so images don't have to be fetched from remotes every time. Maybe local dev has a bind mount, dev server too?
 - [ ] user account page, dummy billing, stripe?
-- [ ] notes to support images, png / svg / ???
+- [ ] notes to support images, png / svg / copy-paste from CAD?
 - [ ] notes to support multiple "rows" or inner-sections?
 - [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
 - [ ] add link to mothership in chrome extension description
 - [ ] a feature to delete all of a users data / opt-out
-- [ ] refine the "Add item" UX, it requires a page reload, the page jumps, the Add Item button awkwardly spans the entire width, the row is unexpectedly added in the highest location, not appended, as i was expecting, to the bottom. Maybe the empty fields could show a hint "Click to edit" as is done elsewhere on the site.
 
 Nice To Have
+- [ ] chrome ext: easy way to toggle SPEC button visibility
 - [ ] make the project detail page's project name, address, desc narrower, atm they fill the available width, which is awkwardly wide. And their background color shold be slightly different than the page to show the user the clickable / editable area
 - [ ] pressing Enter in any field in the SallyPanel should submit the form
 - [ ] in sallypanel, project selection might feel better as text with a 'select different project' button that brings up a modal or something? it doesn't feel right as a combo box
@@ -58,7 +59,7 @@ Nice To Have
 - [ ] breadcrumbs no longer needed, can be removed from views etc
 - [ ] alternative to google sign-in
 - [ ] optimize LLM spend, both for development and data extraction
-- [ ] would a 'duplicate item' feature be useful?
+- [ ] would a 'duplicate an item' feature be useful?
 - [ ] how much to charge? how often? monthly or by use?
 - [ ] print view version of shared page?
 

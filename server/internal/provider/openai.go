@@ -217,7 +217,10 @@ func buildOpenAIRequest(req extract.ExtractSpecRequest, model string) openAIRequ
 				Content: []openAIContentBlock{
 					{
 						Type: "input_text",
-						Text: "You are Sally. Extract one architectural schedule proposal as strict JSON. Prompt version: " + PromptVersion,
+						Text: "You are Sally. Extract one architectural schedule proposal as strict JSON. " +
+							"Leave any field as an empty string if the value is not present or cannot be determined — " +
+							"never use placeholder values such as '<UNKNOWN>', 'N/A', 'Unknown', or similar. " +
+							"Prompt version: " + PromptVersion,
 					},
 				},
 			},

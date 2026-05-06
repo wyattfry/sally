@@ -265,7 +265,7 @@ function buildExtractSpecRequest({
   now
 }: Required<Omit<ExtractScheduleItemArgs, "onProgress" | "scheduleId">> & { scheduleId?: string; now: Date }): ExtractSpecRequest {
   const customColumns: ColumnDefinition[] = columns
-    .filter((c) => c.key !== "zone")
+    .filter((c) => c.key !== "zone" && c.key !== "code")
     .map((c) => ({ key: c.key, label: c.label }));
 
   return {
@@ -292,6 +292,12 @@ function buildExtractSpecRequest({
   };
 }
 
+function clean(v: string | undefined | null): string {
+  if (!v) return "";
+  const t = v.trim();
+  return /^<[^>]+>$/.test(t) ? "" : t;
+}
+
 function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractScheduleItemResult {
   const proposal = response.proposal;
   if (!proposal) {
@@ -300,27 +306,27 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
 
   const data: Record<string, string> = {};
   if (response.nextCode) data.code = response.nextCode;
-  if (proposal.title) data.title = proposal.title;
-  if (proposal.manufacturer) data.manufacturer = proposal.manufacturer;
-  if (proposal.modelNumber) data.model_number = proposal.modelNumber;
-  if (proposal.description) data.description = proposal.description;
-  if (proposal.finish) data.finish = proposal.finish;
-  if (proposal.finishModelNumber) data.finish_model_number = proposal.finishModelNumber;
+  const title = clean(proposal.title); if (title) data.title = title;
+  const manufacturer = clean(proposal.manufacturer); if (manufacturer) data.manufacturer = manufacturer;
+  const modelNumber = clean(proposal.modelNumber); if (modelNumber) data.model_number = modelNumber;
+  const description = clean(proposal.description); if (description) data.description = description;
+  const finish = clean(proposal.finish); if (finish) data.finish = finish;
+  const finishModelNumber = clean(proposal.finishModelNumber); if (finishModelNumber) data.finish_model_number = finishModelNumber;
   const notes = [...(proposal.requiredAddOns ?? []), ...(proposal.optionalCompanions ?? [])]
-    .filter(Boolean)
-    .join("; ");
+    .map(clean).filter(Boolean).join("; ");
   if (notes) data.notes = notes;
   if (proposal.customFields) {
     for (const [key, value] of Object.entries(proposal.customFields)) {
-      if (value) data[key] = value;
+      const v = clean(value); if (v) data[key] = v;
     }
   }
 
+  const zone = clean(proposal.zone);
   return {
     item: {
       id: `draft-${response.requestId}`,
       capturedAt: now.toISOString(),
-      zone: proposal.zone && proposal.zone !== "<UNKNOWN>" ? proposal.zone : undefined,
+      zone: zone || undefined,
       data,
       sourceUrl: proposal.sourceUrl,
       sourceTitle: proposal.sourceTitle,

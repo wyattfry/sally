@@ -28,6 +28,7 @@ type PanelState =
   | { kind: "thinking"; tokenCount: number }
   | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string }
   | { kind: "minimized"; draft: ScheduleItem }
+  | { kind: "added"; projectId: string; scheduleId: string; scheduleName: string }
   | { kind: "error"; message: string };
 
 const SUGGESTED_SCHEDULE_NAMES = [
@@ -202,7 +203,8 @@ export default function App() {
 
     try {
       await saveMothershipScheduleItem(activeContext.scheduleId, item);
-      setPanel({ kind: "closed" });
+      const scheduleName = schedules.find((s) => s.id === activeContext.scheduleId)?.name ?? "schedule";
+      setPanel({ kind: "added", projectId: activeContext.projectId, scheduleId: activeContext.scheduleId, scheduleName });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not save item.";
       setPanel({ kind: "error", message });
@@ -349,6 +351,12 @@ export default function App() {
             </button>
           </div>
         </aside>
+      ) : panel.kind === "added" ? (
+        <AddedConfirmation
+          scheduleName={panel.scheduleName}
+          projectUrl={getMothershipScheduleUrl(panel.projectId, panel.scheduleId)}
+          onDismiss={() => setPanel({ kind: "closed" })}
+        />
       ) : panel.kind !== "closed" && panel.kind !== "minimized" ? (
         <SallyPanel
           panel={panel}
@@ -370,6 +378,35 @@ export default function App() {
         />
       ) : null}
     </div>
+  );
+}
+
+const ADDED_AUTO_DISMISS_MS = 6000;
+
+function AddedConfirmation({ scheduleName, projectUrl, onDismiss }: {
+  scheduleName: string;
+  projectUrl: string;
+  onDismiss: () => void;
+}) {
+  useEffect(() => {
+    const id = window.setTimeout(onDismiss, ADDED_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(id);
+  }, [onDismiss]);
+
+  return (
+    <aside className="sally-panel added-confirmation" aria-label="Sally">
+      <button className="added-dismiss" type="button" onClick={onDismiss} aria-label="Dismiss">×</button>
+      <div className="added-body">
+        <div className="added-check">✓</div>
+        <p className="added-message">Added to <strong>{scheduleName}</strong></p>
+        <a className="added-link action-button primary" href={projectUrl} target="_blank" rel="noopener noreferrer">
+          View project →
+        </a>
+      </div>
+      <div className="added-progress">
+        <div className="added-progress-bar" style={{ animationDuration: `${ADDED_AUTO_DISMISS_MS}ms` }} />
+      </div>
+    </aside>
   );
 }
 
