@@ -327,9 +327,6 @@ button,
   display: none;
   margin: 0;
 }
-.item-row:hover .move-form {
-  display: inline;
-}
 .move-btn {
   background: none;
   border: none;
