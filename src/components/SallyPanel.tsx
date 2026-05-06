@@ -236,7 +236,7 @@ export function SallyPanel({
               </select>
             </div>
 
-            {columns.map((col) => (
+            {columns.filter((col) => col.key !== "zone").map((col) => (
               <div className="field" key={col.key}>
                 <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
                 {col.key === "code"
