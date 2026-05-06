@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	queries "sally/server/internal/db/generated"
+	"sally/server/internal/share"
 
 	"golang.org/x/oauth2"
 )
@@ -179,6 +180,19 @@ outer:
 	}
 
 	activeLink, err := a.queries.GetActiveProjectShareLinkByProject(r.Context(), project.ID)
+	if errors.Is(err, sql.ErrNoRows) {
+		if token, tokenErr := share.NewToken(); tokenErr == nil {
+			if newLink, createErr := a.queries.CreateProjectShareLink(r.Context(), queries.CreateProjectShareLinkParams{
+				ProjectID: project.ID,
+				TokenHash: share.HashToken(token),
+				Token:     token,
+				Label:     "Project share",
+			}); createErr == nil {
+				activeLink = newLink
+				err = nil
+			}
+		}
+	}
 	var activeLinkPtr *queries.ProjectShareLink
 	if err == nil {
 		activeLinkPtr = &activeLink

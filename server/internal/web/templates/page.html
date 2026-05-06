@@ -40,6 +40,21 @@
     </div>
   </footer>
   <script>
+    function copySallyShareLink() {
+      var i = document.getElementById('proj-share-url');
+      i.select();
+      navigator.clipboard.writeText(i.value).then(showCopyToast).catch(function () {
+        document.execCommand('copy');
+        showCopyToast();
+      });
+    }
+    function showCopyToast() {
+      var t = document.getElementById('copy-toast');
+      if (!t) return;
+      t.textContent = 'Link copied!';
+      t.classList.add('copy-toast--visible');
+      setTimeout(function () { t.classList.remove('copy-toast--visible'); }, 2200);
+    }
     (function () {
       var now = new Date();
       var todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -130,22 +145,26 @@
       </div>
     </div>
     <div class="project-header-aside">
+      {{if .ActiveLink}}
+      <div class="project-share-aside">
+        <span class="meta-label">Share link</span>
+        <div class="share-url-field">
+          <input id="proj-share-url" class="share-url-display" type="text" readonly
+            value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}">
+          <button type="button" class="share-copy-btn" onclick="copySallyShareLink()" title="Copy link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+          </button>
+        </div>
+      </div>
+      {{end}}
       <form method="post" action="/projects/{{.Project.ID}}/delete"
         onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
         <button type="submit" class="button button-sm button-danger-subtle">Delete project</button>
       </form>
     </div>
   </div>
-  {{if .ActiveLink}}
-  <div class="project-share-row">
-    <span class="meta-label">Share link</span>
-    <input id="proj-share-url" class="share-url-input" type="text" readonly
-      value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}">
-    <button type="button" class="copy-button"
-      onclick="(function(){var i=document.getElementById('proj-share-url');i.select();navigator.clipboard.writeText(i.value).catch(function(){document.execCommand('copy')});})()">Copy</button>
-  </div>
-  {{end}}
 </div>
+<div id="copy-toast" class="copy-toast" aria-live="polite"></div>
 <div class="project-layout">
   <!-- I intentionally removed the schedule-nav, it used previous horiz. space and didn't seem to add much value -->
   <div class="schedule-content">

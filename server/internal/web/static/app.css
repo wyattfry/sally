@@ -706,7 +706,55 @@ details.schedule-section table {
   margin: 0 0 6px;
 }
 .project-header-aside {
+  align-items: flex-end;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
+  justify-content: space-between;
+}
+.project-share-aside {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.share-url-field {
+  align-items: center;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  display: flex;
+  overflow: hidden;
+  width: 280px;
+}
+.share-url-display {
+  background: transparent;
+  border: none;
+  color: var(--c-text-muted);
+  cursor: default;
+  flex: 1;
+  font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 7px 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.share-copy-btn {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  padding: 6px 9px;
+}
+.share-copy-btn:hover {
+  background: var(--c-surface-raised, #f5f5f5);
+  color: var(--c-text);
 }
 .meta-field {
   display: grid;
@@ -751,11 +799,22 @@ details.schedule-section table {
   justify-content: center;
   width: 120px;
 }
-.project-share-row {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
+.copy-toast {
+  background: #1a1a1a;
+  border-radius: 6px;
+  bottom: 24px;
+  color: #fff;
+  font-size: 13px;
+  opacity: 0;
+  padding: 8px 16px;
+  pointer-events: none;
+  position: fixed;
+  right: 24px;
+  transition: opacity 0.18s;
+  z-index: 9999;
+}
+.copy-toast--visible {
+  opacity: 1;
 }
 
 /* Button size variant */
