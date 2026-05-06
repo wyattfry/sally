@@ -3,3 +3,4 @@ dist
 sally-extension
 .env
 *.zip
+server/uploads
