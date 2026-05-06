@@ -92,3 +92,9 @@ type adminExtractionsPage struct {
 	Title      string
 	RecentLogs []queries.ExtractionLogRow
 }
+
+type adminExtractionDetailPage struct {
+	Kind  string
+	Title string
+	Log   queries.ExtractionLogRow
+}

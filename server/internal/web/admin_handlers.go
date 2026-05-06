@@ -1,7 +1,9 @@
 package web
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -118,6 +120,27 @@ func (a app) adminExtractions(w http.ResponseWriter, r *http.Request) {
 		Kind:       "admin-extractions",
 		Title:      "Admin — Extractions",
 		RecentLogs: logs,
+	})
+}
+
+func (a app) adminExtractionDetail(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	requestID := r.PathValue("requestID")
+	log, err := dbgen.QueryExtractionLogByRequestID(r.Context(), a.db, requestID)
+	if errors.Is(err, sql.ErrNoRows) {
+		renderNotFound(w)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load extraction: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	render(w, adminExtractionDetailPage{
+		Kind:  "admin-extraction-detail",
+		Title: "Extraction " + requestID,
+		Log:   log,
 	})
 }
 

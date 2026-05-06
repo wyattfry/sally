@@ -98,6 +98,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /admin", a.adminDashboard)
 	mux.HandleFunc("GET /admin/users", a.adminUsers)
 	mux.HandleFunc("GET /admin/extractions", a.adminExtractions)
+	mux.HandleFunc("GET /admin/extractions/{requestID}", a.adminExtractionDetail)
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
 	mux.HandleFunc("POST /projects/{projectID}/share-links/deactivate", a.deactivateProjectShareLinks)

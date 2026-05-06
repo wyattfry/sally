@@ -255,6 +255,7 @@
           {{end}}
           <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
           {{if .IsOwner}}
+          <button type="button" class="actions-menu-item" onclick="document.getElementById('collaborators-modal').showModal();this.closest('details').removeAttribute('open')">Manage collaborators</button>
           <div class="actions-menu-divider"></div>
           <form method="post" action="/projects/{{.Project.ID}}/delete"
             onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
@@ -265,44 +266,53 @@
       </details>
     </div>
   </div>
-  {{if .IsOwner}}
-  <div class="collaborators-section">
-    <details class="collaborators-details">
-      <summary class="collaborators-summary">
-        Collaborators{{if .Members}} ({{len .Members}}){{end}}
-      </summary>
-      <div class="collaborators-body">
-        {{if eq .MemberError "notfound"}}
-        <p class="collaborators-error">No account found for that email. They need to sign in to Sally first.</p>
-        {{else if eq .MemberError "own"}}
-        <p class="collaborators-error">You can't add yourself as a collaborator.</p>
-        {{end}}
-        <form method="post" action="/projects/{{.Project.ID}}/members" class="collaborators-add-form">
-          <input type="email" name="email" placeholder="collaborator@example.com" required class="collaborators-email-input">
-          <button type="submit" class="button button--small">Add</button>
-        </form>
-        {{if .Members}}
-        <ul class="collaborators-list">
-          {{range .Members}}
-          <li class="collaborators-item">
-            <span class="collaborators-name">{{if .UserName}}{{.UserName}}{{else}}{{.UserEmail}}{{end}}</span>
-            <span class="collaborators-email muted">{{if .UserName}}{{.UserEmail}}{{end}}</span>
-            <form method="post" action="/projects/{{$.Project.ID}}/members/{{.UserID}}/remove" style="margin:0">
-              <button type="submit" class="collaborators-remove-btn">Remove</button>
-            </form>
-          </li>
-          {{end}}
-        </ul>
-        {{else}}
-        <p class="muted collaborators-empty">No collaborators yet.</p>
-        {{end}}
-      </div>
-    </details>
-  </div>
-  {{else}}
+  {{if not .IsOwner}}
   <div class="collaborators-section collaborators-section--member">
     <span class="badge-shared">Shared with you — editor access</span>
   </div>
+  {{end}}
+  {{if .IsOwner}}
+  <dialog id="collaborators-modal" class="columns-modal">
+    <div class="columns-modal-inner">
+      <h3 class="columns-modal-title">Collaborators</h3>
+      {{if eq .MemberError "notfound"}}
+      <p class="collaborators-error">No account found for that email. They need to sign in to Sally first.</p>
+      {{else if eq .MemberError "own"}}
+      <p class="collaborators-error">You can't add yourself as a collaborator.</p>
+      {{end}}
+      <form method="post" action="/projects/{{.Project.ID}}/members" class="collaborators-add-form">
+        <input type="email" name="email" placeholder="collaborator@example.com" required class="collaborators-email-input">
+        <button type="submit" class="button button--small">Add</button>
+      </form>
+      {{if .Members}}
+      <ul class="collaborators-list">
+        {{range .Members}}
+        <li class="collaborators-item">
+          <span class="collaborators-name">{{if .UserName}}{{.UserName}}{{else}}{{.UserEmail}}{{end}}</span>
+          <span class="collaborators-email muted">{{if .UserName}}{{.UserEmail}}{{end}}</span>
+          <form method="post" action="/projects/{{$.Project.ID}}/members/{{.UserID}}/remove" style="margin:0">
+            <button type="submit" class="collaborators-remove-btn">Remove</button>
+          </form>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="muted collaborators-empty">No collaborators yet.</p>
+      {{end}}
+      <div class="col-modal-footer">
+        <button type="button" class="button" onclick="this.closest('dialog').close()">Done</button>
+      </div>
+    </div>
+  </dialog>
+  <script>
+    (function() {
+      var p = new URLSearchParams(window.location.search);
+      if (p.has('member_error')) {
+        document.getElementById('collaborators-modal').showModal();
+        history.replaceState(null, '', window.location.pathname);
+      }
+    })();
+  </script>
   {{end}}
 </div>
 <div id="copy-toast" class="copy-toast" aria-live="polite"></div>
@@ -854,10 +864,11 @@
 <section class="admin-section">
   <div class="admin-table-wrap">
     <table class="admin-table">
-      <thead><tr><th>Time (UTC)</th><th>Provider / Model</th><th>ms</th><th>In tok</th><th>Out tok</th><th>Missing fields</th><th>Status</th><th>Page</th></tr></thead>
+      <thead><tr><th>Request ID</th><th>Time (UTC)</th><th>Provider / Model</th><th>ms</th><th>In tok</th><th>Out tok</th><th>Missing fields</th><th>Status</th><th>Page</th></tr></thead>
       <tbody>
         {{range .RecentLogs}}
         <tr class="{{if .Success}}{{else}}admin-row-error{{end}}">
+          <td class="admin-mono"><a href="/admin/extractions/{{.RequestID}}" class="admin-reqid">{{.RequestID}}</a></td>
           <td class="admin-mono">{{.CreatedAt}}</td>
           <td class="admin-mono">{{.Provider}} / {{.Model}}</td>
           <td class="admin-mono">{{.DurationMS}}</td>
@@ -871,6 +882,53 @@
       </tbody>
     </table>
   </div>
+</section>
+
+{{else if eq .Kind "admin-extraction-detail"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / <a href="/admin/extractions">Extractions</a> / {{.Log.RequestID}}</div>
+  <h1>Extraction detail</h1>
+</div>
+<section class="admin-section">
+  <dl class="admin-detail">
+    <dt>Request ID</dt>
+    <dd class="admin-mono">{{.Log.RequestID}}</dd>
+
+    <dt>Time (UTC)</dt>
+    <dd class="admin-mono">{{.Log.CreatedAt}}</dd>
+
+    <dt>Status</dt>
+    <dd>{{if .Log.Success}}<span class="admin-badge admin-badge-ok">ok</span>{{else}}<span class="admin-badge admin-badge-err">error</span>{{end}}</dd>
+
+    <dt>Provider</dt>
+    <dd class="admin-mono">{{.Log.Provider}}</dd>
+
+    <dt>Model</dt>
+    <dd class="admin-mono">{{.Log.Model}}</dd>
+
+    <dt>Prompt version</dt>
+    <dd class="admin-mono">{{.Log.PromptVersion}}</dd>
+
+    <dt>Duration</dt>
+    <dd class="admin-mono">{{.Log.DurationMS}} ms</dd>
+
+    <dt>Tokens (in / out)</dt>
+    <dd class="admin-mono">{{if .Log.PromptTokens}}{{.Log.PromptTokens}}{{else}}—{{end}} / {{if .Log.CompletionTokens}}{{.Log.CompletionTokens}}{{else}}—{{end}}</dd>
+
+    <dt>Missing fields</dt>
+    <dd class="admin-mono">{{if .Log.MissingFieldCount}}<span class="admin-badge admin-badge-warn">{{.Log.MissingFieldCount}}</span>{{else}}0{{end}}</dd>
+
+    <dt>Page URL</dt>
+    <dd>{{if .Log.PageURL}}<a href="{{.Log.PageURL}}" target="_blank" rel="noopener">{{.Log.PageURL}}</a>{{else}}—{{end}}</dd>
+
+    <dt>Schedule ID</dt>
+    <dd class="admin-mono">{{if .Log.ScheduleID}}{{.Log.ScheduleID}}{{else}}—{{end}}</dd>
+
+    {{if not .Log.Success}}
+    <dt>Error</dt>
+    <dd>{{prettyJSON .Log.Error}}</dd>
+    {{end}}
+  </dl>
 </section>
 
 {{end}}

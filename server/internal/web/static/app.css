@@ -747,8 +747,8 @@ thead:hover .edit-columns-btn {
 
 .col-modal-move-btns {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  flex-direction: row;
+  gap: 2px;
   flex-shrink: 0;
 }
 
@@ -758,9 +758,9 @@ thead:hover .edit-columns-btn {
   border-radius: 3px;
   color: var(--c-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1;
-  padding: 1px 3px;
+  padding: 3px 5px;
 }
 
 .col-modal-move:hover:not(:disabled) {
@@ -1587,6 +1587,41 @@ details.schedule-section table {
 .admin-badge-ok   { background: #e6f4ea; color: #1e6b3a; }
 .admin-badge-err  { background: #fdecea; color: #a33; cursor: help; }
 .admin-badge-warn { background: #fff7e6; color: #a05800; }
+
+.admin-reqid {
+  font-size: 11px;
+  color: var(--c-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.admin-reqid:hover { color: var(--c-green); text-decoration: underline; }
+
+.admin-detail {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 20px;
+  align-items: baseline;
+  font-size: 14px;
+  max-width: 900px;
+}
+.admin-detail dt {
+  font-weight: 600;
+  color: var(--c-muted);
+  white-space: nowrap;
+}
+.admin-detail dd { margin: 0; word-break: break-all; }
+
+.admin-json {
+  background: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
 
 .admin-stat-card-link {
   text-decoration: none;

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"sally/server/internal/extract"
@@ -88,6 +89,15 @@ func coalesceFinishMappings(s []extract.FinishModelMapping) []extract.FinishMode
 		return []extract.FinishModelMapping{}
 	}
 	return s
+}
+
+var xmlTagRe = regexp.MustCompile(`<[^>]+>`)
+
+// sanitizeZone strips XML/markup artifacts that models occasionally inject into
+// plain-text fields (e.g. "</zone><parameter ...>").
+func sanitizeZone(s string) string {
+	s = xmlTagRe.ReplaceAllString(s, "")
+	return strings.TrimSpace(s)
 }
 
 func truncateDescription(value string) string {

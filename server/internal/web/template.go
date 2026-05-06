@@ -2,6 +2,7 @@ package web
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"strings"
@@ -25,6 +26,17 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 		escaped = strings.ReplaceAll(escaped, "\r\n", "\n")
 		escaped = strings.ReplaceAll(escaped, "\n", "<br>")
 		return template.HTML(escaped)
+	},
+	"prettyJSON": func(s string) template.HTML {
+		var v any
+		if err := json.Unmarshal([]byte(s), &v); err != nil {
+			return template.HTML(template.HTMLEscapeString(s))
+		}
+		b, err := json.MarshalIndent(v, "", "  ")
+		if err != nil {
+			return template.HTML(template.HTMLEscapeString(s))
+		}
+		return template.HTML("<pre class=\"admin-json\">" + template.HTMLEscapeString(string(b)) + "</pre>")
 	},
 	"isoTime": func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 	"humanTime": func(t time.Time) string {

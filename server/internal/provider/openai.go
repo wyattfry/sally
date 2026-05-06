@@ -119,7 +119,7 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 			FinishModelMappings:   output.FinishModelMappings,
 			RequiredAddOns:        output.RequiredAddOns,
 			OptionalCompanions:    output.OptionalCompanions,
-			Zone:                  output.Zone,
+			Zone:                  sanitizeZone(output.Zone),
 			SuggestedScheduleName: output.SuggestedScheduleName,
 			SourceURL:             req.Page.URL,
 			SourceTitle:           req.Page.Title,
@@ -273,7 +273,7 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 		}
 		scheduleContext = header + "\n" +
 			strings.Join(lines, "\n") +
-			"\nFor zone: pick an existing zone from the matched schedule if the item logically belongs there, otherwise leave empty."
+			"\nFor zone: use a plain room or area name (e.g. 'Kitchen', 'Master Bath'). Pick from existing zones above if the item fits, or leave empty. Never output XML tags or markup in this field."
 	} else {
 		knownZones, _ := json.Marshal(req.ProjectContext.KnownZones)
 		knownScheduleNames, _ := json.Marshal(req.ProjectContext.KnownScheduleNames)
@@ -329,7 +329,10 @@ func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
 		},
 		"requiredAddOns":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 		"optionalCompanions":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-		"zone":                  map[string]any{"type": "string"},
+		"zone": map[string]any{
+				"type":        "string",
+				"description": "A plain room or area name (e.g. 'Kitchen', 'Master Bath', 'Living Room'). Use an existing zone from the schedule context if provided, or leave empty. Plain text only — no XML, no markup, no JSON.",
+			},
 		"suggestedScheduleName": map[string]any{"type": "string"},
 		"analysis": map[string]any{
 			"type": "object",

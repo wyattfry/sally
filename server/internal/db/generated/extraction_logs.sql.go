@@ -61,6 +61,7 @@ type ExtractionLogRow struct {
 	RequestID         string
 	Provider          string
 	Model             string
+	PromptVersion     string
 	DurationMS        int
 	Success           bool
 	Error             string
@@ -137,7 +138,7 @@ func QueryExtractionProviderStats(ctx context.Context, db *sql.DB) ([]Extraction
 func QueryRecentExtractionLogs(ctx context.Context, db *sql.DB, limit int) ([]ExtractionLogRow, error) {
 	rows, err := db.QueryContext(ctx, `
 		select
-			request_id, provider, model, duration_ms, success,
+			request_id, provider, model, prompt_version, duration_ms, success,
 			error_message, page_url,
 			coalesce(schedule_id::text, '') as schedule_id,
 			to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
@@ -153,7 +154,7 @@ func QueryRecentExtractionLogs(ctx context.Context, db *sql.DB, limit int) ([]Ex
 	var out []ExtractionLogRow
 	for rows.Next() {
 		var r ExtractionLogRow
-		if err := rows.Scan(&r.RequestID, &r.Provider, &r.Model, &r.DurationMS,
+		if err := rows.Scan(&r.RequestID, &r.Provider, &r.Model, &r.PromptVersion, &r.DurationMS,
 			&r.Success, &r.Error, &r.PageURL, &r.ScheduleID, &r.CreatedAt,
 			&r.PromptTokens, &r.CompletionTokens, &r.MissingFieldCount); err != nil {
 			return nil, err
@@ -161,6 +162,25 @@ func QueryRecentExtractionLogs(ctx context.Context, db *sql.DB, limit int) ([]Ex
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+func QueryExtractionLogByRequestID(ctx context.Context, db *sql.DB, requestID string) (ExtractionLogRow, error) {
+	row := db.QueryRowContext(ctx, `
+		select
+			request_id, provider, model, prompt_version, duration_ms, success,
+			error_message, page_url,
+			coalesce(schedule_id::text, '') as schedule_id,
+			to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+			prompt_tokens, completion_tokens, missing_fields_count
+		from extraction_logs
+		where request_id = $1
+		limit 1
+	`, requestID)
+	var r ExtractionLogRow
+	err := row.Scan(&r.RequestID, &r.Provider, &r.Model, &r.PromptVersion, &r.DurationMS,
+		&r.Success, &r.Error, &r.PageURL, &r.ScheduleID, &r.CreatedAt,
+		&r.PromptTokens, &r.CompletionTokens, &r.MissingFieldCount)
+	return r, err
 }
 
 type AdminTableCounts struct {

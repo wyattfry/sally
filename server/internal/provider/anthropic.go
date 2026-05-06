@@ -133,7 +133,7 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 			FinishModelMappings:   coalesceFinishMappings(output.FinishModelMappings),
 			RequiredAddOns:        coalesceStrings(output.RequiredAddOns),
 			OptionalCompanions:    coalesceStrings(output.OptionalCompanions),
-			Zone:                  output.Zone,
+			Zone:                  sanitizeZone(output.Zone),
 			SuggestedScheduleName: output.SuggestedScheduleName,
 			SourceURL:             req.Page.URL,
 			SourceTitle:           req.Page.Title,
