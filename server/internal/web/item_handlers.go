@@ -8,7 +8,43 @@ import (
 	"strings"
 
 	queries "sally/server/internal/db/generated"
+	"sally/server/internal/schedcodes"
 )
+
+func (a app) createBlankScheduleItem(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	scheduleID := r.PathValue("scheduleID")
+	loaded, ok := a.loadProjectSchedule(w, r, projectID, scheduleID)
+	if !ok {
+		return
+	}
+
+	existingItems, err := a.queries.ListScheduleItems(r.Context(), scheduleID)
+	if err != nil {
+		http.Error(w, "could not load items", http.StatusInternalServerError)
+		return
+	}
+
+	code := schedcodes.NextCode(existingItems, loaded.schedule.Name)
+	dataJSON, _ := json.Marshal(map[string]string{"code": code})
+
+	_, err = a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
+		ScheduleID:     scheduleID,
+		Data:           dataJSON,
+		Zone:           "",
+		SourceUrl:      "",
+		SourceTitle:    "",
+		SourceImageUrl: "",
+		SourcePdfLinks: []string{},
+		Position:       int32(len(existingItems) + 1),
+	})
+	if err != nil {
+		http.Error(w, "could not create item", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+scheduleID, http.StatusSeeOther)
+}
 
 func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("projectID")

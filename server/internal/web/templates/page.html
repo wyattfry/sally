@@ -248,6 +248,11 @@
       {{else}}
       <span class="schedule-empty muted">No items yet.</span>
       {{end}}
+      {{if ne $sw.Schedule.Kind "note"}}
+      <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/blank" class="add-item-form">
+        <button type="submit" class="add-item-btn">+ Add item</button>
+      </form>
+      {{end}}
     </details>
     {{end}}
     <div class="add-schedule-row">

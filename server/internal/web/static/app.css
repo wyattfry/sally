@@ -576,6 +576,24 @@ details.schedule-section > summary:hover .schedule-summary-actions {
   border-color: var(--c-danger-text, #dc2626);
 }
 
+.add-item-form {
+  margin: 4px 0 8px;
+}
+.add-item-btn {
+  background: none;
+  border: 1px dashed var(--c-border);
+  border-radius: 4px;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  width: 100%;
+}
+.add-item-btn:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
 .add-schedule-row {
   display: flex;
   gap: 8px;
