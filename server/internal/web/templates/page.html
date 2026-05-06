@@ -370,6 +370,7 @@
     {{if eq $sw.Schedule.Kind "note"}}
     <div class="share-note">{{nl2br $sw.Schedule.Notes}}</div>
     {{else if $sw.Groups}}
+    {{if $sw.Schedule.Notes}}<p class="share-schedule-notes">{{nl2br $sw.Schedule.Notes}}</p>{{end}}
     {{range $sw.Groups}}
     {{$g := .}}
     {{if $g.Zone}}<h3 class="share-zone-name">{{$g.Zone}}</h3>{{end}}
@@ -385,7 +386,7 @@
         <dl class="spec-fields">
           {{range $sw.Columns}}
           {{$col := .}}
-          {{if and (ne $col.Key "code") (ne $col.Key "title")}}
+          {{if and (ne $col.Key "code") (ne $col.Key "title") (ne $col.Key "zone")}}
           {{$val := index $item.DataMap $col.Key}}
           {{if $val}}
           <div class="spec-field">
