@@ -28,10 +28,18 @@ type PagePayload struct {
 }
 
 type ProjectContext struct {
-	ProjectName        string   `json:"projectName"`
-	KnownZones         []string `json:"knownZones"`
-	KnownCategories    []string `json:"knownCategories"`
-	KnownScheduleNames []string `json:"knownScheduleNames"`
+	ProjectName        string            `json:"projectName"`
+	KnownZones         []string          `json:"knownZones"`
+	KnownCategories    []string          `json:"knownCategories"`
+	KnownScheduleNames []string          `json:"knownScheduleNames"`
+	Schedules          []ScheduleSummary `json:"schedules,omitempty"`
+}
+
+// ScheduleSummary carries per-schedule zone context sent to the LLM.
+type ScheduleSummary struct {
+	Name       string   `json:"name"`
+	IsSelected bool     `json:"isSelected,omitempty"`
+	Zones      []string `json:"zones"`
 }
 
 type ExtractSpecOptions struct {
@@ -46,7 +54,8 @@ type ExtractSpecResponse struct {
 	Analysis  *Analysis     `json:"analysis,omitempty"`
 	Error     *ErrorPayload `json:"error,omitempty"`
 	Meta      ResponseMeta  `json:"meta"`
-	NextCode  string        `json:"nextCode,omitempty"`
+	NextCode   string        `json:"nextCode,omitempty"`
+	KnownZones []string      `json:"knownZones,omitempty"`
 }
 
 type Proposal struct {

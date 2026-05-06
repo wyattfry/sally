@@ -17,6 +17,7 @@ import (
 
 type scheduleQuerier interface {
 	GetSchedule(ctx context.Context, id string) (queries.Schedule, error)
+	ListSchedulesByProject(ctx context.Context, projectID string) ([]queries.Schedule, error)
 	ListScheduleItems(ctx context.Context, scheduleID string) ([]queries.ScheduleItem, error)
 }
 
@@ -37,11 +38,26 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier) http.Han
 		start := time.Now()
 
 		var computedNextCode string
+		var selectedZones []string
 		if q != nil && req.ScheduleID != "" {
 			if schedule, err := q.GetSchedule(r.Context(), req.ScheduleID); err == nil {
 				if items, err := q.ListScheduleItems(r.Context(), req.ScheduleID); err == nil {
 					computedNextCode = nextCode(items, schedule.Name)
+					selectedZones = zonesFromItems(items)
 				}
+				if allSchedules, err := q.ListSchedulesByProject(r.Context(), schedule.ProjectID); err == nil {
+					summaries := make([]extract.ScheduleSummary, 0, len(allSchedules))
+					for _, s := range allSchedules {
+						items, _ := q.ListScheduleItems(r.Context(), s.ID)
+						summaries = append(summaries, extract.ScheduleSummary{
+							Name:       s.Name,
+							IsSelected: s.ID == req.ScheduleID,
+							Zones:      zonesFromItems(items),
+						})
+					}
+					req.ProjectContext.Schedules = summaries
+				}
+				req.ProjectContext.KnownZones = selectedZones
 			}
 		}
 
@@ -79,9 +95,22 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier) http.Han
 
 		log.Printf("[extract] %s: ok in %dms", req.RequestID, elapsed.Milliseconds())
 		resp.NextCode = computedNextCode
+		resp.KnownZones = selectedZones
 		data, _ := json.Marshal(resp)
 		sendEvent("done", data)
 	}
+}
+
+func zonesFromItems(items []queries.ScheduleItem) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, it := range items {
+		if it.Zone != "" && !seen[it.Zone] {
+			seen[it.Zone] = true
+			out = append(out, it.Zone)
+		}
+	}
+	return out
 }
 
 func validExtractSpecRequest(req extract.ExtractSpecRequest) bool {

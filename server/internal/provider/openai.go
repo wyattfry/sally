@@ -238,15 +238,33 @@ func buildOpenAIRequest(req extract.ExtractSpecRequest, model string) openAIRequ
 func buildUserPrompt(req extract.ExtractSpecRequest) string {
 	structuredData, _ := json.Marshal(req.Page.StructuredData)
 	pdfLinks, _ := json.Marshal(req.Page.PDFLinks)
-	knownZones, _ := json.Marshal(req.ProjectContext.KnownZones)
 	knownCategories, _ := json.Marshal(req.ProjectContext.KnownCategories)
-	knownScheduleNames, _ := json.Marshal(req.ProjectContext.KnownScheduleNames)
+
+	var scheduleContext string
+	if len(req.ProjectContext.Schedules) > 0 {
+		lines := make([]string, 0, len(req.ProjectContext.Schedules))
+		for _, s := range req.ProjectContext.Schedules {
+			zonesJSON, _ := json.Marshal(s.Zones)
+			label := s.Name
+			if s.IsSelected {
+				label += " [currently selected]"
+			}
+			lines = append(lines, fmt.Sprintf("  - %s: zones in use: %s", label, zonesJSON))
+		}
+		scheduleContext = "Project schedules (match suggestedScheduleName to one of these; prefer the currently selected schedule if the item fits):\n" +
+			strings.Join(lines, "\n") +
+			"\nFor zone: pick an existing zone from the matched schedule if the item logically belongs there, otherwise leave empty."
+	} else {
+		knownZones, _ := json.Marshal(req.ProjectContext.KnownZones)
+		knownScheduleNames, _ := json.Marshal(req.ProjectContext.KnownScheduleNames)
+		scheduleContext = "Known zones: " + string(knownZones) + "\n" +
+			"Known schedule names: " + string(knownScheduleNames) + " — pick the best match for suggestedScheduleName, or propose a new descriptive name if none fit."
+	}
 
 	return strings.Join([]string{
 		"Project: " + req.ProjectContext.ProjectName,
-		"Known zones: " + string(knownZones),
+		scheduleContext,
 		"Known categories: " + string(knownCategories),
-		"Known schedule names: " + string(knownScheduleNames) + " — pick the best match for suggestedScheduleName, or propose a new descriptive name if none fit.",
 		"Page title: " + req.Page.Title,
 		"Page URL: " + req.Page.URL,
 		"Visible text: " + req.Page.VisibleText,

@@ -85,6 +85,7 @@ export type ExtractSpecResponse = {
   error?: ExtractErrorPayload;
   meta: ExtractResponseMeta;
   nextCode?: string;
+  knownZones?: string[];
 };
 
 export type ExtractedProposal = {

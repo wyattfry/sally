@@ -40,6 +40,7 @@ type ExtractScheduleItemArgs = {
 type ExtractScheduleItemResult = {
   item: ScheduleItem;
   suggestedScheduleName?: string;
+  knownZones: string[];
 };
 
 export async function extractScheduleItem({
@@ -310,7 +311,8 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
       sourceImageUrl: proposal.sourceImageUrl,
       sourcePdfLinks: proposal.sourcePdfLinks ?? []
     },
-    suggestedScheduleName: proposal.suggestedScheduleName || undefined
+    suggestedScheduleName: proposal.suggestedScheduleName || undefined,
+    knownZones: response.knownZones ?? []
   };
 }
 

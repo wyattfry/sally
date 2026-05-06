@@ -49,6 +49,7 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [columns, setColumns] = useState<ScheduleColumn[]>([]);
+  const [zones, setZones] = useState<string[]>([]);
   const [activeContext, setActiveContext] = useState<ActiveContext | null>(null);
 
   useEffect(() => {
@@ -168,6 +169,7 @@ export default function App() {
         if (matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId) {
           await handleSelectSchedule(matchingSchedule.id);
         }
+        setZones(extracted.knownZones);
         setPanel({
           kind: "review",
           draft: item,
@@ -352,7 +354,7 @@ export default function App() {
           projects={projects}
           schedules={schedules}
           columns={columns}
-          zones={[]}
+          zones={zones}
           activeContext={activeContext}
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
           onCancel={() => setPanel({ kind: "closed" })}
