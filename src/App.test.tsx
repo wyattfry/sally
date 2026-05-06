@@ -37,7 +37,7 @@ import App from "./App";
 const storageState: Record<string, unknown> = {};
 
 function extractedResult(overrides: Partial<ScheduleItem> = {}) {
-  return { item: extractedItem(overrides) };
+  return { item: extractedItem(overrides), knownZones: [] };
 }
 
 function extractedItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
