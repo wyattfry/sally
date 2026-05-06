@@ -357,9 +357,11 @@
 {{else if eq .Kind "public-share"}}
 <div class="share-page">
   <div class="share-header">
+    {{if .Project.ThumbnailUrl}}<img class="share-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">{{end}}
     <div class="share-header-text">
       <h1 class="share-project-name">{{.Project.Name}}</h1>
       {{if .Project.Address}}<p class="share-project-address">{{.Project.Address}}</p>{{end}}
+      {{if .Project.Description}}<p class="share-project-description">{{.Project.Description}}</p>{{end}}
     </div>
     <input type="search" id="share-search" class="share-search" placeholder="Search items…" autocomplete="off">
   </div>

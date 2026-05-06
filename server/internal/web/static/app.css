@@ -973,6 +973,14 @@ details.schedule-section table {
 .share-header {
   margin-bottom: 28px;
 }
+.share-hero-img {
+  border-radius: 8px;
+  display: block;
+  height: 180px;
+  margin-bottom: 16px;
+  object-fit: cover;
+  width: 100%;
+}
 .share-project-name {
   font-size: 22px;
   font-weight: 700;
@@ -981,6 +989,12 @@ details.schedule-section table {
 .share-project-address {
   color: var(--c-text-muted);
   font-size: 14px;
+  margin: 0 0 4px;
+}
+.share-project-description {
+  color: var(--c-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
   margin: 0 0 16px;
 }
 .share-search {
