@@ -133,6 +133,9 @@ func seedColumns(ctx context.Context, q *queries.Queries, scheduleID, presetName
 func buildDataMap(r *http.Request, columns []queries.ScheduleColumn) map[string]string {
 	data := make(map[string]string, len(columns))
 	for _, col := range columns {
+		if col.Key == "zone" {
+			continue // zone has its own DB column; not stored in data JSONB
+		}
 		if v := strings.TrimSpace(r.Form.Get("col_" + col.Key)); v != "" {
 			data[col.Key] = v
 		}
@@ -152,6 +155,7 @@ func toItemView(item queries.ScheduleItem) scheduleItemView {
 	if dm == nil {
 		dm = map[string]string{}
 	}
+	dm["zone"] = item.Zone
 	return scheduleItemView{ScheduleItem: item, DataMap: dm}
 }
 

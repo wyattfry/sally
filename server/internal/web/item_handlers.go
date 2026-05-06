@@ -41,7 +41,7 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	_, err = a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
 		ScheduleID:     scheduleID,
 		Data:           dataJSON,
-		Zone:           strings.TrimSpace(r.Form.Get("zone")),
+		Zone:           strings.TrimSpace(r.Form.Get("col_zone")),
 		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
 		SourceImageUrl: strings.TrimSpace(r.Form.Get("source_image_url")),
@@ -104,7 +104,7 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 	_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 		ID:             item.ID,
 		Data:           dataJSON,
-		Zone:           strings.TrimSpace(r.Form.Get("zone")),
+		Zone:           strings.TrimSpace(r.Form.Get("col_zone")),
 		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
 		SourceImageUrl: strings.TrimSpace(r.Form.Get("source_image_url")),
@@ -126,6 +126,10 @@ func (a app) deleteScheduleItem(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := a.queries.DeleteScheduleItem(r.Context(), item.ID); err != nil {
 		http.Error(w, "could not delete item", http.StatusInternalServerError)
+		return
+	}
+	if r.Header.Get("HX-Request") == "true" {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
