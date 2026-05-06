@@ -199,48 +199,51 @@ func (a app) moveScheduleItem(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
 }
 
-func (a app) exportScheduleCSV(w http.ResponseWriter, r *http.Request) {
-	loaded, ok := a.loadProjectSchedule(w, r, r.PathValue("projectID"), r.PathValue("scheduleID"))
+func (a app) exportProjectCSV(w http.ResponseWriter, r *http.Request) {
+	_, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}
 
-	columns, err := a.queries.ListScheduleColumns(r.Context(), loaded.schedule.ID)
+	schedules, err := a.schedulesWithItems(r.Context(), project.ID)
 	if err != nil {
-		http.Error(w, "could not load columns", http.StatusInternalServerError)
+		http.Error(w, "could not load schedules", http.StatusInternalServerError)
 		return
 	}
 
-	items, err := a.queries.ListScheduleItems(r.Context(), loaded.schedule.ID)
-	if err != nil {
-		http.Error(w, "could not load items", http.StatusInternalServerError)
-		return
+	// Collect unique column keys across all schedules, preserving first-seen order.
+	seenKeys := map[string]bool{}
+	var colKeys, colLabels []string
+	for _, sw := range schedules {
+		for _, col := range sw.Columns {
+			if !seenKeys[col.Key] {
+				seenKeys[col.Key] = true
+				colKeys = append(colKeys, col.Key)
+				colLabels = append(colLabels, col.Label)
+			}
+		}
 	}
 
-	filename := strings.NewReplacer(" ", "_", "/", "-").Replace(loaded.schedule.Name) + ".csv"
+	filename := strings.NewReplacer(" ", "_", "/", "-").Replace(project.Name) + ".csv"
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 
 	cw := csv.NewWriter(w)
-	header := make([]string, 0, len(columns)+1)
-	header = append(header, "Zone")
-	for _, col := range columns {
-		header = append(header, col.Label)
-	}
-	_ = cw.Write(header)
+	_ = cw.Write(append([]string{"Schedule", "Zone"}, colLabels...))
 
-	for _, item := range items {
-		var dm map[string]string
-		_ = json.Unmarshal(item.Data, &dm)
-		if dm == nil {
-			dm = map[string]string{}
+	for _, sw := range schedules {
+		if sw.Schedule.Kind == "note" {
+			continue
 		}
-		row := make([]string, 0, len(columns)+1)
-		row = append(row, item.Zone)
-		for _, col := range columns {
-			row = append(row, dm[col.Key])
+		for _, g := range sw.Groups {
+			for _, item := range g.Items {
+				row := []string{sw.Schedule.Name, item.Zone}
+				for _, key := range colKeys {
+					row = append(row, item.DataMap[key])
+				}
+				_ = cw.Write(row)
+			}
 		}
-		_ = cw.Write(row)
 	}
 	cw.Flush()
 }

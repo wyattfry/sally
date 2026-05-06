@@ -40,13 +40,28 @@
     </div>
   </footer>
   <script>
-    function copySallyShareLink() {
-      var i = document.getElementById('proj-share-url');
-      i.select();
-      navigator.clipboard.writeText(i.value).then(showCopyToast).catch(function () {
-        document.execCommand('copy');
-        showCopyToast();
+    (function () {
+      var input = document.getElementById('share-search');
+      if (!input) return;
+      input.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        document.querySelectorAll('.spec-card').forEach(function (card) {
+          card.hidden = q !== '' && !card.dataset.searchText.toLowerCase().includes(q);
+        });
       });
+    })();
+    (function () {
+      document.addEventListener('click', function (e) {
+        document.querySelectorAll('details.actions-menu[open]').forEach(function (el) {
+          if (!el.contains(e.target)) el.removeAttribute('open');
+        });
+      });
+    })();
+    function copySallyShareLink() {
+      var el = document.querySelector('.actions-menu[data-share-url]');
+      if (!el) return;
+      el.removeAttribute('open');
+      navigator.clipboard.writeText(el.dataset.shareUrl).then(showCopyToast).catch(showCopyToast);
     }
     function showCopyToast() {
       var t = document.getElementById('copy-toast');
@@ -145,22 +160,20 @@
       </div>
     </div>
     <div class="project-header-aside">
-      {{if .ActiveLink}}
-      <div class="project-share-aside">
-        <span class="meta-label">Share link</span>
-        <div class="share-url-field">
-          <input id="proj-share-url" class="share-url-display" type="text" readonly
-            value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}">
-          <button type="button" class="share-copy-btn" onclick="copySallyShareLink()" title="Copy link">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-          </button>
+      <details class="actions-menu" {{if .ActiveLink}}data-share-url="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}"{{end}}>
+        <summary class="actions-menu-btn">Actions ▾</summary>
+        <div class="actions-menu-list">
+          {{if .ActiveLink}}
+          <button type="button" class="actions-menu-item" onclick="copySallyShareLink()">Copy share link</button>
+          {{end}}
+          <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
+          <div class="actions-menu-divider"></div>
+          <form method="post" action="/projects/{{.Project.ID}}/delete"
+            onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
+            <button type="submit" class="actions-menu-item actions-menu-item--danger">Delete project</button>
+          </form>
         </div>
-      </div>
-      {{end}}
-      <form method="post" action="/projects/{{.Project.ID}}/delete"
-        onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
-        <button type="submit" class="button button-sm button-danger-subtle">Delete project</button>
-      </form>
+      </details>
     </div>
   </div>
 </div>
@@ -174,8 +187,7 @@
       <summary>
         <span class="schedule-summary-label">{{$sw.Schedule.Name}}</span>
         <span class="schedule-summary-actions">
-          {{if ne $sw.Schedule.Kind "note"}}<a class="schedule-export-btn" href="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/export.csv" onclick="event.stopPropagation()">Export CSV</a>{{end}}
-          <button type="button" class="schedule-delete-btn" onclick="event.stopPropagation()"
+<button type="button" class="schedule-delete-btn" onclick="event.stopPropagation()"
             hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/delete"
             hx-confirm="Delete this schedule and all its items? This cannot be undone.">Delete schedule</button>
         </span>
@@ -343,51 +355,56 @@
 </div>
 
 {{else if eq .Kind "public-share"}}
-<h1>{{.Project.Name}}</h1>
-{{if .Project.Address}}<p class="project-address">{{.Project.Address}}</p>{{end}}
-{{range .Schedules}}
-{{$sw := .}}
-{{if eq $sw.Schedule.Kind "note"}}
-<div class="schedule-note-content">{{$sw.Schedule.Notes}}</div>
-{{else if $sw.Groups}}
-<details class="schedule-section" open>
-  <summary>
-    <h2>{{$sw.Schedule.Name}}</h2>
-    <span class="summary-toggle"></span>
-  </summary>
-  <div class="schedule-table-wrap">
-    <table class="schedule-table">
-      <thead>
-        <tr>
-          <th></th>
-          {{range $sw.Columns}}<th class="col-{{.Key}}">{{.Label}}</th>{{end}}
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range $sw.Groups}}
-        {{$g := .}}
-        {{range $g.Items}}
-        {{$item := .}}
-        <tr>
-          <td>{{if $item.SourceImageUrl}}<img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}</td>
-          {{range $sw.Columns}}
-          <td class="col-{{.Key}}">
-            <div class="cell-clamp">{{index $item.DataMap .Key}}</div>
-          </td>
-          {{end}}
-          <td>{{if $item.SourceUrl}}<a href="{{$item.SourceUrl}}">Product page</a>{{end}}</td>
-        </tr>
-        {{end}}
-        {{end}}
-      </tbody>
-    </table>
+<div class="share-page">
+  <div class="share-header">
+    <div class="share-header-text">
+      <h1 class="share-project-name">{{.Project.Name}}</h1>
+      {{if .Project.Address}}<p class="share-project-address">{{.Project.Address}}</p>{{end}}
+    </div>
+    <input type="search" id="share-search" class="share-search" placeholder="Search items…" autocomplete="off">
   </div>
-</details>
-{{else}}
-<p class="muted">No items.</p>
-{{end}}
-{{end}}
+  {{range .Schedules}}
+  {{$sw := .}}
+  <section class="share-schedule">
+    <h2 class="share-schedule-name">{{$sw.Schedule.Name}}</h2>
+    {{if eq $sw.Schedule.Kind "note"}}
+    <div class="share-note">{{nl2br $sw.Schedule.Notes}}</div>
+    {{else if $sw.Groups}}
+    {{range $sw.Groups}}
+    {{$g := .}}
+    {{if $g.Zone}}<h3 class="share-zone-name">{{$g.Zone}}</h3>{{end}}
+    <div class="spec-cards">
+      {{range $g.Items}}
+      {{$item := .}}
+      <div class="spec-card" data-search-text="{{$item.Zone}} {{range $sw.Columns}}{{index $item.DataMap .Key}} {{end}}{{$item.SourceTitle}}">
+        <div class="spec-card-top">
+          {{with index $item.DataMap "code"}}<span class="spec-code">{{.}}</span>{{end}}
+          {{with index $item.DataMap "title"}}<p class="spec-title">{{.}}</p>{{end}}
+        </div>
+        {{if $item.SourceImageUrl}}<img class="spec-thumb" src="{{$item.SourceImageUrl}}" alt="">{{end}}
+        <dl class="spec-fields">
+          {{range $sw.Columns}}
+          {{$col := .}}
+          {{if and (ne $col.Key "code") (ne $col.Key "title")}}
+          {{$val := index $item.DataMap $col.Key}}
+          {{if $val}}
+          <div class="spec-field">
+            <dt>{{$col.Label}}</dt>
+            <dd>{{$val}}</dd>
+          </div>
+          {{end}}
+          {{end}}
+          {{end}}
+        </dl>
+        {{if $item.SourceUrl}}<a class="spec-source-link" href="{{$item.SourceUrl}}" target="_blank" rel="noopener">Product page →</a>{{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+    {{end}}
+  </section>
+  {{end}}
+</div>
 
 {{else if eq .Kind "login"}}
 <div class="login-page">
