@@ -51,6 +51,11 @@ type signInPage struct {
 	Title string
 }
 
+type notFoundPage struct {
+	Kind  string
+	Title string
+}
+
 type publicSharePage struct {
 	Kind      string
 	Title     string

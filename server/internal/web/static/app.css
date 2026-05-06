@@ -683,6 +683,23 @@ details.schedule-section table {
   margin: 80px auto;
   text-align: center;
 }
+.not-found-page {
+  max-width: 400px;
+  margin: 80px auto;
+  text-align: center;
+}
+.not-found-eyebrow {
+  color: var(--c-text-label);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+.not-found-message {
+  color: var(--c-text-muted);
+  margin: 0 0 24px;
+}
 
 /* Page header (projects list) */
 .page-header {

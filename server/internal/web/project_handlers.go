@@ -249,7 +249,7 @@ func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 		ThumbnailUrl: strings.TrimSpace(r.Form.Get("thumbnail_url")),
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		renderNotFound(w)
 		return
 	}
 	if err != nil {

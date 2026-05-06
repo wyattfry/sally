@@ -13,6 +13,12 @@ func render(w http.ResponseWriter, data any) {
 	}
 }
 
+func renderNotFound(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+	_ = pageTemplate.Execute(w, notFoundPage{Kind: "not-found", Title: "Page not found"})
+}
+
 func firstNonEmpty(value string, fallback string) string {
 	if value == "" {
 		return fallback

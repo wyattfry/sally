@@ -82,13 +82,13 @@ func (a app) deactivateProjectShareLinks(w http.ResponseWriter, r *http.Request)
 func (a app) showPublicShare(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimSpace(r.PathValue("token"))
 	if token == "" {
-		http.NotFound(w, r)
+		renderNotFound(w)
 		return
 	}
 
 	link, err := a.queries.GetActiveProjectShareLinkByHash(r.Context(), share.HashToken(token))
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		renderNotFound(w)
 		return
 	}
 	if err != nil {
@@ -99,7 +99,7 @@ func (a app) showPublicShare(w http.ResponseWriter, r *http.Request) {
 
 	project, err := a.queries.GetProject(r.Context(), link.ProjectID)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.NotFound(w, r)
+		renderNotFound(w)
 		return
 	}
 	if err != nil {
