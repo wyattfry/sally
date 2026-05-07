@@ -31,6 +31,8 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:${PORT:-8080}:${PORT:-8080}"
+    volumes:
+      - sally-uploads:/app/uploads
     restart: unless-stopped
 
   cloudflared:
@@ -69,6 +71,7 @@ services:
 
 volumes:
   sally-postgres-data:
+  sally-uploads:
   netdata-config:
   netdata-lib:
   netdata-cache:
