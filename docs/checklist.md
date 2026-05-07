@@ -66,15 +66,15 @@ Critical Path
 - [ ] a feature to delete all of a users data / opt-out
 
 Nice To Have
-- [ ] LLM: scrape PDF content
-- [ ] LLM: few-shot examples
+- [x] LLM: scrape PDF content
+- [x] LLM: few-shot examples
 - [ ] admin: use google user group?
 - [ ] alternatives to one-shot general purpose LLM? can i "build an agent" w/e that means?
 - [ ] admin: paginate tables (users, extraction calls)
 - [ ] admin: line graphs dont seem to work. Use a library? D3.js?
 - [ ] chrome ext: easy way to toggle SPEC button visibility
 - [ ] show LLM / token usage, maybe by day? week? in user profile / settings / account page
-- [ ] update the homepage content to reflect the latest look and function of the site and ext
+- [x] update the homepage content to reflect the latest look and function of the site and ext
 - [ ] make the project detail page's project name, address, desc narrower, atm they fill the available width, which is awkwardly wide. And their background color shold be slightly different than the page to show the user the clickable / editable area
 - [ ] pressing Enter in any field in the SallyPanel should submit the form
 - [ ] in sallypanel, project selection might feel better as text with a 'select different project' button that brings up a modal or something? it doesn't feel right as a combo box

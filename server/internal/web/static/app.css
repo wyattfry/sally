@@ -464,6 +464,7 @@ button,
   border: 1px solid var(--c-border);
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
   padding: 0;
   width: min(700px, 92vw);
   max-height: 82vh;
@@ -503,12 +504,14 @@ button,
 .item-detail-close:hover { background: var(--c-surface-hover); color: var(--c-text); }
 
 .item-detail-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 
 .item-detail-thumb {
