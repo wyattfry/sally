@@ -1733,6 +1733,16 @@ details.schedule-section table {
   margin: 0;
 }
 
+.admin-payload summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 4px 0;
+  user-select: none;
+}
+.admin-payload[open] summary { margin-bottom: 10px; }
+.admin-payload .admin-json { max-height: 500px; overflow-y: auto; }
+
 .admin-stat-card-link {
   text-decoration: none;
   color: inherit;

@@ -143,6 +143,8 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 				PromptTokens:      meta.PromptTokens,
 				CompletionTokens:  meta.CompletionTokens,
 				MissingFieldCount: missingCount,
+				PromptText:        resp.PromptText,
+				ResponseText:      resp.ResponseText,
 			})
 		}
 		resp.NextCode = computedNextCode

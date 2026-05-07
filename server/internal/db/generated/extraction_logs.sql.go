@@ -18,14 +18,17 @@ type InsertExtractionLogParams struct {
 	PromptTokens      int
 	CompletionTokens  int
 	MissingFieldCount int
+	PromptText        string
+	ResponseText      string
 }
 
 const insertExtractionLog = `
 insert into extraction_logs
     (request_id, schedule_id, provider, model, prompt_version, duration_ms, success,
-     error_message, page_url, prompt_tokens, completion_tokens, missing_fields_count)
+     error_message, page_url, prompt_tokens, completion_tokens, missing_fields_count,
+     prompt_text, response_text)
 values
-    ($1, nullif($2, '')::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    ($1, nullif($2, '')::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 func (q *Queries) InsertExtractionLog(ctx context.Context, p InsertExtractionLogParams) error {
@@ -33,6 +36,7 @@ func (q *Queries) InsertExtractionLog(ctx context.Context, p InsertExtractionLog
 		p.RequestID, p.ScheduleID, p.Provider, p.Model, p.PromptVersion,
 		p.DurationMS, p.Success, p.ErrorMessage, p.PageURL,
 		p.PromptTokens, p.CompletionTokens, p.MissingFieldCount,
+		p.PromptText, p.ResponseText,
 	)
 	return err
 }
@@ -71,6 +75,8 @@ type ExtractionLogRow struct {
 	PromptTokens      int
 	CompletionTokens  int
 	MissingFieldCount int
+	PromptText        string
+	ResponseText      string
 }
 
 type DailyPoint struct {
@@ -171,7 +177,8 @@ func QueryExtractionLogByRequestID(ctx context.Context, db *sql.DB, requestID st
 			error_message, page_url,
 			coalesce(schedule_id::text, '') as schedule_id,
 			to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
-			prompt_tokens, completion_tokens, missing_fields_count
+			prompt_tokens, completion_tokens, missing_fields_count,
+			prompt_text, response_text
 		from extraction_logs
 		where request_id = $1
 		limit 1
@@ -179,7 +186,8 @@ func QueryExtractionLogByRequestID(ctx context.Context, db *sql.DB, requestID st
 	var r ExtractionLogRow
 	err := row.Scan(&r.RequestID, &r.Provider, &r.Model, &r.PromptVersion, &r.DurationMS,
 		&r.Success, &r.Error, &r.PageURL, &r.ScheduleID, &r.CreatedAt,
-		&r.PromptTokens, &r.CompletionTokens, &r.MissingFieldCount)
+		&r.PromptTokens, &r.CompletionTokens, &r.MissingFieldCount,
+		&r.PromptText, &r.ResponseText)
 	return r, err
 }
 

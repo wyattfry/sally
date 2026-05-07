@@ -47,10 +47,12 @@ func (c ChatCompletionExtractor) Meta() extract.ResponseMeta {
 func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.ExtractSpecRequest) (extract.ExtractSpecResponse, error) {
 	start := time.Now()
 
-	body, err := json.Marshal(buildChatCompletionRequest(req, c.model, c.responseFormat))
+	builtReq := buildChatCompletionRequest(req, c.model, c.responseFormat)
+	body, err := json.Marshal(builtReq)
 	if err != nil {
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: marshal request: %v", ErrFailure, err)
 	}
+	promptText := capLog(string(body))
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
@@ -131,8 +133,10 @@ func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.Extrac
 			SourcePDFLinks:        req.Page.PDFLinks,
 			CustomFields:          output.CustomFields,
 		},
-		Analysis: output.Analysis,
-		Meta:     meta,
+		Analysis:     output.Analysis,
+		Meta:         meta,
+		PromptText:   promptText,
+		ResponseText: capLog(string(responseBody)),
 	}, nil
 }
 

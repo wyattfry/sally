@@ -49,10 +49,12 @@ func (o OpenAIExtractor) Meta() extract.ResponseMeta {
 func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecRequest) (extract.ExtractSpecResponse, error) {
 	start := time.Now()
 
-	requestBody, err := json.Marshal(buildOpenAIRequest(req, o.model))
+	builtReq := buildOpenAIRequest(req, o.model)
+	requestBody, err := json.Marshal(builtReq)
 	if err != nil {
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: marshal request: %v", ErrFailure, err)
 	}
+	promptText := capLog(string(requestBody))
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/responses", bytes.NewReader(requestBody))
 	if err != nil {
@@ -127,8 +129,10 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 			SourcePDFLinks:        req.Page.PDFLinks,
 			CustomFields:          output.CustomFields,
 		},
-		Analysis: output.Analysis,
-		Meta:     meta,
+		Analysis:     output.Analysis,
+		Meta:         meta,
+		PromptText:   promptText,
+		ResponseText: capLog(string(responseBody)),
 	}, nil
 }
 

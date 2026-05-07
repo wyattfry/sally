@@ -49,10 +49,12 @@ func (a AnthropicExtractor) Meta() extract.ResponseMeta {
 func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpecRequest) (extract.ExtractSpecResponse, error) {
 	start := time.Now()
 
-	body, err := json.Marshal(buildAnthropicRequest(req, a.model))
+	builtReq := buildAnthropicRequest(req, a.model)
+	body, err := json.Marshal(builtReq)
 	if err != nil {
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: marshal request: %v", ErrFailure, err)
 	}
+	promptText := capLog(string(body))
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/messages", bytes.NewReader(body))
 	if err != nil {
@@ -141,8 +143,10 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 			SourcePDFLinks:        req.Page.PDFLinks,
 			CustomFields:          output.CustomFields,
 		},
-		Analysis: output.Analysis,
-		Meta:     meta,
+		Analysis:     output.Analysis,
+		Meta:         meta,
+		PromptText:   promptText,
+		ResponseText: capLog(string(responseBody)),
 	}, nil
 }
 

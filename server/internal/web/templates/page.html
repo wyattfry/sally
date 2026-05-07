@@ -936,6 +936,22 @@
     {{end}}
   </dl>
 </section>
+{{if .Log.PromptText}}
+<section class="admin-section">
+  <details class="admin-payload">
+    <summary>Prompt sent to model</summary>
+    <pre class="admin-json">{{.Log.PromptText}}</pre>
+  </details>
+</section>
+{{end}}
+{{if .Log.ResponseText}}
+<section class="admin-section">
+  <details class="admin-payload">
+    <summary>Raw model response</summary>
+    <pre class="admin-json">{{prettyJSON .Log.ResponseText}}</pre>
+  </details>
+</section>
+{{end}}
 
 {{end}}
 {{end}}

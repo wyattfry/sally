@@ -100,6 +100,15 @@ func sanitizeZone(s string) string {
 	return strings.TrimSpace(s)
 }
 
+const maxLogBytes = 64 * 1024 // 64 KB cap per prompt/response field
+
+func capLog(s string) string {
+	if len(s) > maxLogBytes {
+		return s[:maxLogBytes]
+	}
+	return s
+}
+
 func truncateDescription(value string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {

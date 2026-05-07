@@ -65,6 +65,10 @@ type ExtractSpecResponse struct {
 	Meta      ResponseMeta  `json:"meta"`
 	NextCode   string        `json:"nextCode,omitempty"`
 	KnownZones []string      `json:"knownZones,omitempty"`
+	// PromptText and ResponseText are captured server-side for admin logging only.
+	// They are never serialised to the client.
+	PromptText   string `json:"-"`
+	ResponseText string `json:"-"`
 }
 
 type Proposal struct {
