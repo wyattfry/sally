@@ -12,6 +12,7 @@ import {
   listMothershipSchedules,
   createMothershipSchedule,
   listMothershipScheduleColumns,
+  getMothershipScheduleNextCode,
   saveMothershipScheduleItem
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
@@ -233,8 +234,15 @@ export default function App() {
   async function handleSelectSchedule(scheduleId: string) {
     if (!activeContext || scheduleId === "__add_new__") return;
     try {
-      const fetchedColumns = await listMothershipScheduleColumns(scheduleId);
+      const [fetchedColumns, nextCode] = await Promise.all([
+        listMothershipScheduleColumns(scheduleId),
+        getMothershipScheduleNextCode(scheduleId),
+      ]);
       setColumns(fetchedColumns);
+      setPanel((prev) => {
+        if (prev.kind !== "review") return prev;
+        return { ...prev, draft: { ...prev.draft, data: { ...prev.draft.data, code: nextCode } } };
+      });
     } catch {
       setColumns([]);
     }

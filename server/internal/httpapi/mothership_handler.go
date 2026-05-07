@@ -37,6 +37,7 @@ func registerMothershipAPI(mux *http.ServeMux, deps web.Deps) {
 	mux.HandleFunc("GET /api/v1/projects/{projectID}/schedules", api.listSchedules)
 	mux.HandleFunc("POST /api/v1/projects/{projectID}/schedules", api.createSchedule)
 	mux.HandleFunc("GET /api/v1/schedules/{scheduleID}/columns", api.listScheduleColumns)
+	mux.HandleFunc("GET /api/v1/schedules/{scheduleID}/next-code", api.getScheduleNextCode)
 	mux.HandleFunc("POST /api/v1/schedules/{scheduleID}/items", api.createScheduleItem)
 }
 
@@ -218,6 +219,24 @@ func (api mothershipAPI) listScheduleColumns(w http.ResponseWriter, r *http.Requ
 		resp = append(resp, toColumnResponse(col))
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (api mothershipAPI) getScheduleNextCode(w http.ResponseWriter, r *http.Request) {
+	scheduleID := r.PathValue("scheduleID")
+	schedule, err := api.queries.GetSchedule(r.Context(), scheduleID)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeJSONError(w, http.StatusNotFound, "schedule not found")
+		return
+	} else if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not load schedule")
+		return
+	}
+	items, err := api.queries.ListScheduleItems(r.Context(), scheduleID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not load items")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"nextCode": nextCode(items, schedule.Name)})
 }
 
 type createScheduleItemRequest struct {

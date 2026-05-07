@@ -47,6 +47,11 @@ export async function listMothershipScheduleColumns(scheduleId: string): Promise
   return fetchJSON<ScheduleColumn[]>(`/api/v1/schedules/${encodeURIComponent(scheduleId)}/columns`);
 }
 
+export async function getMothershipScheduleNextCode(scheduleId: string): Promise<string> {
+  const res = await fetchJSON<{ nextCode: string }>(`/api/v1/schedules/${encodeURIComponent(scheduleId)}/next-code`);
+  return res.nextCode;
+}
+
 export async function saveMothershipScheduleItem(
   scheduleId: string,
   item: ScheduleItem
