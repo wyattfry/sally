@@ -46,6 +46,7 @@
 - [x] renaming a column requires a refresh to see update
 
 Bugs
+- [ ] item detail modal does not scroll
 - [ ] "[current selected]": this is still happening! investigate again. i had a project with a Windows Schedule with items. I went to a product page for a window, spec'd it, sallypanel wanted to make a new schedule called "Window Schedule [current selected]". 
 - [ ] "stale code prefix": project with a schedule with insulation items. spec'd a product page for a window, and it wanted to add it to the insulation schedule (the llm extraction should have decided that the item did not logically fit with the items in the insulation schedule). i opted to add it to a new schedule named 'Window Schedule', the fields in sallypanel correctly updated back to the default fields (no R-Value), but the CODE kept the "I-" prefix from the previous table, when it should have determined a new Code prefix and number. Investigate.
 - [ ] "empty custom fields": project with windows schedule with items, i added custom columns: rough opening, overall jamb, swing. i spec'd a window product page, the custom fields were empty. the product page has a Specifications collapsable section with the desired data for the custom fields, check whether the specs were sent to the LLM, if so, investigate why the custom fields came back empty. product page: https://www.homedepot.com/p/Hy-Lite-47-5-in-x-11-5-in-Manchester-Silkscreened-Decorative-Glass-White-New-Construction-Frame-Window-DF4711MCSSWHV1500/331463170
@@ -65,6 +66,9 @@ Critical Path
 - [ ] a feature to delete all of a users data / opt-out
 
 Nice To Have
+- [ ] LLM: scrape PDF content
+- [ ] LLM: few-shot examples
+- [ ] admin: use google user group?
 - [ ] alternatives to one-shot general purpose LLM? can i "build an agent" w/e that means?
 - [ ] admin: paginate tables (users, extraction calls)
 - [ ] admin: line graphs dont seem to work. Use a library? D3.js?

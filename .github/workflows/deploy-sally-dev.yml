@@ -34,6 +34,7 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +81,7 @@ jobs:
           SESSION_SECRET=${SESSION_SECRET}
           VITE_SALLY_BACKEND_BASE_URL=${PUBLIC_BASE_URL}
           CLOUDFLARED_TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+          ADMIN_EMAIL=${ADMIN_EMAIL}
           ENV
 
       - name: Deploy
