@@ -136,9 +136,27 @@ func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.Extrac
 	}, nil
 }
 
+// fewShotExample is embedded in the system prompt so both json_schema and
+// json_object paths get the same calibration example.
+const fewShotExample = `
+EXAMPLE — use this as a calibration reference:
+Product page title: Andersen 400 Series 36 in. x 48 in. Casement Window, White Exterior
+Visible text excerpt: Andersen 400 Series. Casement window. White exterior and interior. Low-E4 SmartSun glass. Model C24. Rough opening: 36-3/8 in. W x 48-1/2 in. H. Overall frame: 35-3/8 in. W x 47-1/2 in. H. Available in White and Pine interior. Accessories: insect screen, grille options.
+Specification document text excerpt: C24 CASEMENT WINDOW — Technical Specifications. Frame Material: Fibrex composite. Glass: Low-E4 SmartSun double-pane. Rough Opening Width: 36-3/8 in. Rough Opening Height: 48-1/2 in. Overall Jamb Width: 35-3/8 in. Overall Jamb Height: 47-1/2 in. Swing: Left hand.
+
+Expected output (customFields populated from spec document, not left empty):
+{"title":"400 Series Casement Window","manufacturer":"Andersen","modelNumber":"C24","category":"Window","description":"Casement window with Low-E4 SmartSun glass, Fibrex composite frame, white exterior and interior.","finish":"White","finishModelNumber":"","availableFinishes":["White","Pine"],"finishModelMappings":[],"requiredAddOns":[],"optionalCompanions":["Insect Screen","Grille"],"zone":"","suggestedScheduleName":"Window Schedule","analysis":{"missingFields":[],"warnings":[],"confidence":{"overall":0.95,"title":0.99,"manufacturer":0.99,"modelNumber":0.95,"category":0.99,"description":0.9,"finish":0.99,"requiredAddOns":0.8}},"customFields":{"rough_opening":"36-3/8 in. W x 48-1/2 in. H","overall_jamb":"35-3/8 in. W x 47-1/2 in. H","swing":"Left hand"}}
+
+Key rules illustrated:
+- customFields are populated from spec document text, not left empty.
+- zone is a room name (e.g. "Kitchen") or empty — never XML or markup.
+- suggestedScheduleName matches an existing schedule name exactly when the item fits, or is a short descriptive name.
+- title omits the manufacturer name (it has its own field).
+END EXAMPLE`
+
 func buildChatCompletionRequest(req extract.ExtractSpecRequest, model, responseFormat string) chatCompletionRequest {
 	var format *chatResponseFormat
-	systemPrompt := "You are Sally. Extract one architectural schedule proposal as strict JSON. Return valid JSON only, with no markdown or commentary. Prompt version: " + PromptVersion
+	systemPrompt := "You are Sally. Extract one architectural schedule proposal as strict JSON. Return valid JSON only, with no markdown or commentary. Prompt version: " + PromptVersion + fewShotExample
 
 	switch responseFormat {
 	case "json_schema":

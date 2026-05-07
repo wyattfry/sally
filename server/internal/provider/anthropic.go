@@ -154,7 +154,7 @@ func buildAnthropicRequest(req extract.ExtractSpecRequest, model string) anthrop
 	return anthropicRequest{
 		Model:     model,
 		MaxTokens: anthropicMaxTokens,
-		System:    "You are Sally. Extract one architectural schedule proposal as strict JSON. Prompt version: " + PromptVersion,
+		System:    "You are Sally. Extract one architectural schedule proposal as strict JSON. Prompt version: " + PromptVersion + fewShotExample,
 		Messages:  []anthropicMessage{{Role: "user", Content: userContent}},
 		Tools: []anthropicTool{{
 			Name:        "extract_spec",

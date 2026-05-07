@@ -31,6 +31,9 @@ type PagePayload struct {
 	MainImageURL   string            `json:"mainImageUrl,omitempty"`
 	StructuredData []json.RawMessage `json:"structuredData"`
 	PDFLinks       []string          `json:"pdfLinks"`
+	// PDFText is populated server-side by fetching and parsing PDFLinks.
+	// It is never sent by the client.
+	PDFText        string            `json:"-"`
 }
 
 type ProjectContext struct {

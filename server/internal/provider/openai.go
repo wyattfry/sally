@@ -15,7 +15,7 @@ import (
 	"sally/server/internal/extract"
 )
 
-const PromptVersion = "extract-spec-v1"
+const PromptVersion = "extract-spec-v2"
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -302,6 +302,9 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 		"Structured data: "+string(structuredData),
 		"PDF links: "+string(pdfLinks),
 	)
+	if req.Page.PDFText != "" {
+		parts = append(parts, "Specification document text (extracted from linked PDFs — prioritize this for technical specs, dimensions, and finish codes):\n"+req.Page.PDFText)
+	}
 	return strings.Join(parts, "\n")
 }
 

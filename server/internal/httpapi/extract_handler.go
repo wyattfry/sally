@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"sally/server/internal/extract"
+	"sally/server/internal/pdfetch"
 	"sally/server/internal/provider"
 
 	queries "sally/server/internal/db/generated"
@@ -25,6 +26,8 @@ type extractionLogger interface {
 	InsertExtractionLog(ctx context.Context, p queries.InsertExtractionLogParams) error
 }
 
+var pdfHTTPClient = &http.Client{Timeout: 15 * time.Second}
+
 func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger extractionLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req extract.ExtractSpecRequest
@@ -38,7 +41,7 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 			return
 		}
 
-		log.Printf("[extract] %s: received page=%q", req.RequestID, req.Page.URL)
+		log.Printf("[extract] %s: received page=%q pdf_links=%d", req.RequestID, req.Page.URL, len(req.Page.PDFLinks))
 		start := time.Now()
 
 		var computedNextCode string
@@ -62,6 +65,14 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 					req.ProjectContext.Schedules = summaries
 				}
 				req.ProjectContext.KnownZones = selectedZones
+			}
+		}
+
+		// Fetch and parse PDFs server-side before calling the LLM.
+		if len(req.Page.PDFLinks) > 0 {
+			req.Page.PDFText = pdfetch.FetchAndExtract(r.Context(), pdfHTTPClient, req.Page.PDFLinks)
+			if req.Page.PDFText != "" {
+				log.Printf("[extract] %s: fetched pdf text %d chars", req.RequestID, len(req.Page.PDFText))
 			}
 		}
 
