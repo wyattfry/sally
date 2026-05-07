@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 
 	queries "sally/server/internal/db/generated"
@@ -248,6 +249,15 @@ func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]schedu
 		views := make([]scheduleItemView, len(rawItems))
 		for i, it := range rawItems {
 			views[i] = toItemView(it)
+		}
+		// Auto-sort by code if a "code" column exists.
+		for _, col := range cols {
+			if col.Key == "code" {
+				sort.Slice(views, func(i, j int) bool {
+					return strings.ToLower(views[i].DataMap["code"]) < strings.ToLower(views[j].DataMap["code"])
+				})
+				break
+			}
 		}
 		result = append(result, scheduleWithItems{
 			Schedule: schedule,

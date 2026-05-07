@@ -496,3 +496,130 @@ func TestEditItemPreservesSourceImageUrl(t *testing.T) {
 		t.Fatalf("expected zone header after edit, got:\n%s", body)
 	}
 }
+
+func newItemTestFixture(t *testing.T, email string) (*queries.Queries, http.Handler, queries.Project, queries.Schedule) {
+	t.Helper()
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{Email: email, Name: email})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Test Project " + time.Now().Format("150405.000000"),
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedule, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID, Name: "Test Schedule", Kind: "items", Position: 1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule: %v", err)
+	}
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{Queries: q, DevUserEmail: email, DevUserName: email})
+	return q, router, project, schedule
+}
+
+func TestItemDetailFragment(t *testing.T) {
+	q, router, project, schedule := newItemTestFixture(t, "item-detail-frag@example.com")
+
+	if err := seedColumns(context.Background(), q, schedule.ID, "general"); err != nil {
+		t.Fatalf("seed columns: %v", err)
+	}
+	data, _ := json.Marshal(map[string]string{
+		"code":         "K-01",
+		"title":        "Pull-Down Faucet",
+		"manufacturer": "Delta",
+		"description":  "Kitchen pull-down spray faucet.",
+	})
+	item, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
+		ScheduleID:     schedule.ID,
+		Data:           data,
+		SourceUrl:      "https://example.com/delta-faucet",
+		SourceTitle:    "Delta Product Page",
+		SourceImageUrl: "https://example.com/delta.jpg",
+		SourcePdfLinks: []string{"https://example.com/spec.pdf"},
+		Position:       1,
+	})
+	if err != nil {
+		t.Fatalf("create item: %v", err)
+	}
+
+	path := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items/" + item.ID + "/detail"
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", resp.Code, resp.Body.String())
+	}
+	body := resp.Body.String()
+	for _, want := range []string{
+		"Pull-Down Faucet",
+		"Delta",
+		"Kitchen pull-down spray faucet.",
+		"https://example.com/delta-faucet",
+		"https://example.com/spec.pdf",
+		"https://example.com/delta.jpg",
+		"item-detail-body",
+		"item-detail-dl",
+		"Delete item",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("expected detail fragment to contain %q", want)
+		}
+	}
+}
+
+func TestItemsAutoSortByCode(t *testing.T) {
+	q, router, project, schedule := newItemTestFixture(t, "item-sort-code@example.com")
+
+	_, err := q.CreateScheduleColumn(context.Background(), queries.CreateScheduleColumnParams{
+		ScheduleID: schedule.ID, Key: "code", Label: "Code", Kind: "text", Position: 1,
+	})
+	if err != nil {
+		t.Fatalf("create code column: %v", err)
+	}
+
+	for i, code := range []string{"C-03", "C-01", "C-02"} {
+		data, _ := json.Marshal(map[string]string{"code": code})
+		if _, err := q.CreateScheduleItem(context.Background(), queries.CreateScheduleItemParams{
+			ScheduleID: schedule.ID, Data: data, Position: int32(i + 1),
+			SourcePdfLinks: []string{},
+		}); err != nil {
+			t.Fatalf("create item %s: %v", code, err)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.Code)
+	}
+
+	body := resp.Body.String()
+	i1 := strings.Index(body, "C-01")
+	i2 := strings.Index(body, "C-02")
+	i3 := strings.Index(body, "C-03")
+	if i1 < 0 || i2 < 0 || i3 < 0 {
+		t.Fatalf("not all codes found in page body")
+	}
+	if !(i1 < i2 && i2 < i3) {
+		t.Errorf("expected C-01 < C-02 < C-03 in page order, got positions %d %d %d", i1, i2, i3)
+	}
+}

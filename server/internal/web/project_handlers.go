@@ -79,6 +79,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/delete", a.deleteSchedule)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items", a.createScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/blank", a.createBlankScheduleItem)
+	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/detail", a.showItemDetail)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.editScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/edit", a.updateScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/thumbnail", a.uploadItemImage)

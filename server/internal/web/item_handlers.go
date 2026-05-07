@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"html"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -274,6 +277,134 @@ func (a app) moveScheduleItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
+}
+
+var knownDataFields = []struct{ key, label string }{
+	{"code", "Code"},
+	{"title", "Title"},
+	{"manufacturer", "Manufacturer"},
+	{"modelNumber", "Model Number"},
+	{"category", "Category"},
+	{"description", "Description"},
+	{"finish", "Finish"},
+	{"finishModelNumber", "Finish Model Number"},
+	{"availableFinishes", "Available Finishes"},
+	{"requiredAddOns", "Required Add-Ons"},
+	{"optionalCompanions", "Optional Companions"},
+	{"zone", "Zone"},
+}
+
+func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
+	loaded, item, ok := a.loadProjectScheduleItem(w, r)
+	if !ok {
+		return
+	}
+	columns, _ := a.queries.ListScheduleColumns(r.Context(), loaded.schedule.ID)
+
+	var dm map[string]any
+	_ = json.Unmarshal(item.Data, &dm)
+	if dm == nil {
+		dm = map[string]any{}
+	}
+	if item.Zone != "" {
+		dm["zone"] = item.Zone
+	}
+
+	// Build set of keys covered by knownDataFields for custom-column detection.
+	knownKeys := make(map[string]bool, len(knownDataFields))
+	for _, f := range knownDataFields {
+		knownKeys[f.key] = true
+	}
+
+	var b strings.Builder
+	b.WriteString(`<div class="item-detail-body">`)
+
+	// Thumbnail
+	if item.SourceImageUrl != "" {
+		fmt.Fprintf(&b, `<img class="item-detail-thumb" src="%s" alt="">`, html.EscapeString(item.SourceImageUrl))
+	}
+
+	b.WriteString(`<dl class="item-detail-dl">`)
+
+	writeField := func(label, raw string) {
+		if raw == "" {
+			return
+		}
+		esc := html.EscapeString(raw)
+		var val string
+		if u, err := url.ParseRequestURI(raw); err == nil && (u.Scheme == "http" || u.Scheme == "https") {
+			val = fmt.Sprintf(`<a href="%s" target="_blank" rel="noopener">%s</a>`, esc, esc)
+		} else {
+			val = esc
+		}
+		fmt.Fprintf(&b, `<dt>%s</dt><dd>%s</dd>`, html.EscapeString(label), val)
+	}
+
+	writeListField := func(label string, items []string) {
+		var parts []string
+		for _, s := range items {
+			if s != "" {
+				parts = append(parts, html.EscapeString(s))
+			}
+		}
+		if len(parts) == 0 {
+			return
+		}
+		fmt.Fprintf(&b, `<dt>%s</dt><dd>%s</dd>`, html.EscapeString(label), strings.Join(parts, ", "))
+	}
+
+	// Known fields in order.
+	for _, f := range knownDataFields {
+		v := dm[f.key]
+		switch tv := v.(type) {
+		case string:
+			writeField(f.label, tv)
+		case []any:
+			strs := make([]string, 0, len(tv))
+			for _, item := range tv {
+				if s, ok := item.(string); ok {
+					strs = append(strs, s)
+				}
+			}
+			writeListField(f.label, strs)
+		}
+	}
+
+	// Custom columns not in knownKeys.
+	for _, col := range columns {
+		if knownKeys[col.Key] {
+			continue
+		}
+		if v, ok := dm[col.Key].(string); ok {
+			writeField(col.Label, v)
+		}
+	}
+
+	// Source fields.
+	writeField("Product Page", item.SourceUrl)
+	writeField("Source Title", item.SourceTitle)
+	for i, link := range item.SourcePdfLinks {
+		writeField(fmt.Sprintf("PDF %d", i+1), link)
+	}
+
+	b.WriteString(`</dl></div>`)
+
+	// Footer with delete action.
+	deleteURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/delete",
+		html.EscapeString(loaded.project.ID),
+		html.EscapeString(loaded.schedule.ID),
+		html.EscapeString(item.ID))
+	fmt.Fprintf(&b, `<div class="item-detail-footer">
+  <button class="button-danger"
+    hx-post="%s"
+    hx-target="#item-row-%s"
+    hx-swap="outerHTML"
+    hx-confirm="Delete this item? This cannot be undone."
+    hx-on::after-request="this.closest('dialog').close()">Delete item</button>
+</div>`, deleteURL, html.EscapeString(item.ID))
+
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, b.String())
 }
 
 func (a app) exportProjectCSV(w http.ResponseWriter, r *http.Request) {

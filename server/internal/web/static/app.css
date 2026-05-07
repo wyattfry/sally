@@ -305,13 +305,6 @@ button,
   color: var(--c-text-label);
 }
 
-/* Notes fills remaining horizontal space; pre-wrap on the inner div (not td) to avoid template whitespace rendering */
-.schedule-table .col-notes .cell-clamp {
-  display: block;
-  -webkit-line-clamp: unset;
-  overflow: visible;
-  white-space: pre-wrap;
-}
 
 .cell-clamp {
   display: -webkit-box;
@@ -441,9 +434,123 @@ button,
   display: flex;
 }
 
+.detail-row-btn {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--c-text-label);
+  cursor: pointer;
+  display: none;
+  font-size: 15px;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 28px;
+}
+
+.detail-row-btn:hover {
+  background: var(--c-surface-hover);
+  color: var(--c-text);
+}
+
+.item-row:hover .detail-row-btn {
+  display: flex;
+}
+
+/* Item detail modal */
+.item-detail-modal {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 0;
+  width: min(700px, 92vw);
+  max-height: 82vh;
+}
+
+.item-detail-modal::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.item-detail-modal-inner {
+  display: flex;
+  flex-direction: column;
+  max-height: 82vh;
+}
+
+.item-detail-modal-header {
+  align-items: center;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 24px;
+  flex-shrink: 0;
+}
+
+.item-detail-close {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--c-muted);
+  cursor: pointer;
+  font-size: 16px;
+  height: 28px;
+  line-height: 1;
+  padding: 0 6px;
+}
+
+.item-detail-close:hover { background: var(--c-surface-hover); color: var(--c-text); }
+
+.item-detail-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.item-detail-thumb {
+  border-radius: 6px;
+  max-height: 200px;
+  max-width: 100%;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.item-detail-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 20px;
+  align-items: baseline;
+  font-size: 14px;
+  margin: 0;
+}
+
+.item-detail-dl dt {
+  color: var(--c-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.item-detail-dl dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.item-detail-footer {
+  border-top: 1px solid var(--c-border);
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 24px;
+  flex-shrink: 0;
+}
+
 /* Inline editing */
 .editable-cell {
   cursor: pointer;
+  max-width: 260px;
   transition: background 0.1s;
 }
 

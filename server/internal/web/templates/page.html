@@ -356,7 +356,7 @@
             {{$g := .}}
             {{range $g.Items}}
             {{$item := .}}
-            <tr class="item-row">
+            <tr class="item-row" id="item-row-{{$item.ID}}">
               <td class="item-thumb-cell upload-target" id="item-thumb-{{$item.ID}}"
                   onclick="this.querySelector('input[type=file]').click()" title="Click to upload an image">
                 {{if $item.SourceImageUrl}}
@@ -379,18 +379,17 @@
               </td>
               {{range $sw.Columns}}
               {{$cellEditURL := printf "/projects/%s/schedules/%s/items/%s/cells/%s/edit" $.Project.ID $sw.Schedule.ID $item.ID .Key}}
-              {{if and (eq .Key "code") $item.SourceUrl}}
-              <td class="editable-cell col-code" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this" hx-swap="outerHTML">
-                <a class="code-link" href="{{$item.SourceUrl}}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Go to product page">{{index $item.DataMap .Key}}</a><span class="code-link-icon" aria-hidden="true">↗</span>
-              </td>
-              {{else}}
               <td class="editable-cell col-{{.Key}}" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this" hx-swap="outerHTML">
                 {{$val := index $item.DataMap .Key}}
                 {{if $val}}<div class="cell-clamp">{{$val}}</div>{{else if eq .Key "zone"}}<div class="cell-clamp"><span class="cell-empty">—</span></div>{{else}}<span class="cell-placeholder">Click to edit…</span>{{end}}
               </td>
               {{end}}
-              {{end}}
               <td class="row-actions">
+                <button class="detail-row-btn" title="View details"
+                  hx-get="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/detail"
+                  hx-target="#item-detail-body-{{$sw.Schedule.ID}}"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="document.getElementById('item-detail-{{$sw.Schedule.ID}}').showModal()">⊞</button>
                 <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/move" class="move-form">
                   <input type="hidden" name="direction" value="up">
                   <button type="submit" class="move-btn" title="Move up">↑</button>
@@ -399,9 +398,6 @@
                   <input type="hidden" name="direction" value="down">
                   <button type="submit" class="move-btn" title="Move down">↓</button>
                 </form>
-                <button class="delete-row-btn"
-                  hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/delete"
-                  hx-target="closest tr" hx-swap="outerHTML" hx-confirm="Remove this item?">×</button>
               </td>
             </tr>
             {{end}}
@@ -420,6 +416,15 @@
           <button type="submit" class="button button-sm">+ Add item</button>
         </form>
       </div>
+      <dialog class="item-detail-modal" id="item-detail-{{$sw.Schedule.ID}}">
+        <div class="item-detail-modal-inner">
+          <div class="item-detail-modal-header">
+            <h3 class="columns-modal-title">Item Detail</h3>
+            <button type="button" class="item-detail-close" onclick="this.closest('dialog').close()" aria-label="Close">✕</button>
+          </div>
+          <div id="item-detail-body-{{$sw.Schedule.ID}}"></div>
+        </div>
+      </dialog>
       <dialog class="columns-modal" id="col-modal-{{$sw.Schedule.ID}}">
         <div class="columns-modal-inner">
           <h3 class="columns-modal-title">Edit Columns</h3>
