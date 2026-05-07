@@ -1728,10 +1728,14 @@ details.schedule-section table {
   padding: 10px 14px;
   font-size: 12px;
   line-height: 1.5;
-  overflow-x: auto;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
   margin: 0;
 }
+.jk { color: #005cc5; }
+.js { color: #22863a; }
+.jb { color: #d73a49; }
+.jn { color: #e36209; }
 
 .admin-payload summary {
   cursor: pointer;

@@ -940,7 +940,7 @@
 <section class="admin-section">
   <details class="admin-payload">
     <summary>Prompt sent to model</summary>
-    <pre class="admin-json">{{.Log.PromptText}}</pre>
+    {{prettyJSON .Log.PromptText}}
   </details>
 </section>
 {{end}}
@@ -948,10 +948,29 @@
 <section class="admin-section">
   <details class="admin-payload">
     <summary>Raw model response</summary>
-    <pre class="admin-json">{{prettyJSON .Log.ResponseText}}</pre>
+    {{prettyJSON .Log.ResponseText}}
   </details>
 </section>
 {{end}}
+<script>
+(function(){
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function colorize(pre){
+    var t=pre.textContent,obj;
+    try{obj=JSON.parse(t);}catch(e){return;}
+    pre.innerHTML=JSON.stringify(obj,null,2).replace(
+      /("(?:\\.|[^"\\])*")\s*:|("(?:\\.|[^"\\])*")|(true|false|null)|(-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+      function(m,k,s,b,n){
+        if(k) return '<span class="jk">'+esc(k)+'</span>:';
+        if(s) return '<span class="js">'+esc(s)+'</span>';
+        if(b) return '<span class="jb">'+b+'</span>';
+        if(n) return '<span class="jn">'+n+'</span>';
+        return m;
+      });
+  }
+  document.querySelectorAll('.admin-json').forEach(colorize);
+})();
+</script>
 
 {{end}}
 {{end}}
