@@ -140,6 +140,12 @@ export default function App() {
     }
   }
 
+  async function handleCancelAutoSchedule() {
+    if (activeContext?.scheduleId) {
+      await handleSelectSchedule(activeContext.scheduleId);
+    }
+  }
+
   async function handleSwitchBackend(url: string) {
     setActiveBackendUrl(url);
     setBackendUrl(url);
@@ -180,8 +186,8 @@ export default function App() {
         let { item } = extracted;
 
         if (!item.data.code) {
-          const nameFallback = suggestedScheduleName
-            || schedules.find(s => s.id === activeContext?.scheduleId)?.name;
+          const nameFallback = schedules.find(s => s.id === activeContext?.scheduleId)?.name
+            || suggestedScheduleName;
           if (nameFallback) {
             item = { ...item, data: { ...item.data, code: codePrefix(nameFallback) + "-1" } };
           }
@@ -407,6 +413,7 @@ export default function App() {
           onCreateSchedule={handleCreateSchedule}
           onAccept={handleAccept}
           onSwitchBackend={handleSwitchBackend}
+          onCancelAutoSchedule={handleCancelAutoSchedule}
         />
       ) : null}
     </div>

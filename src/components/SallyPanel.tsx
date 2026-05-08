@@ -24,6 +24,7 @@ type SallyPanelProps = {
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
   onSwitchBackend: (url: string) => void;
+  onCancelAutoSchedule: () => void;
 };
 
 const ADD_NEW_VALUE = "__add_new__";
@@ -45,6 +46,7 @@ export function SallyPanel({
   onAccept,
   onCancel,
   onSwitchBackend,
+  onCancelAutoSchedule,
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
   const [modal, setModal] = useState<null | "project" | "schedule" | "zone">(null);
@@ -76,6 +78,9 @@ export function SallyPanel({
   }
 
   function closeModal() {
+    if (modalAutoTriggered && modal === "schedule") {
+      onCancelAutoSchedule();
+    }
     setModal(null);
     setModalInputValue("");
     setModalError(null);
