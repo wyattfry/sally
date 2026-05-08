@@ -379,6 +379,12 @@
   justify-content: flex-end;
 }
 
+.panel-modal-hint {
+  color: var(--c-text-dim);
+  font-size: 13px;
+  margin: 0;
+}
+
 .panel-modal-error {
   color: var(--c-error);
   font-size: 13px;

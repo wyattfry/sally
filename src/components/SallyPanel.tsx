@@ -50,6 +50,7 @@ export function SallyPanel({
   const [modal, setModal] = useState<null | "project" | "schedule" | "zone">(null);
   const [modalInputValue, setModalInputValue] = useState("");
   const [modalError, setModalError] = useState<string | null>(null);
+  const [modalAutoTriggered, setModalAutoTriggered] = useState(false);
   const modalInputRef = useRef<HTMLInputElement>(null);
   const [localZones, setLocalZones] = useState<string[]>(zones);
 
@@ -58,6 +59,7 @@ export function SallyPanel({
       setModal("schedule");
       setModalInputValue(suggestedNewScheduleName);
       setModalError(null);
+      setModalAutoTriggered(true);
     }
   }, [suggestedNewScheduleName]);
 
@@ -77,6 +79,7 @@ export function SallyPanel({
     setModal(null);
     setModalInputValue("");
     setModalError(null);
+    setModalAutoTriggered(false);
   }
 
   async function submitModal() {
@@ -109,6 +112,11 @@ export function SallyPanel({
             <p className="panel-modal-title">
               {modal === "project" ? "New project" : modal === "schedule" ? "New schedule" : "New zone"}
             </p>
+            {modal === "schedule" && modalAutoTriggered && (
+              <p className="panel-modal-hint">
+                This item doesn't seem to belong in any of your existing schedules. Create a new one?
+              </p>
+            )}
             <div className="field">
               <label htmlFor="panel-modal-input">Name</label>
               <input
@@ -195,6 +203,7 @@ export function SallyPanel({
                     setModal("schedule");
                     setModalInputValue("");
                     setModalError(null);
+                    setModalAutoTriggered(false);
                     return;
                   }
                   onSelectSchedule(event.target.value);
