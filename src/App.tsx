@@ -13,12 +13,16 @@ import {
   createMothershipSchedule,
   listMothershipScheduleColumns,
   getMothershipScheduleNextCode,
-  saveMothershipScheduleItem
+  saveMothershipScheduleItem,
+  setActiveBackendUrl,
+  PRESET_BACKENDS,
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 import {
   getActiveContext,
-  saveActiveContext
+  saveActiveContext,
+  getStoredBackendUrl,
+  saveBackendUrl,
 } from "./lib/storage";
 import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "./lib/types";
 
@@ -53,8 +57,14 @@ export default function App() {
   const [columns, setColumns] = useState<ScheduleColumn[]>([]);
   const [zones, setZones] = useState<string[]>([]);
   const [activeContext, setActiveContext] = useState<ActiveContext | null>(null);
+  const [backendUrl, setBackendUrl] = useState<string>(PRESET_BACKENDS[0].url);
 
   useEffect(() => {
+    getStoredBackendUrl().then((stored) => {
+      const url = stored ?? PRESET_BACKENDS[0].url;
+      setActiveBackendUrl(url);
+      setBackendUrl(url);
+    });
     refreshContext();
   }, []);
 
@@ -128,6 +138,17 @@ export default function App() {
       setColumns([]);
       setActiveContext(null);
     }
+  }
+
+  async function handleSwitchBackend(url: string) {
+    setActiveBackendUrl(url);
+    setBackendUrl(url);
+    await saveBackendUrl(url);
+    setProjects([]);
+    setSchedules([]);
+    setColumns([]);
+    setActiveContext(null);
+    refreshContext();
   }
 
   async function handleSpecClick() {
@@ -374,6 +395,7 @@ export default function App() {
           columns={columns}
           zones={zones}
           activeContext={activeContext}
+          backendUrl={backendUrl}
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
@@ -384,6 +406,7 @@ export default function App() {
           onCreateProject={handleCreateProject}
           onCreateSchedule={handleCreateSchedule}
           onAccept={handleAccept}
+          onSwitchBackend={handleSwitchBackend}
         />
       ) : null}
     </div>

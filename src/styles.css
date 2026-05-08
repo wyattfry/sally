@@ -123,12 +123,49 @@
   text-transform: uppercase;
 }
 
+.panel-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+}
+
 .panel-title {
   font-size: 22px;
   font-weight: 800;
   line-height: 1.1;
-  margin-top: 4px;
-  margin-bottom: 10px;
+}
+
+.backend-switcher {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.backend-pill {
+  background: none;
+  border: 1px solid var(--c-border-light);
+  border-radius: 10px;
+  color: var(--c-text-dim);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  transition: background 0.1s, color 0.1s;
+}
+
+.backend-pill:hover {
+  background: var(--c-surface-hover, #f0f0f0);
+  color: var(--c-text);
+}
+
+.backend-pill.active {
+  background: var(--c-accent, #1a73e8);
+  border-color: var(--c-accent, #1a73e8);
+  color: #fff;
 }
 
 .project-name-button {

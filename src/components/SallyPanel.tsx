@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "../lib/types";
+import { PRESET_BACKENDS } from "../lib/mothershipApi";
 
 type PanelState =
   | { kind: "thinking"; tokenCount: number }
@@ -13,6 +14,7 @@ type SallyPanelProps = {
   columns: ScheduleColumn[];
   zones: string[];
   activeContext: ActiveContext | null;
+  backendUrl: string;
   suggestedNewScheduleName?: string;
   onChange: (draft: ScheduleItem) => void;
   onSelectProject: (projectId: string) => void;
@@ -21,6 +23,7 @@ type SallyPanelProps = {
   onCreateSchedule: (name: string) => Promise<string | null>;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
+  onSwitchBackend: (url: string) => void;
 };
 
 const ADD_NEW_VALUE = "__add_new__";
@@ -32,6 +35,7 @@ export function SallyPanel({
   columns,
   zones,
   activeContext,
+  backendUrl,
   suggestedNewScheduleName,
   onChange,
   onSelectProject,
@@ -40,6 +44,7 @@ export function SallyPanel({
   onCreateSchedule,
   onAccept,
   onCancel,
+  onSwitchBackend,
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
   const [modal, setModal] = useState<null | "project" | "schedule" | "zone">(null);
@@ -137,7 +142,22 @@ export function SallyPanel({
       ) : null}
 
       <div className="panel-header">
-        <div className="panel-title">Add item to schedule</div>
+        <div className="panel-title-row">
+          <div className="panel-title">Add item to schedule</div>
+          <div className="backend-switcher">
+            {PRESET_BACKENDS.map((b) => (
+              <button
+                key={b.url}
+                type="button"
+                className={`backend-pill${backendUrl === b.url ? " active" : ""}`}
+                onClick={() => onSwitchBackend(b.url)}
+                title={b.url}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="panel-context">
           <div className="field">
             <label htmlFor="sally-project">Project</label>
