@@ -19,7 +19,9 @@ describe("background context menu", () => {
           addListener: vi.fn((listener: () => void) => {
             installedListener = listener;
           })
-        }
+        },
+        onConnect: { addListener: vi.fn() },
+        onMessage: { addListener: vi.fn() },
       },
       contextMenus: {
         create,
@@ -29,6 +31,7 @@ describe("background context menu", () => {
           })
         }
       },
+      cookies: { get: vi.fn() },
       tabs: {
         sendMessage
       }

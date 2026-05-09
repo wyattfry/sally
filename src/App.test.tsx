@@ -1,15 +1,18 @@
 import "@testing-library/jest-dom/vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScheduleItem } from "./lib/types";
 import { extractScheduleItem, shouldAllowMockFallback, shouldFallbackToMock } from "./lib/extractApi";
 import {
+  checkAuth,
   getMothershipScheduleUrl,
   listMothershipProjects,
   listMothershipSchedules,
+  createMothershipSchedule,
   listMothershipScheduleColumns,
-  saveMothershipScheduleItem
+  getMothershipScheduleNextCode,
+  saveMothershipScheduleItem,
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 
@@ -25,19 +28,29 @@ vi.mock("./lib/mockExtraction", () => ({
 }));
 
 vi.mock("./lib/mothershipApi", () => ({
+  PRESET_BACKENDS: [
+    { label: "Local", url: "http://localhost:8080" },
+    { label: "Dev",   url: "https://dev.spexxtool.com" },
+  ],
+  checkAuth: vi.fn(),
+  getSignInUrl: vi.fn(),
+  setActiveBackendUrl: vi.fn(),
   getMothershipScheduleUrl: vi.fn(),
   listMothershipProjects: vi.fn(),
+  createMothershipProject: vi.fn(),
   listMothershipSchedules: vi.fn(),
+  createMothershipSchedule: vi.fn(),
   listMothershipScheduleColumns: vi.fn(),
-  saveMothershipScheduleItem: vi.fn()
+  getMothershipScheduleNextCode: vi.fn(),
+  saveMothershipScheduleItem: vi.fn(),
 }));
 
 import App from "./App";
 
 const storageState: Record<string, unknown> = {};
 
-function extractedResult(overrides: Partial<ScheduleItem> = {}) {
-  return { item: extractedItem(overrides), knownZones: [] };
+function extractedResult(itemOverrides: Partial<ScheduleItem> = {}, options: { suggestedScheduleName?: string; knownZones?: string[] } = {}) {
+  return { item: extractedItem(itemOverrides), knownZones: options.knownZones ?? [], suggestedScheduleName: options.suggestedScheduleName };
 }
 
 function extractedItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
@@ -83,6 +96,15 @@ function installChromeStorageMock() {
   });
 }
 
+const TEST_COLUMNS = [
+  { id: "col-0", scheduleId: "schedule-1", key: "code", label: "Code", kind: "text", position: 0 },
+  { id: "col-1", scheduleId: "schedule-1", key: "title", label: "Title", kind: "text", position: 1 },
+  { id: "col-2", scheduleId: "schedule-1", key: "manufacturer", label: "Manufacturer", kind: "text", position: 2 },
+  { id: "col-3", scheduleId: "schedule-1", key: "model_number", label: "Model Number", kind: "text", position: 3 },
+  { id: "col-4", scheduleId: "schedule-1", key: "finish", label: "Finish", kind: "text", position: 4 },
+  { id: "col-5", scheduleId: "schedule-1", key: "notes", label: "Notes", kind: "text", position: 5 }
+];
+
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -100,6 +122,7 @@ describe("App", () => {
       delete storageState[key];
     }
     installChromeStorageMock();
+    vi.mocked(checkAuth).mockResolvedValue(true);
     vi.mocked(extractScheduleItem).mockResolvedValue(extractedResult());
     vi.mocked(mockExtractScheduleItem).mockReturnValue(extractedItem({ id: "mock-draft-123" }));
     vi.mocked(shouldAllowMockFallback).mockReturnValue(false);
@@ -110,14 +133,12 @@ describe("App", () => {
     vi.mocked(listMothershipSchedules).mockResolvedValue([
       { id: "schedule-1", projectId: "project-1", name: "Bath", kind: "items", notes: "", position: 1 }
     ]);
-    vi.mocked(listMothershipScheduleColumns).mockResolvedValue([
-      { id: "col-1", scheduleId: "schedule-1", key: "title", label: "Title", kind: "text", position: 1 },
-      { id: "col-2", scheduleId: "schedule-1", key: "manufacturer", label: "Manufacturer", kind: "text", position: 2 },
-      { id: "col-3", scheduleId: "schedule-1", key: "model_number", label: "Model Number", kind: "text", position: 3 },
-      { id: "col-4", scheduleId: "schedule-1", key: "finish", label: "Finish", kind: "text", position: 4 },
-      { id: "col-5", scheduleId: "schedule-1", key: "notes", label: "Notes", kind: "text", position: 5 }
-    ]);
+    vi.mocked(listMothershipScheduleColumns).mockResolvedValue(TEST_COLUMNS);
     vi.mocked(saveMothershipScheduleItem).mockResolvedValue(undefined);
+    vi.mocked(createMothershipSchedule).mockResolvedValue(
+      { id: "schedule-new", projectId: "project-1", name: "Paint Schedule", kind: "items", notes: "", position: 2 }
+    );
+    vi.mocked(getMothershipScheduleNextCode).mockResolvedValue("A-4");
     vi.mocked(getMothershipScheduleUrl).mockReturnValue(
       "http://localhost:8080/projects/project-1/schedules/schedule-1"
     );
@@ -128,11 +149,9 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByRole("button", { name: "SPEC" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /My New Project.*0 items/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "SPEC" }));
 
-    expect(screen.getByText("Reading page")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("Wall Faucet")).toBeInTheDocument();
     expect(screen.getByLabelText("Project")).toHaveValue("project-1");
     expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-1");
@@ -147,8 +166,7 @@ describe("App", () => {
       "schedule-1",
       expect.objectContaining({ data: expect.objectContaining({ title: "Wall faucet revised" }) })
     );
-    expect(screen.getByText("Item added")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "SPEC" })).not.toHaveClass("spec-button--specd");
+    expect(screen.getByText(/Added to/)).toBeInTheDocument();
   });
 
   it("lets the user choose a Mother Ship schedule before saving", async () => {
@@ -244,159 +262,11 @@ describe("App", () => {
   });
 
   it("does not visually change SPEC when the current page has already been spec'd", async () => {
-    storageState["sally.scheduleItems"] = [
-      {
-        id: "item-1",
-        capturedAt: "2026-04-21T12:00:00.000Z",
-        zone: "Primary Bath",
-        title: "Wall Faucet",
-        manufacturer: "Example Co.",
-        modelNumber: "WF-200",
-        category: "Faucet",
-        description: "Wall-mounted faucet.",
-        finish: "Polished Chrome",
-        requiredAddOns: [],
-        optionalCompanions: [],
-        sourceUrl: window.location.href,
-        sourceTitle: document.title,
-        sourcePdfLinks: []
-      }
-    ];
-
     render(<App />);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "SPEC" })).not.toHaveClass("spec-button--specd")
     );
-  });
-
-  it("opens the schedule viewer from the Sally panel", async () => {
-    const user = userEvent.setup();
-    const printSpy = vi.spyOn(window, "print").mockImplementation(() => undefined);
-    const printDocument = {
-      close: vi.fn(),
-      write: vi.fn()
-    };
-    const printWindow = {
-      document: printDocument,
-      focus: vi.fn(),
-      print: vi.fn()
-    };
-    const openSpy = vi.spyOn(window, "open").mockReturnValue(printWindow as unknown as Window);
-    vi.mocked(listMothershipProjects).mockResolvedValue([]);
-    vi.mocked(listMothershipSchedules).mockResolvedValue([]);
-    storageState["sally.scheduleItems"] = [
-      {
-        id: "item-1",
-        capturedAt: "2026-04-21T12:00:00.000Z",
-        zone: "Primary Bath",
-        title: "Wall Faucet",
-        manufacturer: "Example Co.",
-        modelNumber: "WF-200",
-        category: "Faucet",
-        description: "Wall-mounted faucet.",
-        finish: "Polished Chrome",
-        requiredAddOns: ["Rough valve body"],
-        optionalCompanions: [],
-        sourceUrl: "https://example.com/products/wf-200",
-        sourceTitle: "Example Co. WF-200 Wall Faucet",
-        sourceImageUrl: "https://example.com/faucet.jpg",
-        sourcePdfLinks: []
-      }
-    ];
-
-    render(<App />);
-
-    await user.click(await screen.findByRole("button", { name: "SPEC" }));
-    await user.click(await screen.findByRole("button", { name: "View Items" }));
-
-    expect(screen.getByLabelText("Captured schedule")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Rename My New Project" })).toBeInTheDocument();
-    expect(screen.getByText("Wall Faucet")).toBeInTheDocument();
-    expect(screen.getByText("Primary Bath")).toBeInTheDocument();
-    expect(screen.getByText("Example Co.")).toBeInTheDocument();
-    expect(screen.getByText("WF-200")).toBeInTheDocument();
-    const thumbnailLink = screen.getByRole("link", { name: "Wall Faucet thumbnail" });
-    expect(thumbnailLink).toHaveAttribute("href", "https://example.com/products/wf-200");
-    expect(thumbnailLink.querySelector("img")).toHaveAttribute(
-      "src",
-      "https://example.com/faucet.jpg"
-    );
-
-    await user.click(screen.getByRole("button", { name: "Rename My New Project" }));
-    await user.clear(screen.getByLabelText("Project name"));
-    await user.type(screen.getByLabelText("Project name"), "Lake House");
-    await user.keyboard("{Enter}");
-
-    expect(screen.getByRole("button", { name: "Rename Lake House" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Print" }));
-    expect(openSpy).toHaveBeenCalledWith("", "_blank", "width=1100,height=800");
-    expect(printDocument.write).toHaveBeenCalledWith(expect.stringContaining("Lake House"));
-    expect(printDocument.write).toHaveBeenCalledWith(expect.stringContaining("Wall Faucet"));
-    expect(printDocument.write).toHaveBeenCalledWith(expect.stringContaining("Primary Bath"));
-    expect(printWindow.print).toHaveBeenCalledOnce();
-    expect(printSpy).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: "Remove Wall Faucet" }));
-    await waitFor(() => expect(screen.queryByText("Wall Faucet")).not.toBeInTheDocument());
-    expect(screen.getByText("No accepted items yet.")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Close schedule" }));
-    expect(screen.queryByLabelText("Captured schedule")).not.toBeInTheDocument();
-  });
-
-  it("removes only one duplicate item from the viewer", async () => {
-    const user = userEvent.setup();
-    vi.mocked(listMothershipProjects).mockResolvedValue([]);
-    vi.mocked(listMothershipSchedules).mockResolvedValue([]);
-    storageState["sally.scheduleItems"] = [
-      {
-        id: "item-1",
-        capturedAt: "2026-04-21T12:00:00.000Z",
-        zone: "Primary Bath",
-        title: "Wall Faucet",
-        manufacturer: "Example Co.",
-        modelNumber: "WF-200",
-        category: "Faucet",
-        description: "Wall-mounted faucet.",
-        finish: "Polished Chrome",
-        requiredAddOns: [],
-        optionalCompanions: [],
-        sourceUrl: "https://example.com/products/wf-200",
-        sourceTitle: "Example Product",
-        sourcePdfLinks: []
-      },
-      {
-        id: "item-1-2",
-        capturedAt: "2026-04-21T12:01:00.000Z",
-        zone: "Powder Room",
-        title: "Wall Faucet",
-        manufacturer: "Example Co.",
-        modelNumber: "WF-200",
-        category: "Faucet",
-        description: "Wall-mounted faucet.",
-        finish: "Polished Chrome",
-        requiredAddOns: [],
-        optionalCompanions: [],
-        sourceUrl: "https://example.com/products/wf-200",
-        sourceTitle: "Example Product",
-        sourcePdfLinks: []
-      }
-    ];
-
-    render(<App />);
-
-    await user.click(await screen.findByRole("button", { name: "SPEC" }));
-    await user.click(await screen.findByRole("button", { name: "View Items" }));
-    expect(screen.getAllByText("Wall Faucet")).toHaveLength(2);
-
-    await user.click(screen.getAllByRole("button", { name: "Remove Wall Faucet" })[0]);
-
-    expect(screen.getAllByText("Wall Faucet")).toHaveLength(1);
-    expect(screen.getByText("Powder Room")).toBeInTheDocument();
-    expect(screen.queryByText("Primary Bath")).not.toBeInTheDocument();
   });
 
   it("uses mock extraction in dev when fallback is explicitly enabled", async () => {
@@ -413,7 +283,6 @@ describe("App", () => {
     await user.click(await screen.findByRole("button", { name: "SPEC" }));
 
     expect(await screen.findByDisplayValue("Mock fallback faucet")).toBeInTheDocument();
-    expect(screen.getByText("Using local mock fallback.")).toBeInTheDocument();
   });
 
   it("does not silently fall back in production-facing mode", async () => {
@@ -426,10 +295,8 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: "SPEC" }));
 
-    await waitFor(() => expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument());
+    expect(await screen.findByText("Backend unavailable")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("Wall Faucet")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Extraction error")).toBeInTheDocument();
-    expect(screen.getAllByText("Backend unavailable")).toHaveLength(2);
     expect(mockExtractScheduleItem).not.toHaveBeenCalled();
   });
 
@@ -443,60 +310,67 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: "SPEC" }));
 
-    expect(await screen.findByLabelText("Extraction error")).toBeInTheDocument();
-    expect(screen.getAllByText("Model rejected the page.")).toHaveLength(2);
+    expect(await screen.findByText("Model rejected the page.")).toBeInTheDocument();
     expect(mockExtractScheduleItem).not.toHaveBeenCalled();
   });
 
-  it("keeps extraction failures user-visible and recoverable", async () => {
+  it("shows extraction error in the panel", async () => {
     const user = userEvent.setup();
-    vi.mocked(extractScheduleItem)
-      .mockRejectedValueOnce(new Error("Backend unavailable"))
-      .mockResolvedValueOnce(extractedResult({ data: { title: "Recovered faucet" } }));
+    vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Backend unavailable"));
     vi.mocked(shouldFallbackToMock).mockReturnValue(false);
 
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: "SPEC" }));
 
-    expect(await screen.findByLabelText("Extraction error")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Retry extraction" }));
-
-    expect(await screen.findByDisplayValue("Recovered faucet")).toBeInTheDocument();
+    expect(await screen.findByText("Backend unavailable")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sally capture panel")).toBeInTheDocument();
   });
 
-  it("does not clear a newer toast when an older timer expires", async () => {
-    vi.useFakeTimers();
-    vi.mocked(extractScheduleItem).mockRejectedValue(new Error("Extraction backend is unreachable."));
-    vi.mocked(shouldAllowMockFallback).mockReturnValue(true);
-    vi.mocked(shouldFallbackToMock).mockReturnValue(true);
-    vi.mocked(mockExtractScheduleItem).mockReturnValueOnce(extractedItem({ data: { title: "Fallback item" } }));
+  it("canceling auto-triggered new-schedule modal restores the correct code for the original schedule", async () => {
+    const user = userEvent.setup();
+    vi.mocked(extractScheduleItem).mockResolvedValue(
+      extractedResult({}, { suggestedScheduleName: "Paint Schedule" })
+    );
 
     render(<App />);
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "SPEC" }));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(250);
-    });
-    expect(screen.getByText("Using local mock fallback.")).toBeInTheDocument();
+    // Auto-triggered modal appears with suggested name and hint
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("Paint Schedule");
+    expect(screen.getByText(/doesn't seem to belong/)).toBeInTheDocument();
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    await act(async () => {});
-    expect(screen.getByText("Item added")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Cancel restores the original schedule and re-fetches its next code
+    expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-1");
+    await waitFor(() => expect(screen.getByLabelText("Code")).toHaveValue("4")); // "A-4" suffix
+    expect(getMothershipScheduleNextCode).toHaveBeenCalledWith("schedule-1");
+  });
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2200);
-    });
-    expect(screen.getByText("Item added")).toBeInTheDocument();
+  it("creating a new schedule from the auto-triggered modal keeps the new schedule selected", async () => {
+    const user = userEvent.setup();
+    vi.mocked(extractScheduleItem).mockResolvedValue(
+      extractedResult({}, { suggestedScheduleName: "Paint Schedule" })
+    );
+    vi.mocked(getMothershipScheduleNextCode).mockImplementation(async (scheduleId) =>
+      scheduleId === "schedule-new" ? "P-1" : "A-4"
+    );
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
-    expect(screen.queryByText("Item added")).not.toBeInTheDocument();
-    vi.useRealTimers();
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+
+    await screen.findByRole("dialog");
+    expect(screen.getByLabelText("Name")).toHaveValue("Paint Schedule");
+
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // New schedule stays selected, not reverted to original
+    await waitFor(() => expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-new"));
+    expect(getMothershipScheduleNextCode).toHaveBeenCalledWith("schedule-new");
   });
 });

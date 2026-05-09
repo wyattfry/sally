@@ -77,8 +77,8 @@ export function SallyPanel({
     onChange({ ...draft, data: { ...draft.data, [key]: value } });
   }
 
-  function closeModal() {
-    if (modalAutoTriggered && modal === "schedule") {
+  function closeModal({ created = false } = {}) {
+    if (!created && modalAutoTriggered && modal === "schedule") {
       onCancelAutoSchedule();
     }
     setModal(null);
@@ -102,7 +102,7 @@ export function SallyPanel({
     if (error) {
       setModalError(error);
     } else {
-      closeModal();
+      closeModal({ created: true });
     }
   }
 
@@ -138,7 +138,7 @@ export function SallyPanel({
             </div>
             {modalError ? <p className="panel-modal-error">{modalError}</p> : null}
             <div className="panel-modal-actions">
-              <button className="action-button secondary" type="button" onClick={closeModal}>
+              <button className="action-button secondary" type="button" onClick={() => closeModal()}>
                 Cancel
               </button>
               <button
