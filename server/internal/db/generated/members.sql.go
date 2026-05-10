@@ -116,6 +116,54 @@ func (q *Queries) ListProjectMembersWithUser(ctx context.Context, projectID stri
 	return items, nil
 }
 
+const listSharedProjectsWithOwner = `-- name: ListSharedProjectsWithOwner :many
+select p.id, p.owner_user_id, p.name, p.address, p.created_at, p.updated_at, p.description, p.thumbnail_url,
+       coalesce(nullif(u.name, ''), u.email, p.owner_user_id::text) as owner_display_name
+from projects p
+join project_members pm on pm.project_id = p.id
+join users u on u.id = p.owner_user_id
+where pm.user_id = $1
+order by p.updated_at desc, p.created_at desc
+`
+
+type SharedProjectWithOwner struct {
+	Project
+	OwnerDisplayName string `json:"owner_display_name"`
+}
+
+func (q *Queries) ListSharedProjectsWithOwner(ctx context.Context, userID string) ([]SharedProjectWithOwner, error) {
+	rows, err := q.db.QueryContext(ctx, listSharedProjectsWithOwner, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SharedProjectWithOwner
+	for rows.Next() {
+		var i SharedProjectWithOwner
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerUserID,
+			&i.Name,
+			&i.Address,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Description,
+			&i.ThumbnailUrl,
+			&i.OwnerDisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSharedProjects = `-- name: ListSharedProjects :many
 select p.id, p.owner_user_id, p.name, p.address, p.created_at, p.updated_at, p.description, p.thumbnail_url
 from projects p

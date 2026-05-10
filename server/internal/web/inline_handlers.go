@@ -134,10 +134,6 @@ func itemCellURL(r *http.Request, key string) string {
 func writeCellDisplay(w io.Writer, editURL, value, key string, isCode bool, sourceURL string) {
 	var inner string
 	switch {
-	case isCode && sourceURL != "":
-		inner = fmt.Sprintf(
-			`<a class="code-link" href="%s" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Go to product page">%s</a><span class="code-link-icon" aria-hidden="true">↗</span>`,
-			html.EscapeString(sourceURL), html.EscapeString(value))
 	case isCode:
 		inner = html.EscapeString(value)
 	case key == "zone" && value == "":

@@ -173,6 +173,10 @@ button,
   color: var(--c-danger-text);
 }
 
+.about-image {
+  filter: drop-shadow(8px 8px 10px gray);
+}
+
 .project-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -356,13 +360,6 @@ button,
 
 .code-link:hover {
   text-decoration: underline;
-}
-
-.code-link-icon {
-  color: var(--c-text-muted);
-  font-size: 10px;
-  margin-left: 2px;
-  vertical-align: super;
 }
 
 .item-thumb-placeholder {
@@ -1907,4 +1904,36 @@ details.schedule-section table {
 .button--small {
   font-size: 0.82rem;
   padding: 4px 10px;
+}
+
+.admin-login-link-banner {
+  background: #edf6ff;
+  border: 1px solid #90c8f8;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+}
+.admin-login-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.admin-login-link-input {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 5px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 5px;
+  background: white;
+  color: var(--c-text);
+  min-width: 0;
+}
+.admin-create-user-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }

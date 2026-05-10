@@ -3,8 +3,9 @@ package web
 import queries "sally/server/internal/db/generated"
 
 type projectListItem struct {
-	Project     queries.Project
-	ThumbImages []string
+	Project          queries.Project
+	ThumbImages      []string
+	OwnerDisplayName string
 }
 
 type projectsPage struct {
@@ -15,16 +16,17 @@ type projectsPage struct {
 }
 
 type projectDetailPage struct {
-	Kind           string
-	Title          string
-	Project        queries.Project
-	Schedules      []scheduleWithItems
-	FirstItemImage string
-	ActiveLink     *queries.ProjectShareLink
-	ShareBaseURL   string
-	Members        []queries.ProjectMemberWithUser
-	IsOwner        bool
-	MemberError    string
+	Kind             string
+	Title            string
+	Project          queries.Project
+	Schedules        []scheduleWithItems
+	FirstItemImage   string
+	ActiveLink       *queries.ProjectShareLink
+	ShareBaseURL     string
+	Members          []queries.ProjectMemberWithUser
+	IsOwner          bool
+	MemberError      string
+	OwnerDisplayName string
 }
 
 type projectEditPage struct {
@@ -55,6 +57,11 @@ type signInPage struct {
 	Title string
 }
 
+type aboutPage struct {
+	Kind  string
+	Title string
+}
+
 type notFoundPage struct {
 	Kind  string
 	Title string
@@ -68,23 +75,25 @@ type publicSharePage struct {
 }
 
 type adminPage struct {
-	Kind                 string
-	Title                string
-	Counts               queries.AdminTableCounts
-	ExtractionSum        queries.ExtractionSummary
-	ProviderStats        []queries.ExtractionProviderStat
-	StorageBytes         int64
-	StorageDir           string
-	ItemDailyJSON        string // daily series, 7d
-	ItemHourlyJSON       string // hourly series, 24h
-	ExtractDailyJSON     string // daily series, 7d
-	ExtractHourlyJSON    string // hourly series, 24h
+	Kind              string
+	Title             string
+	Counts            queries.AdminTableCounts
+	ExtractionSum     queries.ExtractionSummary
+	ProviderStats     []queries.ExtractionProviderStat
+	StorageBytes      int64
+	StorageDir        string
+	ItemDailyJSON     string // daily series, 7d
+	ItemHourlyJSON    string // hourly series, 24h
+	ExtractDailyJSON  string // daily series, 7d
+	ExtractHourlyJSON string // hourly series, 24h
 }
 
 type adminUsersPage struct {
-	Kind  string
-	Title string
-	Users []queries.AdminUserRow
+	Kind         string
+	Title        string
+	Users        []queries.AdminUserRow
+	NewLoginURL  string
+	NewLoginName string
 }
 
 type adminExtractionsPage struct {

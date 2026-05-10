@@ -61,6 +61,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 	mux.HandleFunc("GET /login", a.loginPage)
+	mux.HandleFunc("GET /about", a.aboutPage)
 	mux.HandleFunc("GET /auth/google", a.startGoogleOAuth)
 	mux.HandleFunc("GET /auth/callback", a.oauthCallback)
 	mux.HandleFunc("GET /auth/done", a.authDone)
@@ -98,8 +99,13 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/columns/{columnID}/delete", a.deleteScheduleColumn)
 	mux.HandleFunc("GET /admin", a.adminDashboard)
 	mux.HandleFunc("GET /admin/users", a.adminUsers)
+	mux.HandleFunc("POST /admin/users", a.adminCreateUser)
+	mux.HandleFunc("POST /admin/users/{userID}/login-link", a.adminCreateLoginLink)
+	mux.HandleFunc("GET /auth/token", a.tokenLogin)
 	mux.HandleFunc("GET /admin/extractions", a.adminExtractions)
 	mux.HandleFunc("GET /admin/extractions/{requestID}", a.adminExtractionDetail)
+	mux.HandleFunc("GET /admin/api/extraction-logs", a.adminExtractionLogsJSON)
+	mux.HandleFunc("GET /admin/api/extraction-logs/{requestID}", a.adminExtractionLogDetailJSON)
 	mux.HandleFunc("GET /projects/{projectID}/share", a.manageProjectShare)
 	mux.HandleFunc("POST /projects/{projectID}/share-links", a.createProjectShareLink)
 	mux.HandleFunc("POST /projects/{projectID}/share-links/deactivate", a.deactivateProjectShareLinks)
@@ -139,13 +145,32 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 		return items
 	}
 
-	sharedProjects, _ := a.queries.ListSharedProjects(r.Context(), user.ID)
+	sharedRaw, err := a.queries.ListSharedProjectsWithOwner(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "could not load shared projects", http.StatusInternalServerError)
+		return
+	}
+	sharedItems := make([]projectListItem, 0, len(sharedRaw))
+	for _, sp := range sharedRaw {
+		imgs, _ := a.queries.GetProjectFirstItemImages(r.Context(), sp.ID)
+		padded := make([]string, 4)
+		for i, u := range imgs {
+			if i < 4 {
+				padded[i] = u
+			}
+		}
+		sharedItems = append(sharedItems, projectListItem{
+			Project:          sp.Project,
+			ThumbImages:      padded,
+			OwnerDisplayName: sp.OwnerDisplayName,
+		})
+	}
 
 	render(w, projectsPage{
 		Kind:           "projects",
 		Title:          "Projects",
 		Projects:       toListItems(projects),
-		SharedProjects: toListItems(sharedProjects),
+		SharedProjects: sharedItems,
 	})
 }
 
@@ -245,17 +270,28 @@ outer:
 
 	memberError := r.URL.Query().Get("member_error")
 
+	var ownerDisplayName string
+	if !isOwner {
+		if owner, ownerErr := a.queries.GetUser(r.Context(), project.OwnerUserID); ownerErr == nil {
+			ownerDisplayName = owner.Name
+			if ownerDisplayName == "" {
+				ownerDisplayName = owner.Email
+			}
+		}
+	}
+
 	render(w, projectDetailPage{
-		Kind:           "project",
-		Title:          project.Name,
-		Project:        project,
-		Schedules:      schedules,
-		FirstItemImage: firstItemImage,
-		ActiveLink:     activeLinkPtr,
-		ShareBaseURL:   requestBaseURL(r),
-		Members:        members,
-		IsOwner:        isOwner,
-		MemberError:    memberError,
+		Kind:             "project",
+		Title:            project.Name,
+		Project:          project,
+		Schedules:        schedules,
+		FirstItemImage:   firstItemImage,
+		ActiveLink:       activeLinkPtr,
+		ShareBaseURL:     requestBaseURL(r),
+		Members:          members,
+		IsOwner:          isOwner,
+		MemberError:      memberError,
+		OwnerDisplayName: ownerDisplayName,
 	})
 }
 

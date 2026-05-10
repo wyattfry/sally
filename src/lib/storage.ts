@@ -1,21 +1,6 @@
 import type { ActiveContext } from "./types";
 
 const ACTIVE_CONTEXT_KEY = "sally.activeContext";
-const BACKEND_URL_KEY = "sally.backendUrl";
-
-export async function getStoredBackendUrl(): Promise<string | null> {
-  try {
-    const result = await chromeStorage().get(BACKEND_URL_KEY);
-    const val = result[BACKEND_URL_KEY];
-    return typeof val === "string" && val ? val : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function saveBackendUrl(url: string): Promise<void> {
-  await chromeStorage().set({ [BACKEND_URL_KEY]: url });
-}
 
 function chromeStorage() {
   if (!globalThis.chrome?.storage?.local) {

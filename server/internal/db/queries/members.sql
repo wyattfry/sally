@@ -26,3 +26,12 @@ from projects p
 join project_members pm on pm.project_id = p.id
 where pm.user_id = $1
 order by p.updated_at desc, p.created_at desc;
+
+-- name: ListSharedProjectsWithOwner :many
+select p.id, p.owner_user_id, p.name, p.address, p.created_at, p.updated_at, p.description, p.thumbnail_url,
+       coalesce(nullif(u.name, ''), u.email, p.owner_user_id::text) as owner_display_name
+from projects p
+join project_members pm on pm.project_id = p.id
+join users u on u.id = p.owner_user_id
+where pm.user_id = $1
+order by p.updated_at desc, p.created_at desc;

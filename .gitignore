@@ -4,3 +4,4 @@ sally-extension
 .env
 *.zip
 server/uploads
+venv

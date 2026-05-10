@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	dbgen "sally/server/internal/db/generated"
+	"sally/server/internal/share"
 )
 
 // requireAdmin checks admin access and returns false (already responded) if denied.
@@ -101,10 +104,81 @@ func (a app) adminUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render(w, adminUsersPage{
-		Kind:  "admin-users",
-		Title: "Admin — Users",
-		Users: users,
+		Kind:         "admin-users",
+		Title:        "Admin — Users",
+		Users:        users,
+		NewLoginURL:  r.URL.Query().Get("login_url"),
+		NewLoginName: r.URL.Query().Get("for"),
 	})
+}
+
+func (a app) adminCreateUser(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+	email := strings.TrimSpace(r.Form.Get("email"))
+	name := strings.TrimSpace(r.Form.Get("name"))
+	if email == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+
+	user, err := a.queries.CreateUser(r.Context(), dbgen.CreateUserParams{Email: email, Name: name})
+	if err != nil {
+		http.Error(w, "could not create user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	loginURL, err := a.makeLoginToken(r, user.ID)
+	if err != nil {
+		http.Error(w, "user created but could not generate login link: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	displayName := user.Email
+	if user.Name != "" {
+		displayName = user.Name + " (" + user.Email + ")"
+	}
+	http.Redirect(w, r, "/admin/users?login_url="+loginURL+"&for="+displayName, http.StatusSeeOther)
+}
+
+func (a app) adminCreateLoginLink(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	userID := r.PathValue("userID")
+	user, err := a.queries.GetUser(r.Context(), userID)
+	if err != nil {
+		renderNotFound(w)
+		return
+	}
+
+	loginURL, err := a.makeLoginToken(r, user.ID)
+	if err != nil {
+		http.Error(w, "could not generate login link: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	displayName := user.Email
+	if user.Name != "" {
+		displayName = user.Name + " (" + user.Email + ")"
+	}
+	http.Redirect(w, r, "/admin/users?login_url="+loginURL+"&for="+displayName, http.StatusSeeOther)
+}
+
+func (a app) makeLoginToken(r *http.Request, userID string) (string, error) {
+	token, err := share.NewToken()
+	if err != nil {
+		return "", err
+	}
+	if _, err := a.queries.CreateLoginToken(r.Context(), userID, share.HashToken(token)); err != nil {
+		return "", err
+	}
+	return requestBaseURL(r) + "/auth/token?t=" + token, nil
 }
 
 func (a app) adminExtractions(w http.ResponseWriter, r *http.Request) {
@@ -142,6 +216,46 @@ func (a app) adminExtractionDetail(w http.ResponseWriter, r *http.Request) {
 		Title: "Extraction " + requestID,
 		Log:   log,
 	})
+}
+
+func (a app) adminExtractionLogsJSON(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	limit := 100
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 500 {
+			limit = n
+		}
+	}
+	logs, err := dbgen.QueryRecentExtractionLogs(r.Context(), a.db, limit)
+	if err != nil {
+		http.Error(w, `{"error":"could not load logs"}`, http.StatusInternalServerError)
+		return
+	}
+	if logs == nil {
+		logs = []dbgen.ExtractionLogRow{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"logs": logs})
+}
+
+func (a app) adminExtractionLogDetailJSON(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	requestID := r.PathValue("requestID")
+	log, err := dbgen.QueryExtractionLogByRequestID(r.Context(), a.db, requestID)
+	if errors.Is(err, sql.ErrNoRows) {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, `{"error":"could not load log"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(log)
 }
 
 func mustJSON(v any) string {

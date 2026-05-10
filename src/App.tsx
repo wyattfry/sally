@@ -14,15 +14,11 @@ import {
   listMothershipScheduleColumns,
   getMothershipScheduleNextCode,
   saveMothershipScheduleItem,
-  setActiveBackendUrl,
-  PRESET_BACKENDS,
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 import {
   getActiveContext,
   saveActiveContext,
-  getStoredBackendUrl,
-  saveBackendUrl,
 } from "./lib/storage";
 import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "./lib/types";
 
@@ -57,14 +53,8 @@ export default function App() {
   const [columns, setColumns] = useState<ScheduleColumn[]>([]);
   const [zones, setZones] = useState<string[]>([]);
   const [activeContext, setActiveContext] = useState<ActiveContext | null>(null);
-  const [backendUrl, setBackendUrl] = useState<string>(PRESET_BACKENDS[0].url);
 
   useEffect(() => {
-    getStoredBackendUrl().then((stored) => {
-      const url = stored ?? PRESET_BACKENDS[0].url;
-      setActiveBackendUrl(url);
-      setBackendUrl(url);
-    });
     refreshContext();
   }, []);
 
@@ -146,17 +136,6 @@ export default function App() {
     }
   }
 
-  async function handleSwitchBackend(url: string) {
-    setActiveBackendUrl(url);
-    setBackendUrl(url);
-    await saveBackendUrl(url);
-    setProjects([]);
-    setSchedules([]);
-    setColumns([]);
-    setActiveContext(null);
-    refreshContext();
-  }
-
   async function handleSpecClick() {
     const ok = await checkAuth();
     if (!ok) {
@@ -185,21 +164,42 @@ export default function App() {
         const { suggestedScheduleName } = extracted;
         let { item } = extracted;
 
-        if (!item.data.code) {
-          const nameFallback = schedules.find(s => s.id === activeContext?.scheduleId)?.name
-            || suggestedScheduleName;
-          if (nameFallback) {
-            item = { ...item, data: { ...item.data, code: codePrefix(nameFallback) + "-1" } };
+        // Find existing schedule matching the LLM suggestion
+        const matchingSchedule = suggestedScheduleName
+          ? schedules.find((s) => s.name.toLowerCase() === suggestedScheduleName.trim().toLowerCase())
+          : undefined;
+
+        // Switch to the matched schedule if it differs from the current one
+        if (matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId) {
+          try {
+            const fetchedColumns = await listMothershipScheduleColumns(matchingSchedule.id);
+            setColumns(fetchedColumns);
+          } catch { /* non-fatal */ }
+          const newContext = { ...activeContext!, scheduleId: matchingSchedule.id };
+          setActiveContext(newContext);
+          await saveActiveContext(newContext);
+        }
+
+        // Fetch the real next code for whichever schedule we landed on.
+        // Always re-fetch when switching schedules: the extraction server returned
+        // nextCode for the old schedule, not the matched one.
+        const targetScheduleId = matchingSchedule?.id ?? activeContext?.scheduleId;
+        const switchingSchedule = Boolean(matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId);
+        if ((!item.data.code || switchingSchedule) && targetScheduleId) {
+          try {
+            const nextCode = await getMothershipScheduleNextCode(targetScheduleId);
+            item = { ...item, data: { ...item.data, code: nextCode } };
+          } catch {
+            // Only overwrite if there's still no code at all
+            if (!item.data.code) {
+              const name = matchingSchedule?.name
+                || schedules.find(s => s.id === targetScheduleId)?.name
+                || suggestedScheduleName;
+              if (name) item = { ...item, data: { ...item.data, code: codePrefix(name) + "-1" } };
+            }
           }
         }
 
-        const matchingSchedule = suggestedScheduleName
-          ? schedules.find((s) => s.name.toLowerCase() === suggestedScheduleName.toLowerCase())
-          : undefined;
-        if (matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId) {
-          await handleSelectSchedule(matchingSchedule.id);
-          item = { ...item, data: { ...item.data, code: codePrefix(matchingSchedule.name) + "-1" } };
-        }
         setZones(extracted.knownZones);
         setPanel({
           kind: "review",
@@ -401,7 +401,6 @@ export default function App() {
           columns={columns}
           zones={zones}
           activeContext={activeContext}
-          backendUrl={backendUrl}
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
@@ -412,7 +411,6 @@ export default function App() {
           onCreateProject={handleCreateProject}
           onCreateSchedule={handleCreateSchedule}
           onAccept={handleAccept}
-          onSwitchBackend={handleSwitchBackend}
           onCancelAutoSchedule={handleCancelAutoSchedule}
         />
       ) : null}

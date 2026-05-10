@@ -2,12 +2,15 @@ package web
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	queries "sally/server/internal/db/generated"
+	"sally/server/internal/share"
 
 	"golang.org/x/oauth2"
 )
@@ -22,6 +25,10 @@ func (a app) loginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render(w, signInPage{Kind: "login", Title: "Sign in"})
+}
+
+func (a app) aboutPage(w http.ResponseWriter, r *http.Request) {
+	render(w, aboutPage{Kind: "about", Title: "About Sally"})
 }
 
 func (a app) startGoogleOAuth(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +107,37 @@ func (a app) authDone(w http.ResponseWriter, r *http.Request) {
 func (a app) logout(w http.ResponseWriter, r *http.Request) {
 	clearSessionCookie(w)
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+func (a app) tokenLogin(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("t")
+	if token == "" {
+		http.Error(w, "missing token", http.StatusBadRequest)
+		return
+	}
+
+	lt, err := a.queries.GetLoginTokenByHash(r.Context(), share.HashToken(token))
+	if errors.Is(err, sql.ErrNoRows) {
+		http.Error(w, "invalid or expired login link", http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not validate token", http.StatusInternalServerError)
+		return
+	}
+
+	user, err := a.queries.GetUser(r.Context(), lt.UserID)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusInternalServerError)
+		return
+	}
+
+	if err := a.queries.MarkLoginTokenUsed(r.Context(), lt.ID); err != nil {
+		log.Printf("warning: could not mark login token used: %v", err)
+	}
+
+	setSessionCookie(w, a.sessionSecret, user.Email)
+	http.Redirect(w, r, "/projects", http.StatusSeeOther)
 }
 
 func googleUserInfo(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (email, name string, err error) {

@@ -2,20 +2,9 @@ import type { Project, Schedule, ScheduleColumn, ScheduleItem } from "./types";
 
 const DEFAULT_BACKEND_BASE_URL = "http://localhost:8080";
 
-export const PRESET_BACKENDS = [
-  { label: "Local", url: "http://localhost:8080" },
-  { label: "Dev",   url: "https://dev.spexxtool.com" },
-] as const;
-
 type SallyRuntimeConfig = {
   backendBaseUrl?: string;
 };
-
-let _backendOverride: string | null = null;
-
-export function setActiveBackendUrl(url: string | null): void {
-  _backendOverride = url;
-}
 
 export async function checkAuth(): Promise<boolean> {
   try {
@@ -143,7 +132,6 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 function getBackendBaseUrl(): string {
-  if (_backendOverride) return _backendOverride.replace(/\/+$/, "");
   const config = (globalThis as { __SALLY_CONFIG__?: SallyRuntimeConfig }).__SALLY_CONFIG__;
   return (
     config?.backendBaseUrl ||

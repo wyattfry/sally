@@ -29,14 +29,14 @@
   <footer>
     <div class="footer-inner">
       <ul class="footer-links">
-        <li><a href="#">About</a></li>
+        <li><a href="/about">About</a></li>
         <li><a href="#">Press</a></li>
         <li><a href="#">Privacy Policy</a></li>
         <li><a href="#">Contact</a></li>
         <li><a href="https://chromewebstore.google.com/detail/sally-spec-poc/cpjlofdhdfpmbcmjbpipdfjjhhiohcac"
             target="_blank" rel="noopener">Chrome Extension</a></li>
       </ul>
-      <p class="footer-copy">&copy; 2025 Sally. All rights reserved.</p>
+      <p class="footer-copy">&copy; 2026 Sally. All rights reserved.</p>
     </div>
   </footer>
   <script>
@@ -139,6 +139,35 @@
 </html>
 
 {{define "content"}}
+{{if eq .Kind "about"}}
+
+<div class="page-header">
+  <h1>About</h1>
+</div>
+<p class="muted">Hi! I'm Sally. I'm here to help you build architectural schedules.</p>
+<h2>How Does It Work?</h2>
+<p class="muted">Sally helps you create and manage architectural schedules by providing a simple interface to add, edit, and organize schedule items. No more copy makes and models from ecommerce websites into a spreadsheet. Once your schedules are created, you can send a link to anyone who needs to view or edit them, such as team members, contractors, or suppliers.</p>
+<h2>How to Use Sally</h2>
+<ol>
+  <li>Install the Chrome Extension <a href="https://chromewebstore.google.com/detail/sally-spec-poc/cpjlofdhdfpmbcmjbpipdfjjhhiohcac" target="_blank">here</a>. Click "Add to Chrome".</li>
+  <img class="about-image" src="/static/chrome-webstore.png" alt="Screenshot of Sally's Chrome Web Store listing" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+  <li>Navigate to a product page on a website and click the "SPEC" button.
+  <img class="about-image" src="/static/spec-button.png" alt="Screenshot of the SPEC button on a product page" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+  <li>If prompted, click "Sign in with Google".</li>
+  <img class="about-image" src="/static/sign-in.png" alt="Screenshot of the Google sign-in prompt" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+  <li>If this is your first item, or the item does not seem to belong on any existing schedule, Sally will ask you to make a new schedule.</li>
+  <img class="about-image" src="/static/new-schedule.png" alt="Screenshot of the new schedule prompt" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+  <li>Sally will read the website and draft the relevant information. Review and edit the drafted information as needed. When you are ready to add the item to a schedule, click "OK".</li>
+  <img class="about-image" src="/static/drafting.png" alt="Screenshot of the drafting process" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+  <li>To open your project, click the "View Project" link or visit <a href="/projects">your projects page</a>.</li>
+  <img class="about-image" src="/static/view-project.png" alt="Screenshot of the view project link" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+  <li>When you are ready to share your project, click the "Actions" button, then "Copy Share Link" and send the link to anyone, e.g. via SMS or email.</li>
+  <img class="about-image" src="/static/share-link.png" alt="Screenshot of the copy share link button" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+  <img class="about-image" src="/static/email.png" alt="Screenshot of an email with the share link" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
+</ol>
+</div>
+{{end}}
+
 {{if eq .Kind "projects"}}
 <div class="page-header">
   <h1>My Projects</h1>
@@ -174,7 +203,7 @@
   {{end}}
 </div>
 {{else}}
-<p class="muted">No projects yet.</p>
+<p class="muted">No projects yet. For information on how to begin, see the About page: <a href="/about">About Sally</a></p>
 {{end}}
 {{if .SharedProjects}}
 <div class="page-header" style="margin-top:2rem">
@@ -197,6 +226,7 @@
       {{end}}
     </div>
     <div class="project-card-body">
+      <p class="project-card-meta"><span>{{.OwnerDisplayName}}</span></p>
       <h2>{{.Project.Name}}</h2>
       {{if .Project.Address}}<p class="project-card-meta">{{.Project.Address}}</p>{{end}}
       {{if .Project.Description}}<p class="project-card-description">{{.Project.Description}}</p>{{end}}
@@ -230,6 +260,7 @@
       </form>
     </div>
     <div class="project-header-text">
+      {{if not .IsOwner}}<span class="badge-shared">Shared by {{.OwnerDisplayName}}</span>{{end}}
       <h1 class="editable-h1" data-field="name" hx-get="/projects/{{.Project.ID}}/fields/name/edit" hx-trigger="click"
         hx-target="this" hx-swap="outerHTML">{{.Project.Name}}</h1>
       <div class="meta-field editable-meta" data-field="address" hx-get="/projects/{{.Project.ID}}/fields/address/edit"
@@ -266,11 +297,6 @@
       </details>
     </div>
   </div>
-  {{if not .IsOwner}}
-  <div class="collaborators-section collaborators-section--member">
-    <span class="badge-shared">Shared with you — editor access</span>
-  </div>
-  {{end}}
   {{if .IsOwner}}
   <dialog id="collaborators-modal" class="columns-modal">
     <div class="columns-modal-inner">
@@ -841,10 +867,27 @@
   <div class="breadcrumbs"><a href="/admin">Admin</a> / Users</div>
   <h1>Users</h1>
 </div>
+{{if .NewLoginURL}}
+<div class="admin-login-link-banner">
+  <strong>Login link{{if .NewLoginName}} for {{.NewLoginName}}{{end}} — valid for 24 hours, single use:</strong>
+  <div class="admin-login-link-row">
+    <input class="admin-login-link-input" type="text" value="{{.NewLoginURL}}" readonly onclick="this.select()">
+    <button class="button button--small" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">Copy</button>
+  </div>
+</div>
+{{end}}
+<section class="admin-section">
+  <h2 class="admin-section-title">Create test user</h2>
+  <form method="post" action="/admin/users" class="admin-create-user-form">
+    <input type="email" name="email" placeholder="test@example.com" required class="collaborators-email-input">
+    <input type="text" name="name" placeholder="Display name (optional)" class="collaborators-email-input">
+    <button type="submit" class="button button--small">Create &amp; get link</button>
+  </form>
+</section>
 <section class="admin-section">
   <div class="admin-table-wrap">
     <table class="admin-table">
-      <thead><tr><th>Email</th><th>Name</th><th>Joined</th><th>Projects</th><th>Schedules</th><th>Items</th><th>Last item</th></tr></thead>
+      <thead><tr><th>Email</th><th>Name</th><th>Joined</th><th>Projects</th><th>Schedules</th><th>Items</th><th>Last item</th><th></th></tr></thead>
       <tbody>
         {{range .Users}}
         <tr>
@@ -855,6 +898,11 @@
           <td>{{.ScheduleCount}}</td>
           <td>{{.ItemCount}}</td>
           <td class="admin-mono">{{if .LastItemAt}}{{.LastItemAt}}{{else}}—{{end}}</td>
+          <td>
+            <form method="post" action="/admin/users/{{.ID}}/login-link">
+              <button type="submit" class="button button--small">Get login link</button>
+            </form>
+          </td>
         </tr>
         {{end}}
       </tbody>

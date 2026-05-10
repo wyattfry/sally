@@ -57,6 +57,7 @@ Bugs
 - [ ] project with appliance and paint schedules, spec'd paint, wanted to put it in the appliance schedule, wtf??
 
 Critical Path
+- [ ] re-order schedules option in the Actions menu, modal that looks similar to the Edit Columns modal (up / down buttons, but no rename or delete. ideally don't need a page reload to see updates)
 - [ ] notes to support images, png / svg / copy-paste from CAD?
 - [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
 - [ ] add link to mothership in chrome extension description
@@ -64,10 +65,19 @@ Critical Path
 - [ ] notes to support multiple "rows" or inner-sections?
 - [ ] user account page, dummy billing, stripe?
 - [ ] a feature to delete all of a users data / opt-out
+- [ ] sallypanel: if new schedule, give user a way to add/remove/edit the columns, if not every time
 
 Nice To Have
 - [x] LLM: scrape PDF content
 - [x] LLM: few-shot examples
+- [ ] admin: create test user, magic-link
+- [ ] add Swagger: https://github.com/swaggo/swag
+- [ ] more detail while extraction is underway, show the streaming data? or show the fields but with some animation instead of text values?
+- [ ] in sallypanel and mothership, capture all the product images and allow user to choose which one to use, or upload a new one
+- [ ] move an item between schedules
+- [ ] 
+- [ ] don't allow schedules with duplicate names
+- [ ] add a 'report bug / feedback' button on the mothership, send messages that arevisible in the admin portal
 - [ ] admin: use google user group?
 - [ ] alternatives to one-shot general purpose LLM? can i "build an agent" w/e that means?
 - [ ] admin: paginate tables (users, extraction calls)

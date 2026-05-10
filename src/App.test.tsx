@@ -28,13 +28,8 @@ vi.mock("./lib/mockExtraction", () => ({
 }));
 
 vi.mock("./lib/mothershipApi", () => ({
-  PRESET_BACKENDS: [
-    { label: "Local", url: "http://localhost:8080" },
-    { label: "Dev",   url: "https://dev.spexxtool.com" },
-  ],
   checkAuth: vi.fn(),
   getSignInUrl: vi.fn(),
-  setActiveBackendUrl: vi.fn(),
   getMothershipScheduleUrl: vi.fn(),
   listMothershipProjects: vi.fn(),
   createMothershipProject: vi.fn(),
@@ -349,6 +344,32 @@ describe("App", () => {
     expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-1");
     await waitFor(() => expect(screen.getByLabelText("Code")).toHaveValue("4")); // "A-4" suffix
     expect(getMothershipScheduleNextCode).toHaveBeenCalledWith("schedule-1");
+  });
+
+  it("uses the matched schedule's next code even when the extraction response already contained a code for a different schedule", async () => {
+    const user = userEvent.setup();
+    vi.mocked(listMothershipSchedules).mockResolvedValue([
+      { id: "schedule-1", projectId: "project-1", name: "Appliance Schedule", kind: "items", notes: "", position: 1 },
+      { id: "schedule-paint", projectId: "project-1", name: "Paint Schedule", kind: "items", notes: "", position: 2 },
+    ]);
+    // Extraction server returns nextCode "A-6" (for Appliance Schedule) but suggests Paint Schedule
+    vi.mocked(extractScheduleItem).mockResolvedValue({
+      item: extractedItem({ data: { code: "A-6", title: "Wall Paint" } }),
+      knownZones: [],
+      suggestedScheduleName: "Paint Schedule",
+    });
+    vi.mocked(getMothershipScheduleNextCode).mockImplementation(async (scheduleId) =>
+      scheduleId === "schedule-paint" ? "P-4" : "A-6"
+    );
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+
+    // Panel switches to Paint Schedule
+    await waitFor(() => expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-paint"));
+    // Code is for Paint Schedule ("P-4"), not the stale "A-6" from the extraction response
+    expect(screen.getByLabelText("Code")).toHaveValue("4"); // suffix of "P-4"
+    expect(getMothershipScheduleNextCode).toHaveBeenCalledWith("schedule-paint");
   });
 
   it("creating a new schedule from the auto-triggered modal keeps the new schedule selected", async () => {
