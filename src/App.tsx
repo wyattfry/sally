@@ -419,6 +419,7 @@ export default function App() {
           onSelectSchedule={handleSelectSchedule}
           onCreateProject={handleCreateProject}
           onCreateSchedule={handleCreateSchedule}
+          onColumnsChange={(cols) => setColumns(cols)}
           onAccept={handleAccept}
           onCancelAutoSchedule={handleCancelAutoSchedule}
         />

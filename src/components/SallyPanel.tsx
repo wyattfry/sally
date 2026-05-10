@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "../lib/types";
+import {
+  addMothershipScheduleColumn,
+  renameMothershipScheduleColumn,
+  deleteMothershipScheduleColumn,
+  reorderMothershipScheduleColumns,
+} from "../lib/mothershipApi";
 
 type PanelState =
   | { kind: "thinking"; tokenCount: number }
@@ -19,6 +25,7 @@ type SallyPanelProps = {
   onSelectSchedule: (scheduleId: string) => void;
   onCreateProject: (name: string) => Promise<string | null>;
   onCreateSchedule: (name: string) => Promise<string | null>;
+  onColumnsChange: (cols: ScheduleColumn[]) => void;
   onAccept: (draft: ScheduleItem) => void;
   onCancel: () => void;
   onCancelAutoSchedule: () => void;
@@ -39,17 +46,21 @@ export function SallyPanel({
   onSelectSchedule,
   onCreateProject,
   onCreateSchedule,
+  onColumnsChange,
   onAccept,
   onCancel,
   onCancelAutoSchedule,
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
-  const [modal, setModal] = useState<null | "project" | "schedule" | "zone" | "image">(null);
+  const [modal, setModal] = useState<null | "project" | "schedule" | "zone" | "image" | "columns">(null);
   const [modalInputValue, setModalInputValue] = useState("");
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalAutoTriggered, setModalAutoTriggered] = useState(false);
   const modalInputRef = useRef<HTMLInputElement>(null);
   const [localZones, setLocalZones] = useState<string[]>(zones);
+  const [editColumns, setEditColumns] = useState<ScheduleColumn[]>([]);
+  const [addColLabel, setAddColLabel] = useState("");
+  const [colError, setColError] = useState<string | null>(null);
 
   useEffect(() => {
     if (suggestedNewScheduleName) {
@@ -76,10 +87,58 @@ export function SallyPanel({
     if (!created && modalAutoTriggered && modal === "schedule") {
       onCancelAutoSchedule();
     }
+    if (modal === "columns") {
+      onColumnsChange(editColumns);
+    }
     setModal(null);
     setModalInputValue("");
     setModalError(null);
     setModalAutoTriggered(false);
+  }
+
+  async function handleMoveColumn(idx: number, dir: -1 | 1) {
+    if (!activeContext?.projectId || !activeContext?.scheduleId) return;
+    const next = [...editColumns];
+    const [col] = next.splice(idx, 1);
+    next.splice(idx + dir, 0, col);
+    setEditColumns(next);
+    try {
+      await reorderMothershipScheduleColumns(activeContext.projectId, activeContext.scheduleId, next.map(c => c.id));
+    } catch (e) {
+      setColError(e instanceof Error ? e.message : "Reorder failed.");
+    }
+  }
+
+  async function handleRenameColumn(colId: string, label: string) {
+    if (!activeContext?.projectId || !activeContext?.scheduleId || !label.trim()) return;
+    try {
+      await renameMothershipScheduleColumn(activeContext.projectId, activeContext.scheduleId, colId, label.trim());
+      setEditColumns(prev => prev.map(c => c.id === colId ? { ...c, label: label.trim() } : c));
+    } catch (e) {
+      setColError(e instanceof Error ? e.message : "Rename failed.");
+    }
+  }
+
+  async function handleDeleteColumn(colId: string) {
+    if (!activeContext?.projectId || !activeContext?.scheduleId) return;
+    try {
+      await deleteMothershipScheduleColumn(activeContext.projectId, activeContext.scheduleId, colId);
+      setEditColumns(prev => prev.filter(c => c.id !== colId));
+    } catch (e) {
+      setColError(e instanceof Error ? e.message : "Delete failed.");
+    }
+  }
+
+  async function handleAddColumn() {
+    if (!addColLabel.trim() || !activeContext?.projectId || !activeContext?.scheduleId) return;
+    try {
+      const updated = await addMothershipScheduleColumn(activeContext.projectId, activeContext.scheduleId, addColLabel.trim());
+      setEditColumns(updated.filter(c => c.key !== "zone"));
+      setAddColLabel("");
+      setColError(null);
+    } catch (e) {
+      setColError(e instanceof Error ? e.message : "Could not add column.");
+    }
   }
 
   async function submitModal() {
@@ -109,7 +168,50 @@ export function SallyPanel({
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
           <div className="panel-modal" role="dialog" aria-modal="true">
-            {modal === "image" ? (
+            {modal === "columns" ? (
+              <>
+                <p className="panel-modal-title">Edit Columns</p>
+                <ul className="col-edit-list">
+                  {editColumns.map((col, i) => (
+                    <li key={col.id} className="col-edit-row">
+                      <div className="col-edit-move">
+                        <button type="button" disabled={i === 0} onClick={() => handleMoveColumn(i, -1)}>↑</button>
+                        <button type="button" disabled={i === editColumns.length - 1} onClick={() => handleMoveColumn(i, 1)}>↓</button>
+                      </div>
+                      <input
+                        className="col-edit-label"
+                        defaultValue={col.label}
+                        onBlur={(e) => handleRenameColumn(col.id, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      />
+                      <button
+                        type="button"
+                        className="col-edit-delete"
+                        onClick={() => handleDeleteColumn(col.id)}
+                      >Delete</button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="inline-add">
+                  <input
+                    placeholder="New column name"
+                    value={addColLabel}
+                    onChange={(e) => { setAddColLabel(e.target.value); setColError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddColumn(); }}
+                  />
+                  <button
+                    className="action-button primary"
+                    type="button"
+                    disabled={!addColLabel.trim()}
+                    onClick={handleAddColumn}
+                  >Add</button>
+                </div>
+                {colError ? <p className="panel-modal-error">{colError}</p> : null}
+                <div className="panel-modal-actions">
+                  <button className="action-button primary" type="button" onClick={() => closeModal()}>Done</button>
+                </div>
+              </>
+            ) : modal === "image" ? (
               <>
                 <p className="panel-modal-title">Choose image</p>
                 <div className="image-picker-grid">
@@ -321,6 +423,21 @@ export function SallyPanel({
       </div>
 
       <div className="panel-actions">
+        {panel.kind === "review" && activeContext?.scheduleId ? (
+          <button
+            className="action-button secondary"
+            type="button"
+            style={{ marginRight: "auto" }}
+            onClick={() => {
+              setEditColumns(columns.filter(c => c.key !== "zone"));
+              setAddColLabel("");
+              setColError(null);
+              setModal("columns");
+            }}
+          >
+            Edit Columns
+          </button>
+        ) : null}
         <button className="action-button secondary" type="button" onClick={onCancel}>
           Cancel
         </button>

@@ -120,6 +120,11 @@ func (a app) requireUser(w http.ResponseWriter, r *http.Request) (queries.User, 
 	if a.oauthConfig != nil {
 		email, ok := getSessionEmail(r, a.sessionSecret)
 		if !ok {
+			if token := r.Header.Get("X-Session-Token"); token != "" {
+				email, ok = ValidateSessionToken(a.sessionSecret, token)
+			}
+		}
+		if !ok {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return queries.User{}, false
 		}

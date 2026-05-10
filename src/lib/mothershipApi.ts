@@ -47,6 +47,25 @@ export async function listMothershipScheduleColumns(scheduleId: string): Promise
   return fetchJSON<ScheduleColumn[]>(`/api/v1/schedules/${encodeURIComponent(scheduleId)}/columns`);
 }
 
+export async function addMothershipScheduleColumn(projectId: string, scheduleId: string, label: string): Promise<ScheduleColumn[]> {
+  await fetchForm(`/projects/${encodeURIComponent(projectId)}/schedules/${encodeURIComponent(scheduleId)}/columns`, new URLSearchParams({ label }));
+  return listMothershipScheduleColumns(scheduleId);
+}
+
+export async function renameMothershipScheduleColumn(projectId: string, scheduleId: string, columnId: string, label: string): Promise<void> {
+  await fetchForm(`/projects/${encodeURIComponent(projectId)}/schedules/${encodeURIComponent(scheduleId)}/columns/${encodeURIComponent(columnId)}/rename`, new URLSearchParams({ label }));
+}
+
+export async function deleteMothershipScheduleColumn(projectId: string, scheduleId: string, columnId: string): Promise<void> {
+  await fetchForm(`/projects/${encodeURIComponent(projectId)}/schedules/${encodeURIComponent(scheduleId)}/columns/${encodeURIComponent(columnId)}/delete`, new URLSearchParams());
+}
+
+export async function reorderMothershipScheduleColumns(projectId: string, scheduleId: string, ids: string[]): Promise<void> {
+  const body = new URLSearchParams();
+  ids.forEach(id => body.append("ids", id));
+  await fetchForm(`/projects/${encodeURIComponent(projectId)}/schedules/${encodeURIComponent(scheduleId)}/columns/reorder`, body);
+}
+
 export async function getMothershipScheduleNextCode(scheduleId: string): Promise<string> {
   const res = await fetchJSON<{ nextCode: string }>(`/api/v1/schedules/${encodeURIComponent(scheduleId)}/next-code`);
   return res.nextCode;
@@ -94,6 +113,43 @@ function extractErrorMessage(text: string): string {
     if (typeof parsed.error === "string") return parsed.error;
   } catch { /* use raw text */ }
   return text;
+}
+
+async function fetchForm(path: string, body: URLSearchParams): Promise<void> {
+  const url = `${getBackendBaseUrl()}${path}`;
+  const sessionToken = await getSessionToken();
+  const init: RequestInit = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...(sessionToken ? { "X-Session-Token": sessionToken } : {}),
+    },
+    body: body.toString(),
+  };
+
+  if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+    const response = await new Promise<any>((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: "PROXY_FETCH", url, init },
+        (result) => {
+          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+          if (result.error) return reject(new Error(result.error));
+          resolve(result);
+        }
+      );
+    });
+    if (!response.ok) {
+      const text = response.text?.trim() || "";
+      throw new Error(text || "Request failed.");
+    }
+    return;
+  }
+
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const text = (await response.text()).trim();
+    throw new Error(text || "Request failed.");
+  }
 }
 
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
