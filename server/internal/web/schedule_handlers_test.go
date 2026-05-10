@@ -237,3 +237,81 @@ func TestSchedulePagesUpdateAndDeleteSchedule(t *testing.T) {
 		t.Fatalf("expected deleted schedule to return 404, got %d", deletedResp.Code)
 	}
 }
+
+func TestReorderSchedules(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "reorder-sched-test@example.com",
+		Name:  "Reorder Test",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: user.ID,
+		Name:        "Reorder Sched Project " + time.Now().Format("150405.000000"),
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedA, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID, Name: "Alpha", Kind: "items", Position: 1,
+	})
+	if err != nil {
+		t.Fatalf("create schedule A: %v", err)
+	}
+	schedB, err := q.CreateSchedule(context.Background(), queries.CreateScheduleParams{
+		ProjectID: project.ID, Name: "Beta", Kind: "items", Position: 2,
+	})
+	if err != nil {
+		t.Fatalf("create schedule B: %v", err)
+	}
+
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:      q,
+		DevUserEmail: "reorder-sched-test@example.com",
+		DevUserName:  "Reorder Test",
+	})
+
+	// Reverse the order: B first, A second.
+	form := url.Values{}
+	form.Add("ids", schedB.ID)
+	form.Add("ids", schedA.ID)
+	req := httptest.NewRequest(http.MethodPost, "/projects/"+project.ID+"/schedules/reorder", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", resp.Code, resp.Body.String())
+	}
+
+	schedules, err := q.ListSchedulesByProject(context.Background(), project.ID)
+	if err != nil {
+		t.Fatalf("list schedules: %v", err)
+	}
+	if len(schedules) < 2 {
+		t.Fatalf("expected at least 2 schedules, got %d", len(schedules))
+	}
+	if schedules[0].ID != schedB.ID {
+		t.Errorf("expected Beta first after reorder, got %q", schedules[0].Name)
+	}
+	if schedules[1].ID != schedA.ID {
+		t.Errorf("expected Alpha second after reorder, got %q", schedules[1].Name)
+	}
+}

@@ -285,6 +285,7 @@
           <button type="button" class="actions-menu-item" onclick="copySallyShareLink()">Copy share link</button>
           {{end}}
           <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
+          <button type="button" class="actions-menu-item" onclick="document.getElementById('sched-reorder-modal').showModal();this.closest('details').removeAttribute('open')">Reorder schedules</button>
           {{if .IsOwner}}
           <button type="button" class="actions-menu-item" onclick="document.getElementById('collaborators-modal').showModal();this.closest('details').removeAttribute('open')">Manage collaborators</button>
           <div class="actions-menu-divider"></div>
@@ -340,6 +341,76 @@
     })();
   </script>
   {{end}}
+  <dialog class="columns-modal" id="sched-reorder-modal">
+    <div class="columns-modal-inner">
+      <h3 class="columns-modal-title">Reorder Schedules</h3>
+      <ul class="col-modal-list" id="sched-reorder-list" data-project-id="{{.Project.ID}}">
+        {{range .Schedules}}
+        <li class="col-modal-row" data-sched-id="{{.Schedule.ID}}">
+          <div class="col-modal-move-btns">
+            <button class="col-modal-move" type="button" onclick="moveSchedRow(this,-1)" title="Move up">↑</button>
+            <button class="col-modal-move" type="button" onclick="moveSchedRow(this,1)" title="Move down">↓</button>
+          </div>
+          <span class="sched-reorder-name">{{.Schedule.Name}}</span>
+        </li>
+        {{end}}
+      </ul>
+      <div class="col-modal-footer">
+        <button type="button" class="button" onclick="this.closest('dialog').close()">Done</button>
+      </div>
+    </div>
+  </dialog>
+  <script>
+    (function () {
+      var modal = document.getElementById('sched-reorder-modal');
+      if (modal) {
+        modal.addEventListener('click', function (e) { if (e.target === modal) modal.close(); });
+        modal.addEventListener('toggle', function () {
+          if (modal.open) refreshSchedMoveButtons(document.getElementById('sched-reorder-list'));
+        });
+      }
+    })();
+    function refreshSchedMoveButtons(list) {
+      if (!list) return;
+      var rows = list.querySelectorAll('.col-modal-row');
+      rows.forEach(function (row, i) {
+        var btns = row.querySelectorAll('.col-modal-move');
+        if (btns[0]) btns[0].disabled = (i === 0);
+        if (btns[1]) btns[1].disabled = (i === rows.length - 1);
+      });
+    }
+    function moveSchedRow(btn, dir) {
+      var row = btn.closest('.col-modal-row');
+      var list = row.parentElement;
+      if (dir === -1) {
+        var prev = row.previousElementSibling;
+        if (prev) list.insertBefore(row, prev);
+      } else {
+        var next = row.nextElementSibling;
+        if (next) list.insertBefore(next, row);
+      }
+      refreshSchedMoveButtons(list);
+      saveSchedOrder(list);
+    }
+    function saveSchedOrder(list) {
+      var ids = Array.from(list.querySelectorAll('.col-modal-row')).map(function (r) { return r.dataset.schedId; });
+      var projectId = list.dataset.projectId;
+      var body = new URLSearchParams();
+      ids.forEach(function (id) { body.append('ids', id); });
+      fetch('/projects/' + projectId + '/schedules/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      }).then(function () {
+        var container = document.querySelector('.schedule-content');
+        var addRow = container.querySelector('.add-schedule-row');
+        ids.forEach(function (id) {
+          var el = document.getElementById('schedule-' + id);
+          if (el) container.insertBefore(el, addRow);
+        });
+      });
+    }
+  </script>
 </div>
 <div id="copy-toast" class="copy-toast" aria-live="polite"></div>
 <div class="project-layout">
@@ -448,7 +519,7 @@
             <h3 class="columns-modal-title">Item Detail</h3>
             <button type="button" class="item-detail-close" onclick="this.closest('dialog').close()" aria-label="Close">✕</button>
           </div>
-          <div id="item-detail-body-{{$sw.Schedule.ID}}"></div>
+          <div id="item-detail-body-{{$sw.Schedule.ID}}" class="item-detail-slot"></div>
         </div>
       </dialog>
       <dialog class="columns-modal" id="col-modal-{{$sw.Schedule.ID}}">

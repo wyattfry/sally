@@ -13,6 +13,7 @@ import (
 	"golang.org/x/oauth2"
 	appdb "sally/server/internal/db"
 	queries "sally/server/internal/db/generated"
+	"sally/server/internal/share"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -351,5 +352,126 @@ func TestRequireUserOAuthModeAcceptsValidSession(t *testing.T) {
 
 	if resp.Code != http.StatusOK {
 		t.Fatalf("expected 200 with valid session, got %d", resp.Code)
+	}
+}
+
+func newTokenLoginSetup(t *testing.T) (*queries.Queries, http.Handler) {
+	t.Helper()
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+	q := queries.New(conn)
+	secret := []byte("test-secret")
+	router := http.NewServeMux()
+	RegisterRoutes(router, Deps{
+		Queries:       q,
+		DB:            conn,
+		SessionSecret: secret,
+	})
+	return q, router
+}
+
+func TestTokenLoginRedirectsToProjectsAndSetsSession(t *testing.T) {
+	q, router := newTokenLoginSetup(t)
+
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "token-login-ok-" + time.Now().Format("150405000") + "@example.com",
+		Name:  "Token Login OK",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	rawToken, err := share.NewToken()
+	if err != nil {
+		t.Fatalf("new token: %v", err)
+	}
+	if _, err := q.CreateLoginToken(context.Background(), user.ID, share.HashToken(rawToken)); err != nil {
+		t.Fatalf("create login token: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/token?t="+rawToken, nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 redirect, got %d: %s", resp.Code, resp.Body.String())
+	}
+	if resp.Header().Get("Location") != "/projects" {
+		t.Errorf("expected redirect to /projects, got %q", resp.Header().Get("Location"))
+	}
+	var hasSession bool
+	for _, c := range resp.Result().Cookies() {
+		if c.Name == sessionCookieName && c.Value != "" {
+			hasSession = true
+		}
+	}
+	if !hasSession {
+		t.Error("expected session cookie to be set after token login")
+	}
+}
+
+func TestTokenLoginRejectsInvalidToken(t *testing.T) {
+	_, router := newTokenLoginSetup(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/token?t=notarealtoken", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for invalid token, got %d", resp.Code)
+	}
+}
+
+func TestTokenLoginRejectsMissingToken(t *testing.T) {
+	_, router := newTokenLoginSetup(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/token", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for missing token, got %d", resp.Code)
+	}
+}
+
+func TestTokenLoginRejectsAlreadyUsedToken(t *testing.T) {
+	q, router := newTokenLoginSetup(t)
+
+	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "token-login-used-" + time.Now().Format("150405000") + "@example.com",
+		Name:  "Token Login Used",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	rawToken, err := share.NewToken()
+	if err != nil {
+		t.Fatalf("new token: %v", err)
+	}
+	lt, err := q.CreateLoginToken(context.Background(), user.ID, share.HashToken(rawToken))
+	if err != nil {
+		t.Fatalf("create login token: %v", err)
+	}
+	if err := q.MarkLoginTokenUsed(context.Background(), lt.ID); err != nil {
+		t.Fatalf("mark token used: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/token?t="+rawToken, nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for already-used token, got %d", resp.Code)
 	}
 }

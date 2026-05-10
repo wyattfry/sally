@@ -24,6 +24,9 @@ set name       = $2,
 where id = $1
 returning *;
 
+-- name: UpdateSchedulePosition :exec
+update schedules set position = $2, updated_at = now() where id = $1;
+
 -- name: DeleteSchedule :exec
 delete from schedules
 where id = $1;

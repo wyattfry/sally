@@ -463,7 +463,7 @@ button,
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   overflow: hidden;
   padding: 0;
-  width: min(700px, 92vw);
+  width: min(860px, 94vw);
   max-height: 82vh;
 }
 
@@ -475,6 +475,11 @@ button,
   display: flex;
   flex-direction: column;
   max-height: 82vh;
+  overflow: hidden;
+}
+
+.item-detail-slot {
+  display: contents;
 }
 
 .item-detail-modal-header {
@@ -482,7 +487,7 @@ button,
   border-bottom: 1px solid var(--c-border);
   display: flex;
   justify-content: space-between;
-  padding: 18px 24px;
+  padding: 18px 32px;
   flex-shrink: 0;
 }
 
@@ -508,7 +513,7 @@ button,
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 24px;
+  padding: 28px 32px;
 }
 
 .item-detail-thumb {
@@ -543,7 +548,7 @@ button,
   border-top: 1px solid var(--c-border);
   display: flex;
   justify-content: flex-end;
-  padding: 14px 24px;
+  padding: 14px 32px;
   flex-shrink: 0;
 }
 
@@ -1936,4 +1941,10 @@ details.schedule-section table {
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.sched-reorder-name {
+  flex: 1;
+  font-size: 0.9rem;
+  padding: 4px 6px;
 }

@@ -107,3 +107,18 @@ func (a app) deleteSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Redirect(w, r, "/projects/"+projectID, http.StatusSeeOther)
 }
+
+func (a app) reorderSchedules(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	if _, _, ok := a.loadUserProject(w, r, projectID); !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+	for i, id := range r.Form["ids"] {
+		_ = a.queries.UpdateSchedulePosition(r.Context(), id, int32(i+1))
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

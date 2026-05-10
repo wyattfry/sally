@@ -268,6 +268,65 @@ func TestMemberCannotDeleteProject(t *testing.T) {
 	}
 }
 
+func TestSharedProjectListShowsOwnerDisplayName(t *testing.T) {
+	ownerEmail := "member-owner-displayname@example.com"
+	q, _ := newMemberTestRouter(t, ownerEmail)
+
+	owner, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: ownerEmail,
+		Name:  "Wyatt Owner",
+	})
+	if err != nil {
+		t.Fatalf("create owner: %v", err)
+	}
+	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
+		OwnerUserID: owner.ID,
+		Name:        "Owner Name Test Project " + time.Now().Format("150405.000000"),
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	invitee, err := q.CreateUser(context.Background(), queries.CreateUserParams{
+		Email: "member-invitee-displayname@example.com",
+		Name:  "Invitee DisplayName",
+	})
+	if err != nil {
+		t.Fatalf("create invitee: %v", err)
+	}
+	if err := q.AddProjectMember(context.Background(), queries.AddProjectMemberParams{
+		ProjectID:       project.ID,
+		UserID:          invitee.ID,
+		InvitedByUserID: owner.ID,
+	}); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+
+	databaseURL := os.Getenv("DATABASE_URL")
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	inviteeRouter := http.NewServeMux()
+	RegisterRoutes(inviteeRouter, Deps{
+		Queries:      q,
+		DevUserEmail: invitee.Email,
+		DevUserName:  invitee.Name,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/projects", nil)
+	resp := httptest.NewRecorder()
+	inviteeRouter.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.Code)
+	}
+	if !strings.Contains(resp.Body.String(), owner.Name) {
+		t.Errorf("expected owner display name %q on shared project card, got body:\n%s", owner.Name, resp.Body.String())
+	}
+}
+
 func TestSharedProjectsAppearsOnProjectsList(t *testing.T) {
 	ownerEmail := "member-owner-list@example.com"
 	q, _ := newMemberTestRouter(t, ownerEmail)
