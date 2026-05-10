@@ -29,11 +29,12 @@ type PagePayload struct {
 	URL            string            `json:"url"`
 	VisibleText    string            `json:"visibleText"`
 	MainImageURL   string            `json:"mainImageUrl,omitempty"`
+	AllImageURLs   []string          `json:"allImageUrls,omitempty"`
 	StructuredData []json.RawMessage `json:"structuredData"`
 	PDFLinks       []string          `json:"pdfLinks"`
 	// PDFText is populated server-side by fetching and parsing PDFLinks.
 	// It is never sent by the client.
-	PDFText        string            `json:"-"`
+	PDFText string `json:"-"`
 }
 
 type ProjectContext struct {
@@ -88,6 +89,7 @@ type Proposal struct {
 	SourceURL             string               `json:"sourceUrl"`
 	SourceTitle           string               `json:"sourceTitle"`
 	SourceImageURL        string               `json:"sourceImageUrl,omitempty"`
+	SourceImageURLs       []string             `json:"sourceImageUrls,omitempty"`
 	SourcePDFLinks        []string             `json:"sourcePdfLinks"`
 	CustomFields          map[string]string    `json:"customFields,omitempty"`
 }

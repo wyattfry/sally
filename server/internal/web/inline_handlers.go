@@ -58,14 +58,15 @@ func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
 
 	if key == "zone" {
 		_, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
-			ID:             item.ID,
-			Data:           item.Data,
-			Zone:           value,
-			SourceUrl:      item.SourceUrl,
-			SourceTitle:    item.SourceTitle,
-			SourceImageUrl: item.SourceImageUrl,
-			SourcePdfLinks: item.SourcePdfLinks,
-			Position:       item.Position,
+			ID:              item.ID,
+			Data:            item.Data,
+			Zone:            value,
+			SourceUrl:       item.SourceUrl,
+			SourceTitle:     item.SourceTitle,
+			SourceImageUrl:  item.SourceImageUrl,
+			SourceImageUrls: item.SourceImageUrls,
+			SourcePdfLinks:  item.SourcePdfLinks,
+			Position:        item.Position,
 		})
 		if err != nil {
 			http.Error(w, "could not update item", http.StatusInternalServerError)
@@ -83,14 +84,15 @@ func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
-			ID:             item.ID,
-			Data:           dataJSON,
-			Zone:           item.Zone,
-			SourceUrl:      item.SourceUrl,
-			SourceTitle:    item.SourceTitle,
-			SourceImageUrl: item.SourceImageUrl,
-			SourcePdfLinks: item.SourcePdfLinks,
-			Position:       item.Position,
+			ID:              item.ID,
+			Data:            dataJSON,
+			Zone:            item.Zone,
+			SourceUrl:       item.SourceUrl,
+			SourceTitle:     item.SourceTitle,
+			SourceImageUrl:  item.SourceImageUrl,
+			SourceImageUrls: item.SourceImageUrls,
+			SourcePdfLinks:  item.SourcePdfLinks,
+			Position:        item.Position,
 		})
 		if err != nil {
 			http.Error(w, "could not update item", http.StatusInternalServerError)
@@ -462,13 +464,13 @@ func writeItemRow(w io.Writer, projectID, scheduleID string, item queries.Schedu
 	}
 	dm["zone"] = item.Zone
 
-	thumbUploadURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/thumbnail", projectID, scheduleID, item.ID)
+	thumbPickerURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image-picker", projectID, scheduleID, item.ID)
 	moveURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/move", projectID, scheduleID, item.ID)
 	deleteURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/delete", projectID, scheduleID, item.ID)
 	e := html.EscapeString
 
 	fmt.Fprintf(w, `<tr class="item-row">`)
-	writeItemThumbCell(w, item.ID, item.SourceImageUrl, thumbUploadURL)
+	writeItemThumbCell(w, thumbPickerURL, item.ID, item.SourceImageUrl)
 
 	for _, col := range columns {
 		cellEditURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/cells/%s/edit",

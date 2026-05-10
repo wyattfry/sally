@@ -20,22 +20,24 @@ insert into schedule_items (
     source_url,
     source_title,
     source_image_url,
+    source_image_urls,
     source_pdf_links,
     position
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8)
-returning id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
 `
 
 type CreateScheduleItemParams struct {
-	ScheduleID     string          `json:"schedule_id"`
-	Data           json.RawMessage `json:"data"`
-	Zone           string          `json:"zone"`
-	SourceUrl      string          `json:"source_url"`
-	SourceTitle    string          `json:"source_title"`
-	SourceImageUrl string          `json:"source_image_url"`
-	SourcePdfLinks []string        `json:"source_pdf_links"`
-	Position       int32           `json:"position"`
+	ScheduleID      string          `json:"schedule_id"`
+	Data            json.RawMessage `json:"data"`
+	Zone            string          `json:"zone"`
+	SourceUrl       string          `json:"source_url"`
+	SourceTitle     string          `json:"source_title"`
+	SourceImageUrl  string          `json:"source_image_url"`
+	SourceImageUrls []string        `json:"source_image_urls"`
+	SourcePdfLinks  []string        `json:"source_pdf_links"`
+	Position        int32           `json:"position"`
 }
 
 func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItemParams) (ScheduleItem, error) {
@@ -46,6 +48,7 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 		arg.SourceUrl,
 		arg.SourceTitle,
 		arg.SourceImageUrl,
+		pq.Array(arg.SourceImageUrls),
 		pq.Array(arg.SourcePdfLinks),
 		arg.Position,
 	)
@@ -56,6 +59,7 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
+		pq.Array(&i.SourceImageUrls),
 		pq.Array(&i.SourcePdfLinks),
 		&i.Position,
 		&i.CreatedAt,
@@ -86,7 +90,7 @@ func (q *Queries) DeleteScheduleItem(ctx context.Context, id string) error {
 }
 
 const getScheduleItem = `-- name: GetScheduleItem :one
-select id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
+select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
 from schedule_items
 where id = $1
 `
@@ -100,6 +104,7 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
+		pq.Array(&i.SourceImageUrls),
 		pq.Array(&i.SourcePdfLinks),
 		&i.Position,
 		&i.CreatedAt,
@@ -111,7 +116,7 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 }
 
 const listScheduleItems = `-- name: ListScheduleItems :many
-select id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
+select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
 from schedule_items
 where schedule_id = $1
 order by zone asc, position asc, created_at asc
@@ -132,6 +137,7 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 			&i.SourceUrl,
 			&i.SourceTitle,
 			&i.SourceImageUrl,
+			pq.Array(&i.SourceImageUrls),
 			pq.Array(&i.SourcePdfLinks),
 			&i.Position,
 			&i.CreatedAt,
@@ -154,27 +160,29 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 
 const updateScheduleItem = `-- name: UpdateScheduleItem :one
 update schedule_items
-set data             = $2,
-    zone             = $3,
-    source_url       = $4,
-    source_title     = $5,
-    source_image_url = $6,
-    source_pdf_links = $7,
-    position         = $8,
-    updated_at       = now()
+set data              = $2,
+    zone              = $3,
+    source_url        = $4,
+    source_title      = $5,
+    source_image_url  = $6,
+    source_image_urls = $7,
+    source_pdf_links  = $8,
+    position          = $9,
+    updated_at        = now()
 where id = $1
-returning id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, zone, data
+returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
 `
 
 type UpdateScheduleItemParams struct {
-	ID             string          `json:"id"`
-	Data           json.RawMessage `json:"data"`
-	Zone           string          `json:"zone"`
-	SourceUrl      string          `json:"source_url"`
-	SourceTitle    string          `json:"source_title"`
-	SourceImageUrl string          `json:"source_image_url"`
-	SourcePdfLinks []string        `json:"source_pdf_links"`
-	Position       int32           `json:"position"`
+	ID              string          `json:"id"`
+	Data            json.RawMessage `json:"data"`
+	Zone            string          `json:"zone"`
+	SourceUrl       string          `json:"source_url"`
+	SourceTitle     string          `json:"source_title"`
+	SourceImageUrl  string          `json:"source_image_url"`
+	SourceImageUrls []string        `json:"source_image_urls"`
+	SourcePdfLinks  []string        `json:"source_pdf_links"`
+	Position        int32           `json:"position"`
 }
 
 func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItemParams) (ScheduleItem, error) {
@@ -185,6 +193,7 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 		arg.SourceUrl,
 		arg.SourceTitle,
 		arg.SourceImageUrl,
+		pq.Array(arg.SourceImageUrls),
 		pq.Array(arg.SourcePdfLinks),
 		arg.Position,
 	)
@@ -195,6 +204,7 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
+		pq.Array(&i.SourceImageUrls),
 		pq.Array(&i.SourcePdfLinks),
 		&i.Position,
 		&i.CreatedAt,

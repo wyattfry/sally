@@ -86,7 +86,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [panel]);
 
-  async function refreshContext() {
+  async function refreshContext(): Promise<{ schedules: Schedule[]; activeContext: ActiveContext | null; columns: ScheduleColumn[] }> {
     try {
       const [fetchedProjects, storedContext] = await Promise.all([
         listMothershipProjects(),
@@ -99,7 +99,7 @@ export default function App() {
         setSchedules([]);
         setColumns([]);
         setActiveContext(null);
-        return;
+        return { schedules: [], activeContext: null, columns: [] };
       }
 
       const fetchedSchedules = await listMothershipSchedules(project.id);
@@ -111,7 +111,7 @@ export default function App() {
       if (!schedule) {
         setColumns([]);
         setActiveContext({ projectId: project.id, scheduleId: "" });
-        return;
+        return { schedules: fetchedSchedules, activeContext: { projectId: project.id, scheduleId: "" }, columns: [] };
       }
 
       const [fetchedColumns] = await Promise.all([
@@ -122,11 +122,13 @@ export default function App() {
       const context = { projectId: project.id, scheduleId: schedule.id };
       setActiveContext(context);
       await saveActiveContext(context);
+      return { schedules: fetchedSchedules, activeContext: context, columns: fetchedColumns };
     } catch {
       setProjects([]);
       setSchedules([]);
       setColumns([]);
       setActiveContext(null);
+      return { schedules: [], activeContext: null, columns: [] };
     }
   }
 
@@ -143,85 +145,92 @@ export default function App() {
       return;
     }
     setPanel({ kind: "thinking", tokenCount: 0 });
-    refreshContext();
-    window.setTimeout(async () => {
-      const captured = capturePage(document, window.location);
-      const knownScheduleNames = [
-        ...SUGGESTED_SCHEDULE_NAMES,
-        ...schedules.map((s) => s.name).filter((n) => !SUGGESTED_SCHEDULE_NAMES.includes(n))
-      ];
-      try {
-        const extracted = await extractScheduleItem({
-          capturedPage: captured,
-          knownCategories: [],
-          knownScheduleNames,
-          columns,
-          scheduleId: activeContext?.scheduleId,
-          onProgress: (tokenCount) => {
-            setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
-          }
-        });
-        const { suggestedScheduleName } = extracted;
-        let { item } = extracted;
 
-        // Find existing schedule matching the LLM suggestion
-        const matchingSchedule = suggestedScheduleName
-          ? schedules.find((s) => s.name.toLowerCase() === suggestedScheduleName.trim().toLowerCase())
-          : undefined;
+    // Refresh schedules in parallel with a brief render-delay so "thinking" paints first.
+    // Await fresh data to avoid stale closure state when matching the LLM suggestion.
+    const [fresh] = await Promise.all([
+      refreshContext(),
+      new Promise<void>((resolve) => setTimeout(resolve, 250)),
+    ]);
+    const freshSchedules = fresh.schedules;
+    const freshContext = fresh.activeContext ?? activeContext;
 
-        // Switch to the matched schedule if it differs from the current one
-        if (matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId) {
-          try {
-            const fetchedColumns = await listMothershipScheduleColumns(matchingSchedule.id);
-            setColumns(fetchedColumns);
-          } catch { /* non-fatal */ }
-          const newContext = { ...activeContext!, scheduleId: matchingSchedule.id };
-          setActiveContext(newContext);
-          await saveActiveContext(newContext);
+    const captured = capturePage(document, window.location);
+    const knownScheduleNames = [
+      ...SUGGESTED_SCHEDULE_NAMES,
+      ...freshSchedules.map((s) => s.name).filter((n) => !SUGGESTED_SCHEDULE_NAMES.includes(n))
+    ];
+    try {
+      const extracted = await extractScheduleItem({
+        capturedPage: captured,
+        knownCategories: [],
+        knownScheduleNames,
+        columns: fresh.columns,
+        scheduleId: freshContext?.scheduleId,
+        onProgress: (tokenCount) => {
+          setPanel((prev) => prev.kind === "thinking" ? { kind: "thinking", tokenCount } : prev);
         }
+      });
+      const { suggestedScheduleName } = extracted;
+      let { item } = extracted;
 
-        // Fetch the real next code for whichever schedule we landed on.
-        // Always re-fetch when switching schedules: the extraction server returned
-        // nextCode for the old schedule, not the matched one.
-        const targetScheduleId = matchingSchedule?.id ?? activeContext?.scheduleId;
-        const switchingSchedule = Boolean(matchingSchedule && matchingSchedule.id !== activeContext?.scheduleId);
-        if ((!item.data.code || switchingSchedule) && targetScheduleId) {
-          try {
-            const nextCode = await getMothershipScheduleNextCode(targetScheduleId);
-            item = { ...item, data: { ...item.data, code: nextCode } };
-          } catch {
-            // Only overwrite if there's still no code at all
-            if (!item.data.code) {
-              const name = matchingSchedule?.name
-                || schedules.find(s => s.id === targetScheduleId)?.name
-                || suggestedScheduleName;
-              if (name) item = { ...item, data: { ...item.data, code: codePrefix(name) + "-1" } };
-            }
-          }
-        }
+      // Find existing schedule matching the LLM suggestion
+      const matchingSchedule = suggestedScheduleName
+        ? freshSchedules.find((s) => s.name.toLowerCase() === suggestedScheduleName.trim().toLowerCase())
+        : undefined;
 
-        setZones(extracted.knownZones);
-        setPanel({
-          kind: "review",
-          draft: item,
-          suggestedNewScheduleName:
-            suggestedScheduleName && !matchingSchedule ? suggestedScheduleName : undefined
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Could not extract item.";
-        if (shouldAllowMockFallback() && shouldFallbackToMock(error)) {
-          try {
-            const item = mockExtractScheduleItem(captured);
-            setPanel({ kind: "review", draft: item });
-            return;
-          } catch {
-            // fall through to visible error state
-          }
-        }
-
-        setPanel({ kind: "error", message });
+      // Switch to the matched schedule if it differs from the current one
+      if (matchingSchedule && matchingSchedule.id !== freshContext?.scheduleId) {
+        try {
+          const fetchedColumns = await listMothershipScheduleColumns(matchingSchedule.id);
+          setColumns(fetchedColumns);
+        } catch { /* non-fatal */ }
+        const newContext = { ...freshContext!, scheduleId: matchingSchedule.id };
+        setActiveContext(newContext);
+        await saveActiveContext(newContext);
       }
-    }, 250);
+
+      // Fetch the real next code for whichever schedule we landed on.
+      // Always re-fetch when switching schedules: the extraction server returned
+      // nextCode for the old schedule, not the matched one.
+      const targetScheduleId = matchingSchedule?.id ?? freshContext?.scheduleId;
+      const switchingSchedule = Boolean(matchingSchedule && matchingSchedule.id !== freshContext?.scheduleId);
+      if ((!item.data.code || switchingSchedule) && targetScheduleId) {
+        try {
+          const nextCode = await getMothershipScheduleNextCode(targetScheduleId);
+          item = { ...item, data: { ...item.data, code: nextCode } };
+        } catch {
+          // Only overwrite if there's still no code at all
+          if (!item.data.code) {
+            const name = matchingSchedule?.name
+              || freshSchedules.find(s => s.id === targetScheduleId)?.name
+              || suggestedScheduleName;
+            if (name) item = { ...item, data: { ...item.data, code: codePrefix(name) + "-1" } };
+          }
+        }
+      }
+
+      setZones(extracted.knownZones);
+      setPanel({
+        kind: "review",
+        draft: item,
+        suggestedNewScheduleName:
+          suggestedScheduleName && !matchingSchedule ? suggestedScheduleName : undefined
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not extract item.";
+      if (shouldAllowMockFallback() && shouldFallbackToMock(error)) {
+        try {
+          const item = mockExtractScheduleItem(captured);
+          setPanel({ kind: "review", draft: item });
+          return;
+        } catch {
+          // fall through to visible error state
+        }
+      }
+
+      setPanel({ kind: "error", message });
+    }
   }
 
   async function handleAccept(item: ScheduleItem) {

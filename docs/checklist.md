@@ -46,36 +46,40 @@
 - [x] renaming a column requires a refresh to see update
 
 Bugs
-- [ ] item detail modal does not scroll
+- [x] "extracted inappropriate value for zone": project with schedule with 0 items, spec'd a product, Zone field extracted value: `</zone><parameter name="suggestedScheduleName">Electrical Fixture Schedule` — sanitizeZone() strips XML artifacts; schema description + prompt reinforcement added
+- [x] item detail modal does not scroll
 - [ ] "[current selected]": this is still happening! investigate again. i had a project with a Windows Schedule with items. I went to a product page for a window, spec'd it, sallypanel wanted to make a new schedule called "Window Schedule [current selected]". 
 - [ ] "stale code prefix": project with a schedule with insulation items. spec'd a product page for a window, and it wanted to add it to the insulation schedule (the llm extraction should have decided that the item did not logically fit with the items in the insulation schedule). i opted to add it to a new schedule named 'Window Schedule', the fields in sallypanel correctly updated back to the default fields (no R-Value), but the CODE kept the "I-" prefix from the previous table, when it should have determined a new Code prefix and number. Investigate.
 - [ ] "empty custom fields": project with windows schedule with items, i added custom columns: rough opening, overall jamb, swing. i spec'd a window product page, the custom fields were empty. the product page has a Specifications collapsable section with the desired data for the custom fields, check whether the specs were sent to the LLM, if so, investigate why the custom fields came back empty. product page: https://www.homedepot.com/p/Hy-Lite-47-5-in-x-11-5-in-Manchester-Silkscreened-Decorative-Glass-White-New-Construction-Frame-Window-DF4711MCSSWHV1500/331463170
-- [x] "extracted inappropriate value for zone": project with schedule with 0 items, spec'd a product, Zone field extracted value: `</zone><parameter name="suggestedScheduleName">Electrical Fixture Schedule` — sanitizeZone() strips XML artifacts; schema description + prompt reinforcement added
 - [ ] "HTTPS only error": got raw error in extension: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Only HTTPS URLs are supported."},"request_id":"req_011CamiCiV7uMRZHD25TAN8j"}`
 - [ ] "Download failure error": `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Unable to download the file. Please verify the URL and try again."},"request_id":"req_011Camj7gwaZSXvzqSjAht7C"}`
 - [ ] "robots.txt error": extension error: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"This URL is disallowed by the website's robots.txt file."},"request_id":"req_011CamkYhD1i1sJRXQ5rp8zt"}`
 - [ ] project with appliance and paint schedules, spec'd paint, wanted to put it in the appliance schedule, wtf??
 
 Critical Path
-- [ ] re-order schedules option in the Actions menu, modal that looks similar to the Edit Columns modal (up / down buttons, but no rename or delete. ideally don't need a page reload to see updates)
+- [x] add an About page that epxlains what problem this app solves, how to use it, how to install it, FAQs, etc
+- [x] re-order schedules option in the Actions menu, modal that looks similar to the Edit Columns modal (up / down buttons, but no rename or delete. ideally don't need a page reload to see updates)
+- [ ] sallypanel: if new schedule, give user a way to add/remove/edit the columns, if not every time
 - [ ] notes to support images, png / svg / copy-paste from CAD?
 - [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
 - [ ] add link to mothership in chrome extension description
-- [ ] add an About page that epxlains what problem this app solves, how to use it, how to install it, FAQs, etc
 - [ ] notes to support multiple "rows" or inner-sections?
-- [ ] user account page, dummy billing, stripe?
 - [ ] a feature to delete all of a users data / opt-out
-- [ ] sallypanel: if new schedule, give user a way to add/remove/edit the columns, if not every time
+- [ ] user account page, dummy billing, stripe?
 
 Nice To Have
 - [x] LLM: scrape PDF content
 - [x] LLM: few-shot examples
-- [ ] admin: create test user, magic-link
+- [x] update the homepage content to reflect the latest look and function of the site and ext
+- [x] admin: in the extraction calls table, add a request ID column, clicking will show you a detail page of that request, including sanitized request and repsonse, status, body, etc
+- [x] admin: create test user, magic-link
+- [ ] in sallypanel and mothership, capture all the product images and allow user to choose which one to use, or upload a new one
+- [ ] fix jupyter notebook json error in 'collect logs'
+
+- [ ] mothership: add hint text while editing a field on how to save and cancel
 - [ ] add Swagger: https://github.com/swaggo/swag
 - [ ] more detail while extraction is underway, show the streaming data? or show the fields but with some animation instead of text values?
-- [ ] in sallypanel and mothership, capture all the product images and allow user to choose which one to use, or upload a new one
 - [ ] move an item between schedules
-- [ ] 
 - [ ] don't allow schedules with duplicate names
 - [ ] add a 'report bug / feedback' button on the mothership, send messages that arevisible in the admin portal
 - [ ] admin: use google user group?
@@ -83,8 +87,7 @@ Nice To Have
 - [ ] admin: paginate tables (users, extraction calls)
 - [ ] admin: line graphs dont seem to work. Use a library? D3.js?
 - [ ] chrome ext: easy way to toggle SPEC button visibility
-- [ ] show LLM / token usage, maybe by day? week? in user profile / settings / account page
-- [x] update the homepage content to reflect the latest look and function of the site and ext
+- [x] show LLM / token usage, maybe by day? week? in user profile / settings / account page
 - [ ] make the project detail page's project name, address, desc narrower, atm they fill the available width, which is awkwardly wide. And their background color shold be slightly different than the page to show the user the clickable / editable area
 - [ ] pressing Enter in any field in the SallyPanel should submit the form
 - [ ] in sallypanel, project selection might feel better as text with a 'select different project' button that brings up a modal or something? it doesn't feel right as a combo box
@@ -95,4 +98,3 @@ Nice To Have
 - [ ] would a 'duplicate an item' feature be useful?
 - [ ] how much to charge? how often? monthly or by use?
 - [ ] print view version of shared page?
-- [x] admin: in the extraction calls table, add a request ID column, clicking will show you a detail page of that request, including sanitized request and repsonse, status, body, etc

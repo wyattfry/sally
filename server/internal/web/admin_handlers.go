@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +18,33 @@ import (
 
 // requireAdmin checks admin access and returns false (already responded) if denied.
 func (a app) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		if a.db == nil || a.queries == nil {
+			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+			return false
+		}
+		raw := strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
+		if raw == "" {
+			http.Error(w, "invalid api token", http.StatusUnauthorized)
+			return false
+		}
+		apiToken, err := a.queries.GetAPITokenByHash(r.Context(), share.HashToken(raw))
+		if err != nil {
+			http.Error(w, "invalid api token", http.StatusUnauthorized)
+			return false
+		}
+		user, err := a.queries.GetUser(r.Context(), apiToken.UserID)
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return false
+		}
+		if a.oauthConfig != nil && (a.adminEmail == "" || user.Email != a.adminEmail) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return false
+		}
+		_ = a.queries.TouchAPITokenLastUsed(r.Context(), apiToken.ID)
+		return true
+	}
 	if a.oauthConfig != nil {
 		user, ok := a.requireUser(w, r)
 		if !ok {
@@ -181,6 +209,66 @@ func (a app) makeLoginToken(r *http.Request, userID string) (string, error) {
 	return requestBaseURL(r) + "/auth/token?t=" + token, nil
 }
 
+func (a app) adminAPITokens(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	tokens, err := a.queries.ListAPITokens(r.Context())
+	if err != nil {
+		http.Error(w, "could not load tokens: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tokens == nil {
+		tokens = []dbgen.APIToken{}
+	}
+	render(w, adminAPITokensPage{
+		Kind:     "admin-api-tokens",
+		Title:    "Admin — API Tokens",
+		Tokens:   tokens,
+		NewToken: r.URL.Query().Get("new_token"),
+		NewLabel: r.URL.Query().Get("for"),
+	})
+}
+
+func (a app) adminCreateAPIToken(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form", http.StatusBadRequest)
+		return
+	}
+	label := strings.TrimSpace(r.Form.Get("label"))
+
+	user, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
+
+	raw, err := share.NewToken()
+	if err != nil {
+		http.Error(w, "could not generate token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, err := a.queries.CreateAPIToken(r.Context(), user.ID, label, share.HashToken(raw)); err != nil {
+		http.Error(w, "could not create token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/api-tokens?new_token="+raw+"&for="+label, http.StatusSeeOther)
+}
+
+func (a app) adminRevokeAPIToken(w http.ResponseWriter, r *http.Request) {
+	if !a.requireAdmin(w, r) {
+		return
+	}
+	if err := a.queries.DeleteAPIToken(r.Context(), r.PathValue("tokenID")); err != nil {
+		http.Error(w, "could not revoke token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/admin/api-tokens", http.StatusSeeOther)
+}
+
 func (a app) adminExtractions(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {
 		return
@@ -258,9 +346,9 @@ func (a app) adminExtractionLogDetailJSON(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(log)
 }
 
-func mustJSON(v any) string {
+func mustJSON(v any) template.JS {
 	b, _ := json.Marshal(v)
-	return string(b)
+	return template.JS(b)
 }
 
 // dirSize returns the total size in bytes of all files under dir.

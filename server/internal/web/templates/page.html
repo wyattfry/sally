@@ -454,25 +454,23 @@
             {{range $g.Items}}
             {{$item := .}}
             <tr class="item-row" id="item-row-{{$item.ID}}">
-              <td class="item-thumb-cell upload-target" id="item-thumb-{{$item.ID}}"
-                  onclick="this.querySelector('input[type=file]').click()" title="Click to upload an image">
-                {{if $item.SourceImageUrl}}
-                <img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">
-                {{else}}
-                <div class="item-thumb-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <path d="m21 15-5-5L5 21"/>
-                  </svg>
-                </div>
-                {{end}}
-                <div class="upload-overlay"><span>↑</span></div>
-                <form hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/thumbnail"
-                      hx-target="#item-thumb-{{$item.ID}}" hx-swap="outerHTML" hx-encoding="multipart/form-data">
-                  <input type="file" name="source_image_file" accept="image/*" style="display:none"
-                         onchange="this.closest('form').requestSubmit()">
-                </form>
+              <td class="item-thumb-cell upload-target" id="item-thumb-{{$item.ID}}" title="Click to change image">
+                <button type="button" class="item-thumb-btn"
+                    hx-get="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/image-picker"
+                    hx-target="body" hx-swap="beforeend">
+                  {{if $item.SourceImageUrl}}
+                  <img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">
+                  {{else}}
+                  <div class="item-thumb-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <path d="m21 15-5-5L5 21"/>
+                    </svg>
+                  </div>
+                  {{end}}
+                  <div class="upload-overlay"><span>⊕</span></div>
+                </button>
               </td>
               {{range $sw.Columns}}
               {{$cellEditURL := printf "/projects/%s/schedules/%s/items/%s/cells/%s/edit" $.Project.ID $sw.Schedule.ID $item.ID .Key}}
@@ -486,7 +484,7 @@
                   hx-get="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/detail"
                   hx-target="#item-detail-body-{{$sw.Schedule.ID}}"
                   hx-swap="innerHTML"
-                  hx-on::after-request="document.getElementById('item-detail-{{$sw.Schedule.ID}}').showModal()">⊞</button>
+                  hx-on::after-request="document.getElementById('item-detail-{{$sw.Schedule.ID}}').showModal()">Details</button>
                 <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/move" class="move-form">
                   <input type="hidden" name="direction" value="up">
                   <button type="submit" class="move-btn" title="Move up">↑</button>
@@ -752,6 +750,10 @@
       <div class="admin-stat-label">Users</div>
       {{if .Counts.NewUsers7d}}<div class="admin-stat-sub">+{{.Counts.NewUsers7d}} this week</div>{{end}}
     </a>
+    <a class="admin-stat-card admin-stat-card-link" href="/admin/api-tokens">
+      <div class="admin-stat-value">🔑</div>
+      <div class="admin-stat-label">API Tokens</div>
+    </a>
     <div class="admin-stat-card">
       <div class="admin-stat-value">{{.Counts.Projects}}</div>
       <div class="admin-stat-label">Projects</div>
@@ -975,6 +977,53 @@
             </form>
           </td>
         </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{{else if eq .Kind "admin-api-tokens"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / API Tokens</div>
+  <h1>API Tokens</h1>
+</div>
+{{if .NewToken}}
+<div class="admin-login-link-banner">
+  <strong>Token{{if .NewLabel}} "{{.NewLabel}}"{{end}} created — copy it now, it won't be shown again:</strong>
+  <div class="admin-login-link-row">
+    <input class="admin-login-link-input" type="text" value="{{.NewToken}}" readonly onclick="this.select()">
+    <button class="button button--small" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">Copy</button>
+  </div>
+  <p class="admin-token-hint">Use as: <code>Authorization: Bearer {{.NewToken}}</code></p>
+</div>
+{{end}}
+<section class="admin-section">
+  <h2 class="admin-section-title">Create token</h2>
+  <form method="post" action="/admin/api-tokens" class="admin-create-user-form">
+    <input type="text" name="label" placeholder="Label (e.g. local-debug)" class="collaborators-email-input">
+    <button type="submit" class="button button--small">Create token</button>
+  </form>
+</section>
+<section class="admin-section">
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>Label</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+      <tbody>
+        {{range .Tokens}}
+        <tr>
+          <td>{{if .Label}}{{.Label}}{{else}}<em class="admin-dim">—</em>{{end}}</td>
+          <td class="admin-mono">{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+          <td class="admin-mono">{{if .LastUsedAt.Valid}}{{.LastUsedAt.Time.Format "2006-01-02 15:04"}}{{else}}—{{end}}</td>
+          <td>
+            <form method="post" action="/admin/api-tokens/{{.ID}}/revoke" onsubmit="return confirm('Revoke this token?')">
+              <button type="submit" class="button button--small button--danger">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+        {{if not .Tokens}}
+        <tr><td colspan="4" class="admin-dim" style="text-align:center;padding:16px">No tokens yet.</td></tr>
         {{end}}
       </tbody>
     </table>

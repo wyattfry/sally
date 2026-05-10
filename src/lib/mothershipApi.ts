@@ -65,6 +65,7 @@ export async function saveMothershipScheduleItem(
       sourceUrl: item.sourceUrl,
       sourceTitle: item.sourceTitle,
       sourceImageUrl: item.sourceImageUrl ?? "",
+      sourceImageUrls: item.sourceImageUrls ?? [],
       sourcePdfLinks: item.sourcePdfLinks
     })
   });
@@ -85,6 +86,14 @@ async function getSessionToken(): Promise<string | null> {
       }
     );
   });
+}
+
+function extractErrorMessage(text: string): string {
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed.error === "string") return parsed.error;
+  } catch { /* use raw text */ }
+  return text;
 }
 
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
@@ -116,8 +125,8 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
     });
 
     if (!response.ok) {
-      const message = response.text?.trim() || "Mother Ship request failed.";
-      throw new Error(message);
+      const text = response.text?.trim() || "";
+      throw new Error(extractErrorMessage(text) || "Mother Ship request failed.");
     }
     return JSON.parse(response.text) as T;
   }
@@ -125,8 +134,8 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   // Fallback for non-extension environment
   const response = await fetch(url, init);
   if (!response.ok) {
-    const message = (await response.text()).trim() || "Mother Ship request failed.";
-    throw new Error(message);
+    const text = (await response.text()).trim();
+    throw new Error(extractErrorMessage(text) || "Mother Ship request failed.");
   }
   return response.json() as Promise<T>;
 }

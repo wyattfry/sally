@@ -44,7 +44,7 @@ export function SallyPanel({
   onCancelAutoSchedule,
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
-  const [modal, setModal] = useState<null | "project" | "schedule" | "zone">(null);
+  const [modal, setModal] = useState<null | "project" | "schedule" | "zone" | "image">(null);
   const [modalInputValue, setModalInputValue] = useState("");
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalAutoTriggered, setModalAutoTriggered] = useState(false);
@@ -109,42 +109,70 @@ export function SallyPanel({
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
           <div className="panel-modal" role="dialog" aria-modal="true">
-            <p className="panel-modal-title">
-              {modal === "project" ? "New project" : modal === "schedule" ? "New schedule" : "New zone"}
-            </p>
-            {modal === "schedule" && modalAutoTriggered && (
-              <p className="panel-modal-hint">
-                This item doesn't seem to belong in any of your existing schedules. Create a new one?
-              </p>
+            {modal === "image" ? (
+              <>
+                <p className="panel-modal-title">Choose image</p>
+                <div className="image-picker-grid">
+                  {(draft?.sourceImageUrls ?? []).map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      className={`image-picker-thumb${url === draft?.sourceImageUrl ? " selected" : ""}`}
+                      onClick={() => {
+                        onChange({ ...draft!, sourceImageUrl: url });
+                        setModal(null);
+                      }}
+                    >
+                      <img src={url} alt="" />
+                    </button>
+                  ))}
+                </div>
+                <div className="panel-modal-actions">
+                  <button className="action-button secondary" type="button" onClick={() => setModal(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="panel-modal-title">
+                  {modal === "project" ? "New project" : modal === "schedule" ? "New schedule" : "New zone"}
+                </p>
+                {modal === "schedule" && modalAutoTriggered && (
+                  <p className="panel-modal-hint">
+                    This item doesn't seem to belong in any of your existing schedules. Create a new one?
+                  </p>
+                )}
+                <div className="field">
+                  <label htmlFor="panel-modal-input">Name</label>
+                  <input
+                    id="panel-modal-input"
+                    ref={modalInputRef}
+                    value={modalInputValue}
+                    placeholder={modal === "project" ? "Project name" : "Schedule name"}
+                    onChange={(e) => { setModalInputValue(e.target.value); setModalError(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") submitModal();
+                      if (e.key === "Escape") closeModal();
+                    }}
+                  />
+                </div>
+                {modalError ? <p className="panel-modal-error">{modalError}</p> : null}
+                <div className="panel-modal-actions">
+                  <button className="action-button secondary" type="button" onClick={() => closeModal()}>
+                    Cancel
+                  </button>
+                  <button
+                    className="action-button primary"
+                    type="button"
+                    disabled={!modalInputValue.trim()}
+                    onClick={submitModal}
+                  >
+                    Create
+                  </button>
+                </div>
+              </>
             )}
-            <div className="field">
-              <label htmlFor="panel-modal-input">Name</label>
-              <input
-                id="panel-modal-input"
-                ref={modalInputRef}
-                value={modalInputValue}
-                placeholder={modal === "project" ? "Project name" : "Schedule name"}
-                onChange={(e) => { setModalInputValue(e.target.value); setModalError(null); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitModal();
-                  if (e.key === "Escape") closeModal();
-                }}
-              />
-            </div>
-            {modalError ? <p className="panel-modal-error">{modalError}</p> : null}
-            <div className="panel-modal-actions">
-              <button className="action-button secondary" type="button" onClick={() => closeModal()}>
-                Cancel
-              </button>
-              <button
-                className="action-button primary"
-                type="button"
-                disabled={!modalInputValue.trim()}
-                onClick={submitModal}
-              >
-                Create
-              </button>
-            </div>
           </div>
         </div>
       ) : null}
@@ -224,7 +252,18 @@ export function SallyPanel({
         ) : (
           <>
             {draft?.sourceImageUrl ? (
-              <img className="image-preview" src={draft.sourceImageUrl} alt="" />
+              <button
+                type="button"
+                className="image-preview-btn"
+                title={(draft.sourceImageUrls?.length ?? 0) > 1 ? "Click to choose image" : undefined}
+                onClick={() => { if ((draft.sourceImageUrls?.length ?? 0) > 1) setModal("image"); }}
+                style={(draft.sourceImageUrls?.length ?? 0) > 1 ? undefined : { cursor: "default" }}
+              >
+                <img className="image-preview" src={draft.sourceImageUrl} alt="" />
+                {(draft.sourceImageUrls?.length ?? 0) > 1 && (
+                  <span className="image-preview-count">{draft.sourceImageUrls!.length} photos</span>
+                )}
+              </button>
             ) : null}
 
             <div className="field">

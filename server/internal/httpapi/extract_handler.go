@@ -149,6 +149,18 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 		}
 		resp.NextCode = computedNextCode
 		resp.KnownZones = selectedZones
+		// Pass all captured image URLs through from the page payload.
+		if resp.Proposal != nil && len(req.Page.AllImageURLs) > 0 {
+			seen := make(map[string]bool)
+			var merged []string
+			for _, u := range req.Page.AllImageURLs {
+				if !seen[u] {
+					seen[u] = true
+					merged = append(merged, u)
+				}
+			}
+			resp.Proposal.SourceImageURLs = merged
+		}
 		data, _ := json.Marshal(resp)
 		sendEvent("done", data)
 	}

@@ -34,14 +34,15 @@ func (a app) createBlankScheduleItem(w http.ResponseWriter, r *http.Request) {
 	dataJSON, _ := json.Marshal(map[string]string{"code": code})
 
 	created, err := a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
-		ScheduleID:     scheduleID,
-		Data:           dataJSON,
-		Zone:           "",
-		SourceUrl:      "",
-		SourceTitle:    "",
-		SourceImageUrl: "",
-		SourcePdfLinks: []string{},
-		Position:       int32(len(existingItems) + 1),
+		ScheduleID:      scheduleID,
+		Data:            dataJSON,
+		Zone:            "",
+		SourceUrl:       "",
+		SourceTitle:     "",
+		SourceImageUrl:  "",
+		SourceImageUrls: []string{},
+		SourcePdfLinks:  []string{},
+		Position:        int32(len(existingItems) + 1),
 	})
 	if err != nil {
 		http.Error(w, "could not create item", http.StatusInternalServerError)
@@ -90,14 +91,15 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 
 	sourceImageUrl := strings.TrimSpace(r.Form.Get("source_image_url"))
 	created, err := a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
-		ScheduleID:     scheduleID,
-		Data:           dataJSON,
-		Zone:           strings.TrimSpace(r.Form.Get("col_zone")),
-		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
-		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
-		SourceImageUrl: sourceImageUrl,
-		SourcePdfLinks: splitLines(r.Form.Get("source_pdf_links")),
-		Position:       int32(len(existingItems) + 1),
+		ScheduleID:      scheduleID,
+		Data:            dataJSON,
+		Zone:            strings.TrimSpace(r.Form.Get("col_zone")),
+		SourceUrl:       strings.TrimSpace(r.Form.Get("source_url")),
+		SourceTitle:     strings.TrimSpace(r.Form.Get("source_title")),
+		SourceImageUrl:  sourceImageUrl,
+		SourceImageUrls: []string{},
+		SourcePdfLinks:  splitLines(r.Form.Get("source_pdf_links")),
+		Position:        int32(len(existingItems) + 1),
 	})
 	if err != nil {
 		http.Error(w, "could not create item", http.StatusInternalServerError)
@@ -115,14 +117,15 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			_, _ = a.queries.UpdateScheduleItem(ctx, queries.UpdateScheduleItemParams{
-				ID:             snap.ID,
-				Data:           snap.Data,
-				Zone:           snap.Zone,
-				SourceUrl:      snap.SourceUrl,
-				SourceTitle:    snap.SourceTitle,
-				SourceImageUrl: localURL,
-				SourcePdfLinks: snap.SourcePdfLinks,
-				Position:       snap.Position,
+				ID:              snap.ID,
+				Data:            snap.Data,
+				Zone:            snap.Zone,
+				SourceUrl:       snap.SourceUrl,
+				SourceTitle:     snap.SourceTitle,
+				SourceImageUrl:  localURL,
+				SourceImageUrls: snap.SourceImageUrls,
+				SourcePdfLinks:  snap.SourcePdfLinks,
+				Position:        snap.Position,
 			})
 		}()
 	}
@@ -184,14 +187,15 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
-		ID:             item.ID,
-		Data:           dataJSON,
-		Zone:           strings.TrimSpace(r.Form.Get("col_zone")),
-		SourceUrl:      strings.TrimSpace(r.Form.Get("source_url")),
-		SourceTitle:    strings.TrimSpace(r.Form.Get("source_title")),
-		SourceImageUrl: sourceImageURL,
-		SourcePdfLinks: splitLines(r.Form.Get("source_pdf_links")),
-		Position:       parseInt32(r.Form.Get("position"), item.Position),
+		ID:              item.ID,
+		Data:            dataJSON,
+		Zone:            strings.TrimSpace(r.Form.Get("col_zone")),
+		SourceUrl:       strings.TrimSpace(r.Form.Get("source_url")),
+		SourceTitle:     strings.TrimSpace(r.Form.Get("source_title")),
+		SourceImageUrl:  sourceImageURL,
+		SourceImageUrls: item.SourceImageUrls,
+		SourcePdfLinks:  splitLines(r.Form.Get("source_pdf_links")),
+		Position:        parseInt32(r.Form.Get("position"), item.Position),
 	})
 	if err != nil {
 		http.Error(w, "could not update item", http.StatusInternalServerError)
@@ -294,13 +298,173 @@ var knownDataFields = []struct{ key, label string }{
 	{"zone", "Zone"},
 }
 
+// showImagePickerDialog returns a fixed-position overlay div appended to <body>
+// via hx-swap="beforeend". Selecting an image posts to pickItemImage which
+// updates source_image_url, swaps the thumb cell inner content, then removes the overlay.
+func (a app) showImagePickerDialog(w http.ResponseWriter, r *http.Request) {
+	loaded, item, ok := a.loadProjectScheduleItem(w, r)
+	if !ok {
+		return
+	}
+
+	e := html.EscapeString
+	iid := e(item.ID)
+	overlayID := "image-picker-overlay-" + iid
+	pickURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/pick-image",
+		e(loaded.project.ID), e(loaded.schedule.ID), iid)
+	thumbID := "item-thumb-" + iid
+
+	var b strings.Builder
+	fmt.Fprintf(&b,
+		`<div id="%s" class="image-picker-overlay" onclick="if(event.target===this){this.remove()}">`,
+		overlayID)
+	b.WriteString(`<div class="image-picker-dialog-inner">`)
+	b.WriteString(`<div class="image-picker-dialog-header"><h3>Choose image</h3>`)
+	fmt.Fprintf(&b,
+		`<button type="button" class="modal-close" onclick="document.getElementById('%s').remove()">×</button>`,
+		overlayID)
+	b.WriteString(`</div>`)
+
+	if len(item.SourceImageUrls) > 0 {
+		b.WriteString(`<div class="image-picker-grid">`)
+		for _, u := range item.SourceImageUrls {
+			selected := ""
+			if u == item.SourceImageUrl {
+				selected = " selected"
+			}
+			fmt.Fprintf(&b,
+				`<button type="button" class="image-picker-thumb%s" hx-post="%s" hx-vals="{&quot;url&quot;:&quot;%s&quot;}" hx-target="#%s" hx-swap="innerHTML" hx-on::after-request="document.getElementById('%s').remove()"><img src="%s" alt=""></button>`,
+				selected,
+				e(pickURL),
+				e(u),
+				thumbID,
+				overlayID,
+				e(u))
+		}
+		b.WriteString(`</div>`)
+	}
+
+	fmt.Fprintf(&b,
+		`<form class="image-upload-form" hx-post="%s" hx-target="#%s" hx-swap="innerHTML" hx-encoding="multipart/form-data" hx-on::after-request="document.getElementById('%s').remove()"><label class="image-upload-label">Upload custom image<input type="file" name="source_image_file" accept="image/*" style="display:none" onchange="this.closest('form').requestSubmit()"></label></form>`,
+		e(pickURL), thumbID, overlayID)
+
+	b.WriteString(`</div></div>`)
+
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, b.String())
+}
+
+// pickItemImage handles image selection from the row picker dialog.
+// It updates source_image_url and returns the refreshed <td> thumb cell.
+func (a app) pickItemImage(w http.ResponseWriter, r *http.Request) {
+	loaded, item, ok := a.loadProjectScheduleItem(w, r)
+	if !ok {
+		return
+	}
+	var newURL string
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		if uploaded, err := saveUploadedFile(r, "source_image_file", a.uploadsDir); err != nil {
+			http.Error(w, "could not save image: "+err.Error(), http.StatusInternalServerError)
+			return
+		} else if uploaded != "" {
+			newURL = uploaded
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		newURL = strings.TrimSpace(r.FormValue("url"))
+	}
+	if newURL == "" {
+		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+
+	if _, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
+		ID:              item.ID,
+		Data:            item.Data,
+		Zone:            item.Zone,
+		SourceUrl:       item.SourceUrl,
+		SourceTitle:     item.SourceTitle,
+		SourceImageUrl:  newURL,
+		SourceImageUrls: item.SourceImageUrls,
+		SourcePdfLinks:  item.SourcePdfLinks,
+		Position:        item.Position,
+	}); err != nil {
+		http.Error(w, "could not update item", http.StatusInternalServerError)
+		return
+	}
+
+	pickerURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image-picker",
+		loaded.project.ID, loaded.schedule.ID, item.ID)
+	w.Header().Set("Content-Type", "text/html")
+	writeItemThumbInner(w, pickerURL, newURL)
+}
+
 func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 	loaded, item, ok := a.loadProjectScheduleItem(w, r)
 	if !ok {
 		return
 	}
 	columns, _ := a.queries.ListScheduleColumns(r.Context(), loaded.schedule.ID)
+	w.Header().Set("Content-Type", "text/html")
+	writeItemDetailFragment(w, loaded.project.ID, loaded.schedule.ID, item, columns)
+}
 
+func (a app) selectItemImage(w http.ResponseWriter, r *http.Request) {
+	loaded, item, ok := a.loadProjectScheduleItem(w, r)
+	if !ok {
+		return
+	}
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		if err2 := r.ParseForm(); err2 != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+	}
+
+	newURL := strings.TrimSpace(r.FormValue("url"))
+
+	// If a file was uploaded, save it and use that URL instead.
+	if uploaded, err := saveUploadedFile(r, "source_image_file", a.uploadsDir); err != nil {
+		http.Error(w, "could not save image: "+err.Error(), http.StatusInternalServerError)
+		return
+	} else if uploaded != "" {
+		newURL = uploaded
+	}
+
+	if newURL == "" {
+		http.Error(w, "url is required", http.StatusBadRequest)
+		return
+	}
+
+	updated, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
+		ID:              item.ID,
+		Data:            item.Data,
+		Zone:            item.Zone,
+		SourceUrl:       item.SourceUrl,
+		SourceTitle:     item.SourceTitle,
+		SourceImageUrl:  newURL,
+		SourceImageUrls: item.SourceImageUrls,
+		SourcePdfLinks:  item.SourcePdfLinks,
+		Position:        item.Position,
+	})
+	if err != nil {
+		http.Error(w, "could not update item", http.StatusInternalServerError)
+		return
+	}
+
+	columns, _ := a.queries.ListScheduleColumns(r.Context(), loaded.schedule.ID)
+	w.Header().Set("Content-Type", "text/html")
+	writeItemDetailFragment(w, loaded.project.ID, loaded.schedule.ID, updated, columns)
+}
+
+func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string, item queries.ScheduleItem, columns []queries.ScheduleColumn) {
 	var dm map[string]any
 	_ = json.Unmarshal(item.Data, &dm)
 	if dm == nil {
@@ -310,7 +474,6 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 		dm["zone"] = item.Zone
 	}
 
-	// Build set of keys covered by knownDataFields for custom-column detection.
 	knownKeys := make(map[string]bool, len(knownDataFields))
 	for _, f := range knownDataFields {
 		knownKeys[f.key] = true
@@ -319,9 +482,49 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<div class="item-detail-body">`)
 
-	// Thumbnail
-	if item.SourceImageUrl != "" {
-		fmt.Fprintf(&b, `<img class="item-detail-thumb" src="%s" alt="">`, html.EscapeString(item.SourceImageUrl))
+	// Image area: current image + picker strip if multiple images captured.
+	if item.SourceImageUrl != "" || len(item.SourceImageUrls) > 0 {
+		// The slot that holds this detail fragment in the template is
+		// id="item-detail-body-{scheduleID}" (see page.html).
+		detailSlotID := "item-detail-body-" + html.EscapeString(scheduleID)
+		imageURL := item.SourceImageUrl
+		if imageURL == "" && len(item.SourceImageUrls) > 0 {
+			imageURL = item.SourceImageUrls[0]
+		}
+		b.WriteString(`<div class="item-image-area">`)
+		if imageURL != "" {
+			fmt.Fprintf(&b, `<img class="item-detail-thumb" src="%s" alt="">`, html.EscapeString(imageURL))
+		}
+		if len(item.SourceImageUrls) > 1 {
+			imageEndpoint := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image",
+				html.EscapeString(projectID),
+				html.EscapeString(scheduleID),
+				html.EscapeString(item.ID))
+			b.WriteString(`<div class="image-picker-strip">`)
+			for _, u := range item.SourceImageUrls {
+				active := ""
+				if u == item.SourceImageUrl {
+					active = " active"
+				}
+				fmt.Fprintf(&b,
+					`<button type="button" class="picker-thumb%s" hx-post="%s" hx-target="#%s" hx-swap="innerHTML" hx-vals="{&quot;url&quot;:&quot;%s&quot;}"><img src="%s" alt=""></button>`,
+					active,
+					html.EscapeString(imageEndpoint),
+					detailSlotID,
+					html.EscapeString(u),
+					html.EscapeString(u))
+			}
+			b.WriteString(`</div>`)
+		}
+		// Upload custom image.
+		uploadEndpoint := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image",
+			html.EscapeString(projectID),
+			html.EscapeString(scheduleID),
+			html.EscapeString(item.ID))
+		fmt.Fprintf(&b,
+			`<form class="image-upload-form" hx-post="%s" hx-target="#%s" hx-swap="innerHTML" hx-encoding="multipart/form-data"><label class="image-upload-label">Upload custom image<input type="file" name="source_image_file" accept="image/*" style="display:none" onchange="this.closest('form').requestSubmit()"></label></form>`,
+			html.EscapeString(uploadEndpoint), detailSlotID)
+		b.WriteString(`</div>`)
 	}
 
 	b.WriteString(`<dl class="item-detail-dl">`)
@@ -353,7 +556,6 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(&b, `<dt>%s</dt><dd>%s</dd>`, html.EscapeString(label), strings.Join(parts, ", "))
 	}
 
-	// Known fields in order.
 	for _, f := range knownDataFields {
 		v := dm[f.key]
 		switch tv := v.(type) {
@@ -361,8 +563,8 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 			writeField(f.label, tv)
 		case []any:
 			strs := make([]string, 0, len(tv))
-			for _, item := range tv {
-				if s, ok := item.(string); ok {
+			for _, it := range tv {
+				if s, ok := it.(string); ok {
 					strs = append(strs, s)
 				}
 			}
@@ -370,7 +572,6 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Custom columns not in knownKeys.
 	for _, col := range columns {
 		if knownKeys[col.Key] {
 			continue
@@ -380,7 +581,6 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Source fields.
 	writeField("Product Page", item.SourceUrl)
 	writeField("Source Title", item.SourceTitle)
 	for i, link := range item.SourcePdfLinks {
@@ -389,10 +589,9 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
 
 	b.WriteString(`</dl></div>`)
 
-	// Footer with delete action.
 	deleteURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/delete",
-		html.EscapeString(loaded.project.ID),
-		html.EscapeString(loaded.schedule.ID),
+		html.EscapeString(projectID),
+		html.EscapeString(scheduleID),
 		html.EscapeString(item.ID))
 	fmt.Fprintf(&b, `<div class="item-detail-footer">
   <button class="button-danger"
@@ -403,7 +602,6 @@ func (a app) showItemDetail(w http.ResponseWriter, r *http.Request) {
     hx-on::after-request="this.closest('dialog').close()">Delete item</button>
 </div>`, deleteURL, html.EscapeString(item.ID))
 
-	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, b.String())
 }
 

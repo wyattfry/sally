@@ -3,6 +3,7 @@ export type CapturedPage = {
   url: string;
   visibleText: string;
   mainImageUrl?: string;
+  allImageUrls?: string[];
   structuredData: unknown[];
   pdfLinks: string[];
 };
@@ -15,6 +16,7 @@ export type ScheduleItem = {
   sourceUrl: string;
   sourceTitle: string;
   sourceImageUrl?: string;
+  sourceImageUrls?: string[];
   sourcePdfLinks: string[];
 };
 
@@ -111,6 +113,7 @@ export type ExtractedProposal = {
   sourceUrl: string;
   sourceTitle: string;
   sourceImageUrl?: string;
+  sourceImageUrls?: string[];
   sourcePdfLinks: string[];
   customFields?: Record<string, string>;
 };

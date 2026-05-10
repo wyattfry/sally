@@ -1,6 +1,10 @@
 package web
 
-import queries "sally/server/internal/db/generated"
+import (
+	"html/template"
+
+	queries "sally/server/internal/db/generated"
+)
 
 type projectListItem struct {
 	Project          queries.Project
@@ -82,10 +86,10 @@ type adminPage struct {
 	ProviderStats     []queries.ExtractionProviderStat
 	StorageBytes      int64
 	StorageDir        string
-	ItemDailyJSON     string // daily series, 7d
-	ItemHourlyJSON    string // hourly series, 24h
-	ExtractDailyJSON  string // daily series, 7d
-	ExtractHourlyJSON string // hourly series, 24h
+	ItemDailyJSON     template.JS // daily series, 7d
+	ItemHourlyJSON    template.JS // hourly series, 24h
+	ExtractDailyJSON  template.JS // daily series, 7d
+	ExtractHourlyJSON template.JS // hourly series, 24h
 }
 
 type adminUsersPage struct {
@@ -94,6 +98,14 @@ type adminUsersPage struct {
 	Users        []queries.AdminUserRow
 	NewLoginURL  string
 	NewLoginName string
+}
+
+type adminAPITokensPage struct {
+	Kind     string
+	Title    string
+	Tokens   []queries.APIToken
+	NewToken string // shown once immediately after creation
+	NewLabel string
 }
 
 type adminExtractionsPage struct {

@@ -331,6 +331,7 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
       sourceUrl: proposal.sourceUrl,
       sourceTitle: proposal.sourceTitle,
       sourceImageUrl: proposal.sourceImageUrl,
+      sourceImageUrls: proposal.sourceImageUrls ?? [],
       sourcePdfLinks: proposal.sourcePdfLinks ?? []
     },
     suggestedScheduleName: proposal.suggestedScheduleName || undefined,

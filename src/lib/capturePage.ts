@@ -8,6 +8,7 @@ export function capturePage(doc: Document, location: Location | URL): CapturedPa
     url: location.href,
     visibleText: captureVisibleText(doc),
     mainImageUrl: findMainImageUrl(doc, location.href),
+    allImageUrls: findAllImageUrls(doc, location.href),
     structuredData: parseStructuredData(doc),
     pdfLinks: findPdfLinks(doc, location.href)
   };
@@ -134,6 +135,36 @@ function findPdfLinks(doc: Document, baseUrl: string): string[] {
   }
 
   return links.slice(0, 8);
+}
+
+function findAllImageUrls(doc: Document, baseUrl: string): string[] {
+  const seen = new Set<string>();
+  const urls: string[] = [];
+
+  const ogImage = doc.querySelector<HTMLMetaElement>('meta[property="og:image"], meta[name="og:image"]');
+  const ogUrl = ogImage?.content?.trim();
+  if (ogUrl) {
+    try {
+      const abs = new URL(ogUrl, baseUrl).href;
+      if (!seen.has(abs)) { seen.add(abs); urls.push(abs); }
+    } catch { /* ignore invalid URLs */ }
+  }
+
+  const images = Array.from(doc.images)
+    .filter((img) => isVisible(img) && Boolean(img.currentSrc || img.src))
+    .filter((img) => imageArea(img) >= 40000)
+    .sort((a, b) => imageArea(b) - imageArea(a));
+
+  for (const img of images) {
+    const src = img.getAttribute("src") || img.currentSrc || img.src;
+    if (!src) continue;
+    try {
+      const abs = new URL(src, baseUrl).href;
+      if (!seen.has(abs)) { seen.add(abs); urls.push(abs); }
+    } catch { /* ignore invalid URLs */ }
+  }
+
+  return urls.slice(0, 10);
 }
 
 function findMainImageUrl(doc: Document, baseUrl: string): string | undefined {

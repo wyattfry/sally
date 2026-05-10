@@ -9,6 +9,7 @@ import (
 
 	queries "sally/server/internal/db/generated"
 	"sally/server/internal/presets"
+	"sally/server/internal/share"
 	"sally/server/internal/web"
 )
 
@@ -168,6 +169,12 @@ func (api mothershipAPI) createSchedule(w http.ResponseWriter, r *http.Request) 
 		writeJSONError(w, http.StatusInternalServerError, "could not load schedules")
 		return
 	}
+	for _, s := range existingSchedules {
+		if strings.EqualFold(s.Name, req.Name) {
+			writeJSONError(w, http.StatusConflict, "a schedule with that name already exists")
+			return
+		}
+	}
 
 	schedule, err := api.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{
 		ProjectID: projectID,
@@ -240,12 +247,13 @@ func (api mothershipAPI) getScheduleNextCode(w http.ResponseWriter, r *http.Requ
 }
 
 type createScheduleItemRequest struct {
-	Data           map[string]string `json:"data"`
-	Zone           string            `json:"zone"`
-	SourceURL      string            `json:"sourceUrl"`
-	SourceTitle    string            `json:"sourceTitle"`
-	SourceImageURL string            `json:"sourceImageUrl"`
-	SourcePDFLinks []string          `json:"sourcePdfLinks"`
+	Data            map[string]string `json:"data"`
+	Zone            string            `json:"zone"`
+	SourceURL       string            `json:"sourceUrl"`
+	SourceTitle     string            `json:"sourceTitle"`
+	SourceImageURL  string            `json:"sourceImageUrl"`
+	SourceImageURLs []string          `json:"sourceImageUrls"`
+	SourcePDFLinks  []string          `json:"sourcePdfLinks"`
 }
 
 func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -270,6 +278,9 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 	if req.SourcePDFLinks == nil {
 		req.SourcePDFLinks = []string{}
 	}
+	if req.SourceImageURLs == nil {
+		req.SourceImageURLs = []string{}
+	}
 
 	existingItems, err := api.queries.ListScheduleItems(r.Context(), scheduleID)
 	if err != nil {
@@ -288,14 +299,15 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 	}
 
 	item, err := api.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
-		ScheduleID:     scheduleID,
-		Data:           dataJSON,
-		Zone:           strings.TrimSpace(req.Zone),
-		SourceUrl:      strings.TrimSpace(req.SourceURL),
-		SourceTitle:    strings.TrimSpace(req.SourceTitle),
-		SourceImageUrl: strings.TrimSpace(req.SourceImageURL),
-		SourcePdfLinks: req.SourcePDFLinks,
-		Position:       int32(len(existingItems) + 1),
+		ScheduleID:      scheduleID,
+		Data:            dataJSON,
+		Zone:            strings.TrimSpace(req.Zone),
+		SourceUrl:       strings.TrimSpace(req.SourceURL),
+		SourceTitle:     strings.TrimSpace(req.SourceTitle),
+		SourceImageUrl:  strings.TrimSpace(req.SourceImageURL),
+		SourceImageUrls: req.SourceImageURLs,
+		SourcePdfLinks:  req.SourcePDFLinks,
+		Position:        int32(len(existingItems) + 1),
 	})
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "could not create item")
@@ -331,14 +343,15 @@ type columnResponse struct {
 }
 
 type scheduleItemResponse struct {
-	ID             string            `json:"id"`
-	ScheduleID     string            `json:"scheduleId"`
-	Data           map[string]string `json:"data"`
-	Zone           string            `json:"zone"`
-	SourceURL      string            `json:"sourceUrl"`
-	SourceTitle    string            `json:"sourceTitle"`
-	SourceImageURL string            `json:"sourceImageUrl"`
-	SourcePDFLinks []string          `json:"sourcePdfLinks"`
+	ID              string            `json:"id"`
+	ScheduleID      string            `json:"scheduleId"`
+	Data            map[string]string `json:"data"`
+	Zone            string            `json:"zone"`
+	SourceURL       string            `json:"sourceUrl"`
+	SourceTitle     string            `json:"sourceTitle"`
+	SourceImageURL  string            `json:"sourceImageUrl"`
+	SourceImageURLs []string          `json:"sourceImageUrls"`
+	SourcePDFLinks  []string          `json:"sourcePdfLinks"`
 }
 
 func toProjectResponse(project queries.Project) projectResponse {
@@ -385,19 +398,43 @@ func toScheduleItemResponse(item queries.ScheduleItem) scheduleItemResponse {
 	if links == nil {
 		links = []string{}
 	}
+	imgURLs := item.SourceImageUrls
+	if imgURLs == nil {
+		imgURLs = []string{}
+	}
 	return scheduleItemResponse{
-		ID:             item.ID,
-		ScheduleID:     item.ScheduleID,
-		Data:           data,
-		Zone:           item.Zone,
-		SourceURL:      item.SourceUrl,
-		SourceTitle:    item.SourceTitle,
-		SourceImageURL: item.SourceImageUrl,
-		SourcePDFLinks: links,
+		ID:              item.ID,
+		ScheduleID:      item.ScheduleID,
+		Data:            data,
+		Zone:            item.Zone,
+		SourceURL:       item.SourceUrl,
+		SourceTitle:     item.SourceTitle,
+		SourceImageURL:  item.SourceImageUrl,
+		SourceImageURLs: imgURLs,
+		SourcePDFLinks:  links,
 	}
 }
 
 func (api mothershipAPI) requireUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
+	// API token via Authorization: Bearer <token> — works regardless of oauth mode.
+	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		raw := strings.TrimPrefix(auth, "Bearer ")
+		hash := share.HashToken(raw)
+		apiToken, err := api.queries.GetAPITokenByHash(r.Context(), hash)
+		if err != nil {
+			writeJSONError(w, http.StatusUnauthorized, "invalid api token")
+			return queries.User{}, false
+		}
+		user, err := api.queries.GetUser(r.Context(), apiToken.UserID)
+		if err != nil {
+			writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+			return queries.User{}, false
+		}
+		// Update last_used_at in the background so we don't block the request.
+		go func() { _ = api.queries.TouchAPITokenLastUsed(r.Context(), apiToken.ID) }()
+		return user, true
+	}
+
 	if api.oauthEnabled {
 		var email string
 		var ok bool

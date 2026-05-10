@@ -55,17 +55,18 @@ type ScheduleColumn struct {
 }
 
 type ScheduleItem struct {
-	ID             string          `json:"id"`
-	ScheduleID     string          `json:"schedule_id"`
-	SourceUrl      string          `json:"source_url"`
-	SourceTitle    string          `json:"source_title"`
-	SourceImageUrl string          `json:"source_image_url"`
-	SourcePdfLinks []string        `json:"source_pdf_links"`
-	Position       int32           `json:"position"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
-	Zone           string          `json:"zone"`
-	Data           json.RawMessage `json:"data"`
+	ID              string          `json:"id"`
+	ScheduleID      string          `json:"schedule_id"`
+	SourceUrl       string          `json:"source_url"`
+	SourceTitle     string          `json:"source_title"`
+	SourceImageUrl  string          `json:"source_image_url"`
+	SourceImageUrls []string        `json:"source_image_urls"`
+	SourcePdfLinks  []string        `json:"source_pdf_links"`
+	Position        int32           `json:"position"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+	Zone            string          `json:"zone"`
+	Data            json.RawMessage `json:"data"`
 }
 
 type ProjectMember struct {
@@ -91,4 +92,13 @@ type LoginToken struct {
 	ExpiresAt time.Time    `json:"expires_at"`
 	UsedAt    sql.NullTime `json:"used_at"`
 	CreatedAt time.Time    `json:"created_at"`
+}
+
+type APIToken struct {
+	ID          string       `json:"id"`
+	UserID      string       `json:"user_id"`
+	Label       string       `json:"label"`
+	TokenHash   string       `json:"token_hash"`
+	CreatedAt   time.Time    `json:"created_at"`
+	LastUsedAt  sql.NullTime `json:"last_used_at"`
 }
