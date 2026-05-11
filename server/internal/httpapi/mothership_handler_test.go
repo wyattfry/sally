@@ -194,3 +194,79 @@ func TestMothershipAPIZoneRoundTrips(t *testing.T) {
 		t.Fatalf("expected zone %q, got %q", "Kitchen", created.Zone)
 	}
 }
+
+func TestListProjectsIncludesSharedProjects(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	ctx := context.Background()
+
+	owner, err := q.CreateUser(ctx, queries.CreateUserParams{Email: "owner-shared-test@example.com", Name: "Owner"})
+	if err != nil {
+		t.Fatalf("create owner: %v", err)
+	}
+	member, err := q.CreateUser(ctx, queries.CreateUserParams{Email: "member-shared-test@example.com", Name: "Member"})
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+
+	ownedProject, err := q.CreateProject(ctx, queries.CreateProjectParams{OwnerUserID: member.ID, Name: "Member Owned Project"})
+	if err != nil {
+		t.Fatalf("create owned project: %v", err)
+	}
+	sharedProject, err := q.CreateProject(ctx, queries.CreateProjectParams{OwnerUserID: owner.ID, Name: "Shared With Member"})
+	if err != nil {
+		t.Fatalf("create shared project: %v", err)
+	}
+	if err := q.AddProjectMember(ctx, queries.AddProjectMemberParams{
+		ProjectID:       sharedProject.ID,
+		UserID:          member.ID,
+		InvitedByUserID: owner.ID,
+	}); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+
+	router := NewRouterWithDeps(config.Config{}, provider.NewStubExtractor(), web.Deps{
+		Queries:      q,
+		DevUserEmail: "member-shared-test@example.com",
+		DevUserName:  "Member",
+	})
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var projects []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &projects); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	names := make(map[string]bool, len(projects))
+	for _, p := range projects {
+		names[p.Name] = true
+	}
+	if !names[ownedProject.Name] {
+		t.Errorf("owned project %q missing from response", ownedProject.Name)
+	}
+	if !names[sharedProject.Name] {
+		t.Errorf("shared project %q missing from response", sharedProject.Name)
+	}
+}

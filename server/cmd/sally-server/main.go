@@ -82,6 +82,7 @@ func openDatabase(cfg config.Config) *sql.DB {
 
 func newExtractor(cfg config.Config) provider.Extractor {
 	client := &http.Client{Timeout: cfg.OpenAITimeout}
+	ollamaClient := &http.Client{Timeout: cfg.OllamaTimeout}
 
 	switch cfg.LLMProvider {
 	case "", "stub":
@@ -99,7 +100,7 @@ func newExtractor(cfg config.Config) provider.Extractor {
 		return provider.NewOllamaExtractor(
 			cfg.OllamaModel,
 			cfg.OllamaBaseURL,
-			client,
+			ollamaClient,
 		)
 	case "chatcompletion":
 		validateChatCompletionConfig(cfg)

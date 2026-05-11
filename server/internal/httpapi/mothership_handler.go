@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 
 	queries "sally/server/internal/db/generated"
@@ -47,14 +48,33 @@ func (api mothershipAPI) listProjects(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	projects, err := api.queries.ListProjectsByOwner(r.Context(), user.ID)
+	owned, err := api.queries.ListProjectsByOwner(r.Context(), user.ID)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "could not load projects")
 		return
 	}
-	resp := make([]projectResponse, 0, len(projects))
-	for _, project := range projects {
-		resp = append(resp, toProjectResponse(project))
+	shared, err := api.queries.ListSharedProjects(r.Context(), user.ID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not load shared projects")
+		return
+	}
+	seen := make(map[string]bool, len(owned))
+	merged := make([]queries.Project, 0, len(owned)+len(shared))
+	for _, p := range owned {
+		seen[p.ID] = true
+		merged = append(merged, p)
+	}
+	for _, p := range shared {
+		if !seen[p.ID] {
+			merged = append(merged, p)
+		}
+	}
+	sort.Slice(merged, func(i, j int) bool {
+		return merged[i].UpdatedAt.After(merged[j].UpdatedAt)
+	})
+	resp := make([]projectResponse, 0, len(merged))
+	for _, p := range merged {
+		resp = append(resp, toProjectResponse(p))
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

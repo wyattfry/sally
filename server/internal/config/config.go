@@ -10,6 +10,7 @@ import (
 const defaultPort = "8080"
 const defaultOpenAIBaseURL = "https://api.openai.com/v1"
 const defaultOpenAITimeout = 15 * time.Second
+const defaultOllamaTimeout = 60 * time.Second
 
 type Config struct {
 	Port                        string
@@ -21,6 +22,7 @@ type Config struct {
 	ChatCompletionResponseFormat string
 	OllamaBaseURL               string
 	OllamaModel                 string
+	OllamaTimeout               time.Duration
 	AnthropicAPIKey             string
 	AnthropicModel              string
 	AllowMockFallback           bool
@@ -49,6 +51,7 @@ func Load() Config {
 		ChatCompletionResponseFormat: firstNonEmpty(strings.TrimSpace(os.Getenv("CHATCOMPLETION_RESPONSE_FORMAT")), "json_schema"),
 		OllamaBaseURL:               strings.TrimSpace(os.Getenv("OLLAMA_BASE_URL")),
 		OllamaModel:                 strings.TrimSpace(os.Getenv("OLLAMA_MODEL")),
+		OllamaTimeout:               parseDurationMillisEnv("OLLAMA_TIMEOUT_MS", defaultOllamaTimeout),
 		AnthropicAPIKey:             strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")),
 		AnthropicModel:              strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL")),
 		AllowMockFallback:           parseBoolEnv("SALLY_ALLOW_MOCK_FALLBACK"),
