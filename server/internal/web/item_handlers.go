@@ -495,27 +495,6 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 		if imageURL != "" {
 			fmt.Fprintf(&b, `<img class="item-detail-thumb" src="%s" alt="">`, html.EscapeString(imageURL))
 		}
-		if len(item.SourceImageUrls) > 1 {
-			imageEndpoint := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image",
-				html.EscapeString(projectID),
-				html.EscapeString(scheduleID),
-				html.EscapeString(item.ID))
-			b.WriteString(`<div class="image-picker-strip">`)
-			for _, u := range item.SourceImageUrls {
-				active := ""
-				if u == item.SourceImageUrl {
-					active = " active"
-				}
-				fmt.Fprintf(&b,
-					`<button type="button" class="picker-thumb%s" hx-post="%s" hx-target="#%s" hx-swap="innerHTML" hx-vals="{&quot;url&quot;:&quot;%s&quot;}"><img src="%s" alt=""></button>`,
-					active,
-					html.EscapeString(imageEndpoint),
-					detailSlotID,
-					html.EscapeString(u),
-					html.EscapeString(u))
-			}
-			b.WriteString(`</div>`)
-		}
 		// Upload custom image.
 		uploadEndpoint := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image",
 			html.EscapeString(projectID),

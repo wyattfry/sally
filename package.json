@@ -1,6 +1,6 @@
 {
   "name": "sally-extension-poc",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "zip": "(rm sally-extension.zip || true) && cd dist && zip -r ../sally-extension.zip ."
+    "zip": "(rm sally-extension*.zip || true) && cd dist && zip -r ../sally-extension-$(jq -r .version manifest.json).zip ."
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.2",

@@ -49,6 +49,8 @@ sally/
   docs/                  Design notes and implementation plans
 ```
 
+When updating Wyatt's project-hours/work-log CSV, see `docs/update-hours.md`.
+
 ---
 
 ## Extension build

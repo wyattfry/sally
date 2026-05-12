@@ -55,13 +55,17 @@ Bugs
 - [ ] "Download failure error": `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Unable to download the file. Please verify the URL and try again."},"request_id":"req_011Camj7gwaZSXvzqSjAht7C"}`
 - [ ] "robots.txt error": extension error: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"This URL is disallowed by the website's robots.txt file."},"request_id":"req_011CamkYhD1i1sJRXQ5rp8zt"}`
 - [ ] project with appliance and paint schedules, spec'd paint, wanted to put it in the appliance schedule, wtf??
+- [x] factor shared projects in selection of most recently changed project default
+- [x] remove image picker from item detail modal
+- [x] change "copy" to "copying" in the about pcage
+- [ ] warn if item is out of stock
+- [ ] actions menu, remove bold from all items
 
 Critical Path
 - [x] add an About page that epxlains what problem this app solves, how to use it, how to install it, FAQs, etc
 - [x] re-order schedules option in the Actions menu, modal that looks similar to the Edit Columns modal (up / down buttons, but no rename or delete. ideally don't need a page reload to see updates)
-- [ ] sallypanel: if new schedule, give user a way to add/remove/edit the columns, if not every time
+- [x] sallypanel: if new schedule, give user a way to add/remove/edit the columns, if not every time
 - [ ] notes to support images, png / svg / copy-paste from CAD?
-- [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
 - [ ] add link to mothership in chrome extension description
 - [ ] notes to support multiple "rows" or inner-sections?
 - [ ] a feature to delete all of a users data / opt-out
@@ -73,19 +77,20 @@ Nice To Have
 - [x] update the homepage content to reflect the latest look and function of the site and ext
 - [x] admin: in the extraction calls table, add a request ID column, clicking will show you a detail page of that request, including sanitized request and repsonse, status, body, etc
 - [x] admin: create test user, magic-link
-- [ ] in sallypanel and mothership, capture all the product images and allow user to choose which one to use, or upload a new one
-- [ ] fix jupyter notebook json error in 'collect logs'
+- [x] in sallypanel and mothership, capture all the product images and allow user to choose which one to use, or upload a new one
+- [x] fix jupyter notebook json error in 'collect logs'
+- [x] don't allow schedules with duplicate names
+- [x] admin: line graphs dont seem to work. Use a library? D3.js?
 
+- [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
 - [ ] mothership: add hint text while editing a field on how to save and cancel
 - [ ] add Swagger: https://github.com/swaggo/swag
 - [ ] more detail while extraction is underway, show the streaming data? or show the fields but with some animation instead of text values?
 - [ ] move an item between schedules
-- [ ] don't allow schedules with duplicate names
 - [ ] add a 'report bug / feedback' button on the mothership, send messages that arevisible in the admin portal
 - [ ] admin: use google user group?
 - [ ] alternatives to one-shot general purpose LLM? can i "build an agent" w/e that means?
 - [ ] admin: paginate tables (users, extraction calls)
-- [ ] admin: line graphs dont seem to work. Use a library? D3.js?
 - [ ] chrome ext: easy way to toggle SPEC button visibility
 - [x] show LLM / token usage, maybe by day? week? in user profile / settings / account page
 - [ ] make the project detail page's project name, address, desc narrower, atm they fill the available width, which is awkwardly wide. And their background color shold be slightly different than the page to show the user the clickable / editable area
