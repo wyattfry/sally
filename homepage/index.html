@@ -386,85 +386,10 @@
       color: var(--text-dim);
     }
 
-    /* small schedule mockup */
-    .schedule-mockup {
-      background: var(--off-white);
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .schedule-bar {
-      background: var(--navy);
-      padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
     .dot { width: 10px; height: 10px; border-radius: 50%; }
     .dot-r { background: #FF5F57; }
     .dot-y { background: #FFBD2E; }
     .dot-g { background: #27C93F; }
-
-    .schedule-bar-title {
-      flex: 1;
-      text-align: center;
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: var(--text-dim);
-      letter-spacing: 0.06em;
-    }
-
-    .schedule-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.75rem;
-      color: var(--navy-deep);
-    }
-
-    .schedule-table thead tr {
-      background: var(--navy-mid);
-      color: var(--off-white);
-    }
-
-    .schedule-table th {
-      padding: 8px 10px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 0.65rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .schedule-table td {
-      padding: 9px 10px;
-      border-bottom: 1px solid rgba(0,0,0,0.06);
-      color: #1a2e42;
-    }
-
-    .schedule-table tr:last-child td { border-bottom: none; }
-
-    .schedule-table .tag {
-      display: inline-block;
-      padding: 2px 7px;
-      background: rgba(47,111,191,0.12);
-      color: var(--navy-mid);
-      border-radius: 4px;
-      font-size: 0.65rem;
-      font-weight: 600;
-    }
-
-    .schedule-table .new-tag {
-      display: inline-block;
-      padding: 2px 7px;
-      background: rgba(34,197,94,0.15);
-      color: var(--green-dark);
-      border-radius: 4px;
-      font-size: 0.65rem;
-      font-weight: 700;
-    }
 
     /* ── PHILOSOPHY ── */
     .philosophy {
@@ -624,11 +549,174 @@
       color: var(--blue-muted);
     }
 
+    /* ── TRANSFORM SECTION ── */
+    .transform { border-top: 1px solid var(--blue-border); }
+    .transform-inner { max-width: 940px; margin: 0 auto; }
+    .transform-inner .section-sub { margin-bottom: 2rem; }
+
+    .transform-stage {
+      display: grid;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(58,158,103,0.2);
+      position: relative;
+    }
+
+    .stage-panel {
+      grid-area: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      transition: opacity 0.7s ease;
+    }
+
+    .stage-before { opacity: 1; background: #fff; z-index: 2; }
+    .stage-after  { opacity: 0; background: var(--navy-deep); z-index: 1; }
+    .transform-stage.show-after .stage-before { opacity: 0; z-index: 1; }
+    .transform-stage.show-after .stage-after  { opacity: 1; z-index: 2; }
+
+    .stage-chrome {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; background: #e2e6ea;
+      border-bottom: 1px solid #ccc; flex-shrink: 0;
+    }
+    .stage-chrome-dark { background: #0a2018; border-bottom: 1px solid var(--blue-border); }
+    .chrome-dots { display: flex; gap: 5px; }
+    .chrome-title {
+      flex: 1; text-align: center; font-size: 0.68rem; font-weight: 500;
+      color: #888; font-family: 'SF Mono','Fira Code',monospace;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chrome-title-dark { color: var(--text-dim); font-family: inherit; font-weight: 600; }
+
+    /* spreadsheet before-state */
+    .sheet-wrap { flex: 1; overflow-x: auto; background: #fff; }
+    .sheet-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.68rem; color: #202124; min-width: 580px;
+    }
+    .sheet-table thead tr { background: #f1f3f4; }
+    .sheet-table th {
+      padding: 7px 9px; text-align: left; font-weight: 600;
+      font-size: 0.62rem; color: #5f6368;
+      border-right: 1px solid #e0e0e0; border-bottom: 2px solid #c8c8c8;
+      white-space: nowrap;
+    }
+    .sheet-table td {
+      padding: 7px 9px; border-bottom: 1px solid #e8e8e8;
+      border-right: 1px solid #e8e8e8; white-space: nowrap;
+    }
+    .row-alt td { background: #fafafa; }
+    .cell-tag  { background: #e8f0fe !important; color: #1a73e8; font-weight: 600; }
+    .cell-hl   { background: #fff2cc !important; color: #856404; }
+    .cell-empty { color: #bbb; }
+    .cell-url  { color: #1558d6; font-size: 0.6rem; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+    .cell-broken { color: #d93025 !important; }
+    .cell-urgent { background: #fce8e6 !important; color: #c5221f; font-weight: 700; font-size: 0.6rem; }
+
+    /* Sally after-state */
+    .sally-ui { flex: 1; display: flex; flex-direction: column; }
+    .sally-topbar {
+      display: flex; align-items: center; padding: 10px 14px;
+      background: #0a2018; border-bottom: 1px solid var(--blue-border); flex-shrink: 0;
+    }
+    .sally-project-name { font-size: 0.78rem; font-weight: 700; color: var(--white); }
+    .sally-project-addr { font-size: 0.62rem; color: var(--text-dim); margin-top: 1px; }
+    .sally-tabs {
+      display: flex; padding: 0 14px; background: #0d2416;
+      border-bottom: 1px solid var(--blue-border); flex-shrink: 0;
+    }
+    .s-tab { padding: 8px 16px; font-size: 0.72rem; font-weight: 600; color: var(--text-dim); border-bottom: 2px solid transparent; }
+    .s-tab-active { color: var(--blue-light); border-bottom-color: var(--blue-light); }
+    .sally-cards-grid {
+      flex: 1; display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 10px; padding: 12px 14px; background: var(--navy-deep);
+    }
+    .s-card {
+      background: var(--navy); border: 1px solid var(--blue-border);
+      border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .s-card-img { height: 72px; flex-shrink: 0; }
+    .s-card-img-faucet { background: linear-gradient(135deg,#0e2d4a,#1a5276,#2980b9); }
+    .s-card-img-valve  { background: linear-gradient(135deg,#1a2639,#2c3e50,#566573); }
+    .s-card-img-hood   { background: linear-gradient(135deg,#1c1c1c,#373737,#626262); }
+    .s-card-body { padding: 9px 10px 10px; display: flex; flex-direction: column; gap: 3px; }
+    .s-card-title { font-size: 0.7rem; font-weight: 700; color: var(--white); line-height: 1.3; }
+    .s-card-mfr { font-size: 0.63rem; color: var(--text-dim); }
+    .s-card-model { font-size: 0.6rem; color: var(--blue-muted); font-family: 'SF Mono','Fira Code',monospace; }
+    .s-card-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+    .s-chip { padding: 2px 6px; border-radius: 3px; font-size: 0.56rem; font-weight: 600; letter-spacing: 0.04em; }
+    .s-chip-finish { background: rgba(58,158,103,0.12); border: 1px solid rgba(58,158,103,0.3); color: var(--blue-light); }
+    .s-chip-zone   { background: rgba(200,245,213,0.1); border: 1px solid rgba(200,245,213,0.2); color: var(--green); }
+
+    /* sweep overlay */
+    .stage-sweep-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 10; }
+    .stage-sweep-overlay::after {
+      content: ''; position: absolute; top: 0; left: -70%; width: 70%; height: 100%;
+      background: linear-gradient(90deg, transparent 0%, rgba(58,158,103,0.15) 30%, rgba(58,158,103,0.55) 50%, rgba(200,245,213,0.2) 70%, transparent 100%);
+      opacity: 0;
+    }
+    .transform-stage.sweeping .stage-sweep-overlay::after {
+      animation: sweep-pass 0.85s cubic-bezier(0.4,0,0.2,1) forwards;
+      opacity: 1;
+    }
+    @keyframes sweep-pass { from { left: -70%; } to { left: 110%; } }
+
+    /* state indicator + progress */
+    .stage-label-strip { display: flex; align-items: center; margin-bottom: 0.75rem; }
+    .stage-state-indicator {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 0.75rem; font-weight: 600; color: var(--text-dim);
+      transition: color 0.5s;
+    }
+    .stage-state-indicator.is-after { color: var(--blue-light); }
+    .state-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #f87171; transition: background 0.5s;
+      flex-shrink: 0;
+    }
+    .state-dot.is-after { background: var(--blue-primary); }
+    .stage-progress { height: 2px; background: rgba(58,158,103,0.12); margin-top: 10px; border-radius: 1px; overflow: hidden; }
+    .stage-progress-bar { height: 100%; background: var(--blue-primary); width: 0%; }
+
+    /* Sally card in features section */
+    .sally-card-demo {
+      background: var(--navy-deep); border: 1px solid var(--blue-border);
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .scd-header {
+      padding: 10px 14px; background: #0a2018;
+      border-bottom: 1px solid var(--blue-border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .scd-header-title { font-size: 0.72rem; font-weight: 700; color: var(--white); }
+    .scd-header-sub   { font-size: 0.6rem; color: var(--text-dim); margin-top: 2px; }
+    .scd-img {
+      height: 130px;
+      background: linear-gradient(135deg,#0e2d4a,#1a5276,#2980b9);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .scd-img-label { font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.25); }
+    .scd-body { padding: 16px; display: flex; flex-direction: column; gap: 9px; }
+    .scd-title { font-size: 1rem; font-weight: 700; color: var(--white); }
+    .scd-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .scd-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--blue-muted); }
+    .scd-value { font-size: 0.8rem; color: var(--text-dim); }
+    .scd-chips { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 6px; border-top: 1px solid var(--blue-border); }
+    .scd-chip { padding: 3px 10px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+    .scd-chip-finish { background: rgba(58,158,103,0.12); border: 1px solid rgba(58,158,103,0.3); color: var(--blue-light); }
+    .scd-chip-zone   { background: rgba(200,245,213,0.1); border: 1px solid rgba(200,245,213,0.2); color: var(--green); }
+    .scd-source { font-size: 0.62rem; color: var(--blue-muted); display: flex; align-items: center; gap: 5px; }
+    .scd-source a { color: var(--blue-primary); text-decoration: none; }
+    .scd-source a:hover { text-decoration: underline; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 600px) {
       .form-row { flex-direction: column; }
       .form-row button { width: 100%; }
       .feature-grid { grid-template-columns: 1fr; }
+      .sally-cards-grid { grid-template-columns: repeat(2,1fr); }
+      .s-card:last-child { display: none; }
     }
   </style>
 </head>
@@ -714,6 +802,141 @@
     </div>
   </section>
 
+  <!-- TRANSFORM: BEFORE / AFTER -->
+  <section class="transform">
+    <div class="transform-inner">
+      <div class="section-label">See the difference</div>
+      <h2 class="section-heading">From copy-paste chaos to <em>your</em> schedule</h2>
+      <p class="section-sub">One click replaces hours of tab-switching, copy-pasting, and reformatting. Sally reads the page; you review the draft.</p>
+
+      <div class="stage-label-strip">
+        <div class="stage-state-indicator" id="stageIndicator">
+          <span class="state-dot" id="stateDot"></span>
+          <span id="stateText">The old way: manual spreadsheet</span>
+        </div>
+      </div>
+
+      <div class="transform-stage" id="transformStage">
+
+        <!-- BEFORE: spreadsheet -->
+        <div class="stage-panel stage-before">
+          <div class="stage-chrome">
+            <div class="chrome-dots">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+            </div>
+            <span class="chrome-title">spec_schedule_v4_FINAL_use_this.xlsx</span>
+          </div>
+          <div class="sheet-wrap">
+            <table class="sheet-table">
+              <thead>
+                <tr><th>Room</th><th>Item</th><th>Manufacturer</th><th>Model #</th><th>Finish</th><th>Source URL</th><th>Notes</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="cell-tag">Kitchen</td><td>Faucet</td><td>Kohler</td>
+                  <td class="cell-hl">K-7505-???</td><td>Pol. Chrome</td>
+                  <td class="cell-url">https://us.kohler.com/us/purist-single-control-lav-faucet...</td>
+                  <td>check rough-in</td>
+                </tr>
+                <tr class="row-alt">
+                  <td class="cell-tag">Kitchen</td><td>Range Hood</td>
+                  <td class="cell-empty">???</td><td class="cell-empty">—</td><td>Stainless</td>
+                  <td class="cell-url cell-broken">link expired 😤</td><td>Sarah sent</td>
+                </tr>
+                <tr>
+                  <td class="cell-tag">Bath 1</td><td>Shower Valve</td><td>Delta</td>
+                  <td>R10000-UNBX</td><td>Brushed Nickel</td>
+                  <td class="cell-url">https://www.deltafaucet.com/en/details/R10000-UNBX</td>
+                  <td>in-wall</td>
+                </tr>
+                <tr class="row-alt">
+                  <td class="cell-tag">Master</td><td>Towel Bar</td>
+                  <td class="cell-empty">—</td><td class="cell-hl">???</td><td class="cell-empty">—</td>
+                  <td class="cell-empty">forgot the site</td>
+                  <td class="cell-urgent">FIND THIS</td>
+                </tr>
+                <tr>
+                  <td class="cell-tag">Living</td><td>Chandelier</td><td>Visual Comfort</td>
+                  <td>SC 5070</td><td class="cell-hl">Natural Brass?</td>
+                  <td class="cell-url">https://www.circalighting.com/product/visual-comfort-sc5070...</td>
+                  <td>lead time?</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AFTER: Sally UI -->
+        <div class="stage-panel stage-after">
+          <div class="stage-chrome stage-chrome-dark">
+            <div class="chrome-dots">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+            </div>
+            <span class="chrome-title chrome-title-dark">spexxtool.com — 123 Main St. Renovation</span>
+          </div>
+          <div class="sally-ui">
+            <div class="sally-topbar">
+              <div>
+                <div class="sally-project-name">123 Main St. Renovation</div>
+                <div class="sally-project-addr">Chicago, IL</div>
+              </div>
+            </div>
+            <div class="sally-tabs">
+              <div class="s-tab s-tab-active">Plumbing</div>
+              <div class="s-tab">Lighting</div>
+              <div class="s-tab">Appliances</div>
+            </div>
+            <div class="sally-cards-grid">
+              <div class="s-card">
+                <div class="s-card-img s-card-img-faucet"></div>
+                <div class="s-card-body">
+                  <div class="s-card-title">Purist Single-Control Faucet</div>
+                  <div class="s-card-mfr">Kohler</div>
+                  <div class="s-card-model">K-7505-4-CP</div>
+                  <div class="s-card-chips">
+                    <span class="s-chip s-chip-finish">Polished Chrome</span>
+                    <span class="s-chip s-chip-zone">Kitchen</span>
+                  </div>
+                </div>
+              </div>
+              <div class="s-card">
+                <div class="s-card-img s-card-img-valve"></div>
+                <div class="s-card-body">
+                  <div class="s-card-title">MultiChoice Shower Valve</div>
+                  <div class="s-card-mfr">Delta</div>
+                  <div class="s-card-model">R10000-UNBX</div>
+                  <div class="s-card-chips">
+                    <span class="s-chip s-chip-finish">Brushed Nickel</span>
+                    <span class="s-chip s-chip-zone">Bath 1</span>
+                  </div>
+                </div>
+              </div>
+              <div class="s-card">
+                <div class="s-card-img s-card-img-hood"></div>
+                <div class="s-card-body">
+                  <div class="s-card-title">36" Island Range Hood</div>
+                  <div class="s-card-mfr">Zephyr</div>
+                  <div class="s-card-model">AK7428BS</div>
+                  <div class="s-card-chips">
+                    <span class="s-chip s-chip-finish">Stainless Steel</span>
+                    <span class="s-chip s-chip-zone">Kitchen</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- sweep overlay (animated via CSS class) -->
+        <div class="stage-sweep-overlay"></div>
+      </div>
+
+      <div class="stage-progress">
+        <div class="stage-progress-bar" id="stageProgressBar"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- FEATURES -->
   <section>
     <div class="features-inner">
@@ -764,56 +987,40 @@
         </div>
       </div>
 
-      <!-- Schedule mockup -->
-      <div class="schedule-mockup">
-        <div class="schedule-bar">
-          <div class="dot dot-r"></div>
-          <div class="dot dot-y"></div>
-          <div class="dot dot-g"></div>
-          <div class="schedule-bar-title">Project Schedule — Kitchen Renovation</div>
+      <!-- Sally item card -->
+      <div class="sally-card-demo">
+        <div class="scd-header">
+          <div>
+            <div class="scd-header-title">Plumbing Schedule</div>
+            <div class="scd-header-sub">123 Main St. Renovation</div>
+          </div>
         </div>
-        <table class="schedule-table">
-          <thead>
-            <tr>
-              <th>Zone</th>
-              <th>Category</th>
-              <th>Manufacturer</th>
-              <th>Model</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="tag">Kitchen</span></td>
-              <td>Faucet</td>
-              <td>Kohler</td>
-              <td>Purist K-7505</td>
-            </tr>
-            <tr>
-              <td><span class="tag">Kitchen</span></td>
-              <td>Lighting</td>
-              <td>Visual Comfort</td>
-              <td>Ellen 3-Arm</td>
-            </tr>
-            <tr>
-              <td><span class="tag">Bath 1</span></td>
-              <td>Faucet</td>
-              <td>Watermark</td>
-              <td>Designs 22-1.0</td>
-            </tr>
-            <tr style="background: rgba(34,197,94,0.07)">
-              <td><span class="tag">Kitchen</span></td>
-              <td>Hardware</td>
-              <td>Rocky Mountain</td>
-              <td>T108 Pull</td>
-            </tr>
-            <tr style="background: rgba(34,197,94,0.07)">
-              <td colspan="4" style="padding: 8px 10px;">
-                <span class="new-tag">+ New via Sally</span>
-                <span style="font-size:0.7rem; color: #3E6E9E; margin-left: 8px;">just accepted — Undo available</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="scd-img">
+          <span class="scd-img-label">product image</span>
+        </div>
+        <div class="scd-body">
+          <div class="scd-title">Purist Single-Control Faucet</div>
+          <div class="scd-row">
+            <span class="scd-label">Manufacturer</span>
+            <span class="scd-value">Kohler</span>
+          </div>
+          <div class="scd-row">
+            <span class="scd-label">Model</span>
+            <span class="scd-value">K-7505-4-CP</span>
+          </div>
+          <div class="scd-row">
+            <span class="scd-label">Notes</span>
+            <span class="scd-value">Verify rough-in dimensions</span>
+          </div>
+          <div class="scd-chips">
+            <span class="scd-chip scd-chip-finish">Polished Chrome</span>
+            <span class="scd-chip scd-chip-zone">Kitchen</span>
+          </div>
+          <div class="scd-source">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <a href="#">us.kohler.com — Purist K-7505</a>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -883,6 +1090,58 @@
       input.disabled = true;
       btn.disabled = true;
     }
+
+    (function () {
+      const stage = document.getElementById('transformStage');
+      const bar   = document.getElementById('stageProgressBar');
+      const dot   = document.getElementById('stateDot');
+      const txt   = document.getElementById('stateText');
+      const ind   = document.getElementById('stageIndicator');
+      if (!stage) return;
+
+      const HOLD_MS  = 3800;
+      const SWEEP_MS = 850;
+      const FLIP_AT  = 340; // ms into sweep when panels swap
+
+      let showingAfter = false;
+
+      function animateBar(duration, cb) {
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          bar.style.transition = 'width ' + duration + 'ms linear';
+          bar.style.width = '100%';
+          setTimeout(cb, duration);
+        }));
+      }
+
+      function transition() {
+        stage.classList.add('sweeping');
+
+        setTimeout(() => {
+          showingAfter = !showingAfter;
+          if (showingAfter) {
+            stage.classList.add('show-after');
+            dot.classList.add('is-after');
+            ind.classList.add('is-after');
+            txt.textContent = 'With Sally: AI-extracted and organized';
+          } else {
+            stage.classList.remove('show-after');
+            dot.classList.remove('is-after');
+            ind.classList.remove('is-after');
+            txt.textContent = 'The old way: manual spreadsheet';
+          }
+        }, FLIP_AT);
+
+        setTimeout(() => {
+          stage.classList.remove('sweeping');
+          animateBar(HOLD_MS, transition);
+        }, SWEEP_MS);
+      }
+
+      // start after a short delay so the page settles
+      setTimeout(() => animateBar(HOLD_MS, transition), 600);
+    })();
   </script>
 </body>
 </html>
