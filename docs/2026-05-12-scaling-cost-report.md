@@ -395,3 +395,164 @@ Sally's admin dashboard already tracks extraction stats. Add or verify:
 4. Revisit payment processor. If MRR is $5,000+, Stripe + Stripe Tax starts to make economic sense vs. LemonSqueezy's percentage fee.
 
 The entire stack for the first 100 users should cost less than a dinner out. The business risk is not the server bill.
+
+---
+
+## Founder Compensation and Funding
+
+*This section is not legal or financial advice. Before formalizing any equity arrangement or taking outside money, consult a business attorney. The cost is worth it.*
+
+### The Situation
+
+Two founders:
+
+- **The architect**: came up with the idea, owns the domain expertise, brought business knowledge, user requirements, and professional constraints. Likely has a warm network of potential customers — other architects and interior designers who face the same spec-entry problem.
+- **The developer (Wyatt)**: built the product, 50+ hours in, $100+ in personal LLM spend, and would continue building features, fixing bugs, and providing support.
+
+Neither of these contributions is optional. An idea without execution is nothing. Execution without domain knowledge builds the wrong thing. This is a genuine co-founding relationship and should be treated as one.
+
+### Formalize It Before There Is Money
+
+The easiest time to agree on a split is before revenue exists. Once money is on the table, every conversation gets harder. The single most important step is to write down — even informally to start — what each person contributes and what they expect in return.
+
+**Minimum viable agreement (before an LLC):**
+
+A written email or shared doc stating:
+- Each party's equity percentage or revenue share.
+- What each person is contributing (time, IP, expenses).
+- What happens if one person stops contributing.
+- That the understanding is subject to a proper operating agreement once an entity is formed.
+
+This is not legally binding on its own, but it establishes intent and creates a paper trail. Disputes almost always come down to "I thought we agreed..." — this prevents that.
+
+### Entity Structure
+
+**Recommended: LLC (Limited Liability Company)**
+
+For a two-person bootstrapped SaaS targeting small architecture firms:
+
+- An LLC protects both founders' personal assets from business liabilities.
+- Pass-through taxation (profits are taxed once, on your personal returns) — no double taxation like a C-corp.
+- Straightforward to form ($50–$200 in most states via a registered agent service).
+- An operating agreement defines the equity split, voting rights, profit distribution, and what happens if a founder exits.
+
+**When to consider a C-corp instead**: if you plan to raise venture capital, a Delaware C-corp is standard. VCs typically won't invest in LLCs. For a bootstrapped architecture-niche SaaS targeting 100–500 users, a C-corp adds complexity with no benefit. Convert later if needed.
+
+Formation cost: ~$500–$1,500 if using a lawyer; ~$100–$300 DIY via ZenBusiness or Stripe Atlas. Get a lawyer to review the operating agreement — this is where mistakes get made.
+
+### Equity Split: Starting Point for Discussion
+
+There is no universally correct answer, but here is a framework:
+
+**The Slicing Pie / Grunt Fund approach** (recommended for the current stage):
+
+Rather than negotiating a fixed split upfront, track contributions dynamically at a fair market rate and convert to a fixed split once the business has enough evidence to set terms fairly. This is described in Mike Moyer's *Slicing Pie* and is well-suited to a pre-revenue partnership where both founders are contributing non-cash value.
+
+Each hour contributed is valued at a market rate:
+- Developer time: $100–$150/hour (conservative for a senior full-stack dev who owns infrastructure, architecture, and support)
+- Domain expert / advisor time: $150–$250/hour (experienced licensed architect's consulting rate)
+- Cash invested (out-of-pocket expenses like LLM tokens): valued at 2× cash (to account for the risk premium)
+
+The running total ratio becomes the equity split when you formalize.
+
+**Rough estimate based on current contributions:**
+
+| Contribution | Est. value |
+|---|---:|
+| Developer: ~50 hours @ $125/hr | $6,250 |
+| Developer: $100+ LLM/expenses (2× multiplier) | $200+ |
+| Architect: ideation, requirements, domain consulting (est. 20–30 hrs @ $200/hr) | $4,000–$6,000 |
+
+This puts the current split somewhere around **50/50 to 55/45 developer-heavy** based on hours in — but the architect's network and future business development contribution can easily balance or reverse this. Agree on the formula, not just the current number.
+
+**If you prefer a simpler fixed split**: 50/50 with equal vesting is the most common and often the most durable. It removes the perception of scorekeeping and signals equal partnership. The risk is that unequal future effort feels unfair; address this with vesting and a clear agreement on what happens if someone steps back.
+
+### Vesting
+
+Even between two people who trust each other completely, vesting protects both parties.
+
+**Recommended: 24-month vesting, 6-month cliff**
+
+- Nothing vests in the first 6 months.
+- At the 6-month mark, 25% vests immediately.
+- The remaining 75% vests monthly over the following 18 months.
+
+This means if either founder exits early (life happens — the architect gets too busy, the developer finds another job), the equity they take reflects actual contribution rather than a paper promise.
+
+### Profit Distribution
+
+For an LLC, profits are distributed to members according to the operating agreement. A simple approach:
+
+1. Cover operating expenses first (infrastructure, payment processor fees, etc.).
+2. Maintain a small cash reserve (1–2 months of operating costs).
+3. Distribute the remainder to members in proportion to equity, on a schedule (monthly, quarterly, etc.) you agree on.
+
+At 100 users paying $15/month:
+- Gross MRR: $1,500
+- LemonSqueezy fees: ~$125
+- Infrastructure: ~$100–$200
+- **Net available to distribute: ~$1,175–$1,275/month**
+
+At a 50/50 split, that is roughly $600/month each. Not a salary, but it covers the server bill and compensates for ongoing time. It becomes meaningful faster than most people expect if usage grows.
+
+### Compensating Past Work
+
+The 50+ hours and $100+ in out-of-pocket expenses invested so far are real. Options for acknowledging them:
+
+1. **Count them in the equity formula** (recommended for now): treat them as founder contributions that set the initial ratio, rather than a debt the business owes.
+2. **Reimburse expenses from first revenue**: the $100+ in LLM tokens is a legitimate business expense. Reimburse it as soon as the business has revenue before taking distributions.
+3. **Back-pay as a note**: the business "owes" Wyatt for pre-formation development work, payable from future revenue with a reasonable interest rate. This is real but adds complexity; generally not worth formalizing unless the imbalance is large.
+
+### Where the Money Comes From
+
+In roughly increasing order of complexity and dilution:
+
+**1. Bootstrap from personal funds (recommended)**
+
+Infrastructure costs are $20–$200/month. Both founders can cover this personally while the product is pre-revenue. Agree upfront on who covers what and track it — these are either equity contributions (if valued as founder cash) or operating expenses to be reimbursed from first revenue.
+
+**2. Early revenue from the architect's network**
+
+The architect's professional network is the most underrated asset in this whole picture. If 5–10 architecture colleagues will pay $15–$50/month to try a tool that a trusted peer built and uses themselves, that is the cleanest possible funding: real revenue from the target market, no dilution, and direct feedback from professional users.
+
+This should be attempted before anything else. A single email from the architect to their network along the lines of "I've been building this tool with a developer friend and it's saved me hours — I'd like to invite you to try it for $X/month" will outperform any other early marketing.
+
+**3. Pre-sales / founding member pricing**
+
+Offer a "founding member" rate ($99–$199 one-time, or $9/month locked forever) to the first 20–50 users. This:
+- Funds a few months of infrastructure and development time.
+- Creates an invested early cohort who will give feedback and refer others.
+- Validates willingness to pay before significant additional investment.
+
+**4. Small friends-and-family investment**
+
+If there are personal contacts willing to invest $5,000–$25,000 for a stake in the LLC, this covers several months of development time and infrastructure without the overhead of a formal funding round. This is usually structured as a SAFE (Simple Agreement for Future Equity) or a small convertible note. Keep it simple and keep the cap table small.
+
+**5. Small business grants and programs**
+
+Not the most likely path, but worth knowing:
+- **SBIR/STTR grants**: Federal grants for small businesses doing R&D. Architecture and construction tech can qualify. Typical Phase I awards are $50,000–$300,000. High effort to apply, but non-dilutive.
+- **State-level small business grants**: Many states have grants for software startups. Low amounts ($5,000–$25,000) but free money.
+- **SCORE mentorship**: Free mentorship from retired executives. Useful for the business side; the architect's professional network may be more valuable.
+
+**6. Angel investment**
+
+Once there are 20–50 paying users and a clear growth path, a single angel investor (often an architect, contractor, or construction-tech professional) might invest $25,000–$100,000 for a minority stake. This funds a year or more of part-time development. The architect's professional network is the place to find this investor.
+
+**7. Accelerators (Y Combinator, Techstars, etc.)**
+
+Premature until there is meaningful revenue and growth. YC in particular looks for strong traction before accepting construction/AEC niche SaaS tools. Not off the table eventually, but not the right focus now.
+
+**8. Venture capital**
+
+Not a fit for this product at this stage, and possibly not ever. VC requires a path to $100M+ ARR and a large exit. Architecture-niche SaaS targeting small firms is a lifestyle business unless the market turns out to be much larger than the 100-user milestone suggests. That is fine — a profitable, small, cash-flowing business that pays its founders well is a good outcome.
+
+### The Honest Short Version
+
+The two questions to answer this week:
+
+1. **What is the equity split and how is it calculated?** Decide this now in writing, even if informally. 50/50 with vesting is a reasonable default if ongoing contributions are expected to be roughly equal.
+
+2. **Who pays for the server?** The infrastructure costs are low enough that the question of "funding" is really just "who covers $20–$200/month while we find paying users." Whoever has cash flow covers it; track it as a reimbursable expense or equity contribution.
+
+The real funding event is the first 10 paying users. That is when you have revenue, a model, and something worth structuring properly. Everything before that is founder time and cheap server bills.
