@@ -1,24 +1,21 @@
 # Sally Scaling Cost Report
 
-Date: 2026-05-12
+Date: 2026-05-12  
+Revised: 2026-05-11 (Wyatt + Claude review)
 
-This report estimates Sally's monthly vendor costs from one early user through the first user milestone of 100 architect users. The goal is not a procurement quote; it is a working cost model that shows the main cost drivers, the break-even subscription floor, and the places where the estimate should be replaced with measured production data.
+This report estimates Sally's monthly vendor costs from one early user through the first user milestone of 100 architect users. The goal is not a procurement quote; it is a working cost model that shows the main cost drivers, the break-even subscription floor, and where the estimate should be replaced with measured production data.
 
 ## Executive Summary
 
-Sally's first 100 architect users should be inexpensive to host if the product remains a Go web app, Postgres database, Chrome extension, and hosted LLM extraction API.
-
-The expected 100-user monthly vendor cost is:
+Sally's first 100 architect users can be hosted for well under $100/month in direct infrastructure costs. LLM spend is the dominant variable cost and the one most worth measuring early.
 
 | Scenario | Monthly cost | Notes |
 |---|---:|---|
-| Lean production | $55-$95 | Single app VM, single-node managed Postgres, free/low-cost object storage, GPT-5.4 mini-class extraction |
-| Conservative production | $115-$245 | Larger app VM, managed Postgres, object storage, monitoring, heavier LLM usage, extra buffer |
-| Higher-availability setup | $180-$350 | Two app nodes, load balancer, high-availability Postgres, stronger backup/restore posture |
+| Lean (Fly.io + Neon + R2) | $20–$60 | Scale-to-zero app, serverless Postgres, free object storage egress |
+| Standard (DO 2 GiB + managed Postgres) | $55–$110 | Simple, predictable, proven at this scale |
+| Conservative (DO 4 GiB + managed Postgres + monitoring) | $120–$250 | Better headroom, includes buffer for LLM retries and bad extraction days |
 
-At 100 users, Sally can cover direct vendor costs at roughly $2-$4 per architect user per month depending on LLM volume. That is only the infrastructure break-even point. A real paid plan should start closer to $10-$20 per architect user per month, or a higher per-firm plan, because support, product development, refunds, taxes, sales time, and usage spikes will dominate the vendor bill.
-
-Contractor/share-link viewers should remain free unless they become a meaningful traffic source. Their read-only traffic is much cheaper than architect extraction work.
+At 100 users, direct vendor costs are not the problem. The constraints are extraction quality, support load, and proving that architects will pay $10–$20/month (or firms $49–$99/month). Price accordingly — not to cover servers, but to cover your time.
 
 ## Product And Workload Assumptions
 
@@ -27,265 +24,374 @@ Current Sally architecture:
 - Chrome MV3 extension captures product-page content.
 - Go server handles Mothership dashboard, auth, share links, uploads, admin views, and extraction API.
 - Postgres stores users, projects, schedules, items, project members, share links, API tokens, and extraction logs.
-- LLM providers are configurable. Current code supports `stub`, `openai`, `ollama`, `chatcompletion`, and `anthropic`.
-- Extraction logs already include `prompt_tokens` and `completion_tokens`, which should become the source of truth after real usage exists.
+- LLM providers are configurable: `stub`, `openai`, `ollama`, `chatcompletion`, `anthropic`.
+- Extraction logs already capture `prompt_tokens` and `completion_tokens` — these become the source of truth for cost modeling after real usage.
 
 Planning definition of "100 users":
 
 - 100 architect users with accounts.
-- 30-60 monthly active users.
-- 1-5 contractor/share viewers per active architect.
-- 10-50 SPEC extractions per active architect per month.
-- Base case: 100 architects x 25 SPEC extractions each = 2,500 LLM calls per month.
-- Heavy case: 100 architects x 100 SPEC extractions each = 10,000 LLM calls per month.
+- 30–60 monthly active users.
+- 1–5 contractor/share viewers per active architect.
+- 10–50 SPEC extractions per active architect per month.
+- **Base case**: 100 architects × 25 extractions = 2,500 LLM calls/month.
+- **Heavy case**: 100 architects × 100 extractions = 10,000 LLM calls/month.
 
-LLM token assumptions per SPEC extraction:
+LLM token assumptions per extraction:
 
 | Request type | Input tokens | Output tokens | Why |
 |---|---:|---:|---|
 | Typical product page | 8,000 | 800 | Visible text, structured data, schedule context, JSON response |
-| Heavy product page/PDF | 20,000 | 1,500 | Long product pages, extracted cut-sheet text, larger project context |
+| Heavy page / PDF | 20,000 | 1,500 | Long product pages, extracted cut-sheet text, larger project context |
 
-These should be replaced with measured values from `extraction_logs.prompt_tokens` and `extraction_logs.completion_tokens` once 20-50 real users are active.
+Replace these with measured values from `extraction_logs` once 20–50 real users are active.
+
+## Cloud Platform Comparison
+
+Codex's original draft defaulted to DigitalOcean without evaluating alternatives. Here is an honest comparison for a Go + Postgres SaaS run by one person.
+
+### DigitalOcean
+
+**Verdict: solid default, not a no-brainer.**
+
+Pros: simple UI, good managed Postgres, predictable pricing, 2 TB included transfer, strong documentation, one-provider simplicity.  
+Cons: more expensive per GiB than Hetzner, less developer-ergonomic deployment than Fly.io, managed Postgres minimum ($15/mo) is meaningful at Stage 0–1.
+
+Good fit if: you want everything in one dashboard and you already know it.
+
+### Fly.io
+
+**Verdict: recommended for a Go app at this stage.**
+
+Fly deploys Go from a Dockerfile with a single command (`fly deploy`). No VPC configuration, no IAM roles, no security group rules. You get global anycast routing, scale-to-zero shared VMs, and a managed Postgres option. The free tier covers a small persistent VM and a basic Postgres cluster.
+
+Pricing: shared-cpu-1x VM is ~$1.94/month for always-on (or free in the free allowance). Managed Postgres starts at ~$5/month for a single node on shared hardware.
+
+The developer experience gap between Fly and DigitalOcean is significant for a one-person team. `fly deploy` beats configuring droplets, nginx, systemd, and deploy scripts by hand.
+
+Cons: Fly is newer and less battle-tested than DO. Their managed Postgres has had occasional instability. Keep a `pg_dump` offsite regardless.
+
+### Hetzner
+
+**Verdict: cheapest compute, worth it if EU data residency is acceptable.**
+
+A Hetzner CX22 (2 vCPU, 4 GiB RAM) costs €4.49/month — roughly a third of the equivalent DO droplet. For an indie project where cost matters more than US data residency, Hetzner is hard to beat on compute. Their managed Postgres equivalent is via Hetzner Managed Server or a self-hosted Postgres on a small VPS.
+
+Cons: EU-only servers (Frankfurt, Helsinki, Nuremberg, Ashburn, Singapore). No native managed Postgres product as polished as DO's. Smaller ecosystem of tutorials and integrations.
+
+Worth considering at Stage 1+ if cost is tight.
+
+### AWS
+
+**You said you like it — honest take: wait.**
+
+AWS is excellent but carries real operational overhead for a solo developer at 100 users. ECS, ECR, RDS, VPC, IAM roles, security groups, ALB — the setup that's correct for AWS at this scale takes days to get right and weeks to understand fully. The cost is comparable to DO or Fly at small scale, but the learning curve and ongoing ops burden are not.
+
+**Exception**: if you already have AWS infra (existing account, familiarity with CDK or Terraform, existing RDS), it is not crazy. But don't start here.
+
+Better AWS option if you go this route: **App Runner** (managed containers, no VPC required, autoscale to zero) + **RDS Aurora Serverless v2** (pay-per-use Postgres). Roughly $15–$40/month at low traffic. Simpler than ECS but still more complex than Fly.
+
+### GCP Cloud Run
+
+**Underrated for a containerized Go app.**
+
+Cloud Run deploys containers, scales to zero, and charges per request-second. For a low-traffic SaaS this can be very cheap ($0–$10/month for the compute portion). Pair with Cloud SQL for Postgres (~$10/month for a shared-core instance).
+
+The ops model is simpler than EC2/ECS: no VMs to manage, no SSH access needed. But GCP's console and IAM are confusing and the managed experience is less polished than Fly.
+
+### Azure
+
+Skip it unless you have an existing commitment. Not competitive for a new solo project.
+
+### Render / Railway
+
+Both are simpler than DO with good free tiers. Render is more production-stable; Railway is more developer-friendly. Either is fine for Stage 0–1. Both get more expensive than DO at higher usage. Not recommended as primary for 100 paid users — the pricing model penalizes growth.
+
+### Recommended Stack
+
+**Primary recommendation: Fly.io + Neon + Cloudflare R2**
+
+| Component | Choice | Estimated monthly cost |
+|---|---|---:|
+| App server | Fly.io shared-cpu-1x | $0–$5 |
+| Database | Neon serverless Postgres | $0–$19 |
+| Object storage | Cloudflare R2 | $0–$5 |
+| CDN / DNS | Cloudflare free | $0 |
+| **Total infra (100 users)** | | **$5–$29** |
+
+[Neon](https://neon.tech) is a serverless Postgres provider with a generous free tier (10 GB, autoscaling, branching). It scales to zero between requests. For 100 users with intermittent DB load, Neon free or Pro ($19/month) is likely cheaper than DO's $15/month minimum for a managed Postgres node that idles most of the time. Branch-based dev/staging environments are genuinely useful.
+
+**Fallback recommendation: DigitalOcean**
+
+If you want everything in one provider with a proven track record and you don't want to think about it:
+
+| Component | Choice | Monthly cost |
+|---|---|---:|
+| App server | 2 GiB Droplet | $12 |
+| Database | Managed Postgres single node | $15 |
+| Object storage | Spaces (or Cloudflare R2) | $0–$5 |
+| Backups | Droplet weekly backup | $2–$4 |
+| **Total infra (100 users)** | | **$29–$36** |
 
 ## Current Public Pricing Inputs
 
-Prices checked on 2026-05-12. Re-check before a launch or investor/customer-facing forecast.
+Prices verified 2026-05-12. Re-check before any customer-facing forecast.
 
-| Service | Pricing input used | Source |
-|---|---:|---|
-| DigitalOcean Basic Droplet | 1 GiB: $6/mo, 2 GiB: $12/mo, 4 GiB: $24/mo | <https://www.digitalocean.com/pricing/droplets> |
-| DigitalOcean Droplet backup | Weekly backup: 20% of Droplet cost; daily backup: 30% | <https://www.digitalocean.com/pricing/droplets> |
-| DigitalOcean Managed Postgres | Single node starts at $15/mo; HA starts at $30 primary plus at least one $30 standby; extra storage $0.21/GiB-mo | <https://docs.digitalocean.com/products/databases/postgresql/details/pricing/> |
-| Cloudflare Tunnel | Free | <https://www.cloudflare.com/products/tunnel/> |
-| Cloudflare R2 | 10 GB-month free; then standard storage $0.015/GB-month; egress free | <https://developers.cloudflare.com/r2/pricing/> |
-| DigitalOcean Spaces alternative | $5/mo includes 250 GiB storage and 1 TiB outbound transfer | <https://docs.digitalocean.com/products/spaces/details/pricing/> |
-| DigitalOcean Uptime | 1 uptime check free; $1/check/mo after | <https://www.digitalocean.com/pricing/uptime-monitoring> |
-| OpenAI GPT-5.4 mini | $0.75 / 1M input tokens; $4.50 / 1M output tokens | <https://openai.com/api/pricing/> |
-| OpenAI GPT-5.4 | $2.50 / 1M input tokens; $15.00 / 1M output tokens | <https://openai.com/api/pricing/> |
-| Anthropic Claude Sonnet class | Public Sonnet 4.5/4.6 reporting: about $3 / 1M input tokens; $15 / 1M output tokens | <https://www.anthropic.com/claude/sonnet> |
-| Stripe card payments | 2.9% + $0.30 per successful domestic card transaction | <https://stripe.com/us/pricing> |
-| Google Workspace Business Starter | $7/user/mo on annual plan | <https://workspace.google.com/intl/en/pricing/> |
+| Service | Pricing used | Source |
+|---|---|---|
+| DigitalOcean Droplet | 1 GiB: $6/mo, 2 GiB: $12/mo, 4 GiB: $24/mo | digitalocean.com/pricing |
+| DO Managed Postgres | Single node: $15/mo; HA: $60+/mo | DO docs |
+| Fly.io shared VM | Free allowance + ~$1.94/mo per shared-cpu-1x | fly.io/docs/about/pricing |
+| Neon Postgres | Free tier (10 GB); Pro $19/mo (autoscaling) | neon.tech/pricing |
+| Cloudflare R2 | 10 GB/mo free; $0.015/GB after; egress free | cloudflare.com/developer-platform/r2 |
+| Cloudflare DNS/CDN | Free | cloudflare.com |
+| OpenAI GPT-4o mini | ~$0.15/1M input; ~$0.60/1M output | openai.com/api/pricing |
+| OpenAI GPT-4o | ~$2.50/1M input; ~$10.00/1M output | openai.com/api/pricing |
+| Anthropic Claude Haiku 4.5 | ~$0.80/1M input; ~$4.00/1M output | anthropic.com/pricing |
+| Anthropic Claude Sonnet 4.6 | ~$3.00/1M input; ~$15.00/1M output | anthropic.com/pricing |
+| LemonSqueezy | 5% + $0.50 per transaction (MoR, handles tax globally) | lemonsqueezy.com/pricing |
+| Stripe | 2.9% + $0.30 per transaction (you handle tax) | stripe.com/pricing |
+
+**Note on LLM model names**: the original draft referenced "GPT-5.4 mini" — that model does not exist as of this writing. Prices above use current known models. By the time Sally has 100 paying users, newer/cheaper models will likely exist; the per-token cost trend has been consistently downward.
 
 ## LLM Cost Model
 
-LLM spend is the main variable cost. Compute and database costs are mostly fixed at this milestone.
+LLM spend is the main variable cost. Compute and database are mostly fixed at this milestone.
 
-Approximate cost per extraction:
+Approximate cost per extraction using **current** models:
 
-| Model class | Typical request | Heavy request |
+| Model | Typical request | Heavy request |
 |---|---:|---:|
-| GPT-5.4 mini | $0.010 | $0.022 |
-| GPT-5.4 | $0.032 | $0.073 |
-| Claude Sonnet class | $0.036 | $0.083 |
+| GPT-4o mini | $0.0016 | $0.0033 |
+| Claude Haiku 4.5 | $0.0070 | $0.0145 |
+| GPT-4o | $0.028 | $0.058 |
+| Claude Sonnet 4.6 | $0.036 | $0.083 |
 
 Monthly LLM spend at 100 users:
 
-| Usage level | Calls/mo | GPT-5.4 mini | GPT-5.4 | Claude Sonnet class |
-|---|---:|---:|---:|---:|
-| Light | 1,000 | $10-$22 | $32-$73 | $36-$83 |
-| Base | 2,500 | $25-$55 | $80-$181 | $90-$206 |
-| Heavy | 10,000 | $100-$220 | $320-$725 | $360-$825 |
+| Usage level | Calls/mo | GPT-4o mini | Claude Haiku | GPT-4o | Claude Sonnet |
+|---|---:|---:|---:|---:|---:|
+| Light | 1,000 | $2–$3 | $7–$15 | $28–$58 | $36–$83 |
+| Base | 2,500 | $4–$8 | $18–$36 | $70–$145 | $90–$206 |
+| Heavy | 10,000 | $16–$33 | $70–$145 | $280–$580 | $360–$825 |
 
-Recommendation: default to the cheapest model that produces acceptable extraction quality, track per-provider success rate and missing fields, and reserve expensive models for retry/escalation paths. Sally already has the provider abstraction and extraction logging needed to support this.
+GPT-4o mini is the obvious default. The quality gap between mini and full models is real for complex pages and PDFs, but for straightforward product pages it may be acceptable. The right answer is to run both on the same real extractions and measure field completeness.
+
+Sally already has the provider abstraction and extraction logging to support model-per-extraction routing. A sensible strategy: default to the cheap model, escalate to a stronger model on retry when required fields are missing.
+
+**Self-hosted Ollama**: Sally supports Ollama and you have a machine running it. At 100 users, routing non-critical or low-stakes extractions through a local Ollama instance (when it's running well) could meaningfully reduce LLM spend. Not reliable enough to plan around, but worth keeping as a cost lever.
 
 ## Infrastructure Cost By Stage
 
 ### Stage 0: One Internal User
 
-This stage can stay on the current dev host or a single small VM.
-
 | Cost item | Monthly estimate |
 |---|---:|
-| App + web server | $0-$6 |
-| Postgres | $0-$15 |
-| Object/file storage | $0 |
-| Backups/snapshots | $0-$2 |
-| LLM usage | $1-$10 |
-| Domain/DNS/tunnel | $0-$2 |
-| Total | $1-$35 |
+| App server | $0–$5 |
+| Postgres | $0–$19 |
+| Object storage | $0 |
+| LLM usage | $1–$10 |
+| Domain / DNS | $0–$2 |
+| **Total** | **$1–$36** |
 
-Notes:
-
-- A local or existing VM is fine here.
-- Use `stub` or local `ollama` for UI work to avoid burning paid LLM calls.
-- Do not draw pricing conclusions from this stage; the LLM quality loop matters more than infrastructure cost.
+Use `stub` or local Ollama for UI work to avoid burning paid LLM calls during development.
 
 ### Stage 1: 10 Real Users
 
-This stage should be a real production-like environment, even if it is not highly available.
-
 | Cost item | Monthly estimate |
 |---|---:|
-| App VM: 1-2 GiB Droplet | $6-$12 |
-| Managed Postgres single node | $15 |
-| Droplet backup | $1-$4 |
-| Object storage | $0-$5 |
-| Uptime monitoring | $0-$1 |
-| LLM usage | $5-$30 |
-| Domain/email/admin tools | $2-$15 |
-| Total | $29-$82 |
+| App server | $2–$12 |
+| Managed Postgres (Neon or DO) | $0–$19 |
+| Object storage | $0–$5 |
+| Backups | $1–$4 |
+| LLM usage | $5–$30 |
+| Uptime monitoring | $0–$5 |
+| Email / admin tools | $0–$10 |
+| **Total** | **$8–$85** |
 
-Notes:
-
-- A single-node database is acceptable if expectations are clear and restore procedures are tested.
-- Start recording actual extractions per user, tokens per extraction, error rate, and support issues.
-- Keep free contractor/share viewing; it should not materially affect cost at this stage.
+Start recording actual extractions per user, tokens per extraction, error rate, and support time. These numbers matter more than any estimate.
 
 ### Stage 2: 100 User Milestone
 
-Recommended lean setup:
+**Lean (Fly.io + Neon):**
+
+| Cost item | Monthly estimate |
+|---|---:|
+| App server (Fly.io) | $0–$5 |
+| Postgres (Neon Pro) | $0–$19 |
+| Object storage (Cloudflare R2) | $0–$5 |
+| Uptime / error monitoring | $0–$10 |
+| LLM usage, GPT-4o mini default | $4–$33 |
+| Email / admin tools | $0–$10 |
+| **Total** | **$4–$82** |
+
+**Standard (DigitalOcean):**
 
 | Cost item | Monthly estimate |
 |---|---:|
 | App VM: 2 GiB Droplet | $12 |
 | Managed Postgres single node | $15 |
-| Droplet backup | $2-$4 |
-| Object storage | $0-$5 |
-| Uptime monitoring | $0-$5 |
-| LLM usage, GPT-5.4 mini-class | $25-$55 |
-| Logs/monitoring/tools buffer | $5-$15 |
-| Domain/email/admin tools | $2-$15 |
-| Total | $61-$126 |
+| Droplet backup (weekly) | $2–$4 |
+| Object storage | $0–$5 |
+| Uptime / error monitoring | $0–$10 |
+| LLM usage, GPT-4o mini default | $4–$33 |
+| Email / admin tools | $0–$10 |
+| **Total** | **$33–$89** |
 
-Recommended conservative setup:
+**Conservative (more headroom):**
 
 | Cost item | Monthly estimate |
 |---|---:|
 | App VM: 4 GiB Droplet | $24 |
-| Managed Postgres single node | $15-$30 |
-| Backups/snapshots/object backups | $5-$15 |
-| Object storage | $0-$5 |
-| Uptime/error monitoring | $5-$30 |
-| LLM usage, mixed mini + stronger retries | $50-$140 |
-| Domain/email/admin tools | $10-$25 |
-| Contingency | $20-$50 |
-| Total | $129-$319 |
+| Managed Postgres | $15–$30 |
+| Backups | $5–$15 |
+| Object storage | $0–$5 |
+| Monitoring / error tracking | $5–$30 |
+| LLM usage (mini + stronger retries) | $20–$80 |
+| Email / admin tools | $10–$25 |
+| Contingency | $20–$50 |
+| **Total** | **$99–$259** |
 
-The lean setup is probably enough for 100 users if usage is bursty and normal architectural-product pages are handled well. The conservative setup is a better planning number when discussing pricing, because it includes vendor drift and bad extraction days.
+Use $100–$200/month as the planning envelope for the first 100 users when talking about pricing. The lean stack can do it for much less, but buffer matters.
 
 ## Network Traffic And Storage
 
-Network traffic should not be a meaningful cost at 100 users:
+Network traffic is not a meaningful cost at 100 users:
 
-- DigitalOcean's 2 GiB Droplet includes 2,000 GiB/month transfer.
-- Sally's dashboard and share pages are mostly HTML/CSS, thumbnails, and small JSON/API requests.
-- Product images are usually referenced by URL, not rehosted, unless users upload thumbnails.
-- Cloudflare R2 has free egress and a 10 GB-month free tier; DigitalOcean Spaces is $5/mo if the project prefers one-provider simplicity.
+- DigitalOcean's 2 GiB Droplet includes 2 TB/month transfer. Sally's traffic (HTML, small JSON, thumbnails) won't touch it.
+- Cloudflare R2 has free egress. DigitalOcean Spaces is $5/month if you prefer one-provider simplicity.
+- Fly.io includes 100 GB egress free per month.
 
 Watch-outs:
 
-- If Sally starts proxying or caching full-size product images, bandwidth and storage can grow.
-- If server-side PDF extraction stores original PDFs, storage growth should be measured separately.
-- If public share links become customer-facing catalogs with heavy contractor traffic, CDN/object storage architecture will matter more.
+- Proxying or caching full-size product images will grow storage and bandwidth noticeably.
+- Server-side PDF storage: measure this separately as Sally's PDF extraction evolves.
+- Public share links becoming contractor-facing catalogs could create unexpected anonymous read traffic at scale.
 
 ## BC/DR And Availability
 
-For 1-100 users, there are three realistic levels:
-
 | Level | Monthly cost | Recovery posture | Fit |
 |---|---:|---|---|
-| Basic backups | $5-$15 incremental | Weekly VM backup, managed DB backups, nightly `pg_dump` to object storage, manual restore | Best first production default |
-| Tested restore | $15-$50 incremental | Basic backups plus monthly restore rehearsal to a temporary VM/database | Recommended before paid pilots |
-| HA architecture | $80-$150+ incremental | Two app nodes, load balancer, HA Postgres, documented failover | Premature unless paid users require uptime SLA |
+| Basic backups | $5–$15 | Weekly VM backup, managed DB backups, nightly `pg_dump` to R2/Spaces, manual restore | Best first production default |
+| Tested restore | $15–$50 | Basic backups + monthly restore rehearsal to temporary VM/DB | Recommended before paid pilots |
+| HA architecture | $80–$150+ | Two app nodes, load balancer, HA Postgres, documented failover | Premature until a paying customer requires an uptime SLA |
 
-Recommendation: do not buy full HA before the first 100 users unless a paying pilot requires it. Instead, write and test a restore runbook:
+Do not buy HA before 100 users. Write and test a restore runbook instead:
 
-1. Restore Postgres backup or latest `pg_dump`.
-2. Deploy the current Go server binary/container.
-3. Restore uploads/object storage if needed.
+1. Restore latest `pg_dump` from object storage to a fresh Postgres instance.
+2. Deploy the current Go binary or container image.
+3. Restore uploads from object storage if needed.
 4. Verify login, project list, extraction endpoint, and share links.
 5. Record actual recovery time.
 
-The target for the first paid milestone can be RPO under 24 hours and RTO under 4 hours. That is much cheaper than true high availability and probably matches customer expectations for an early tool.
+Target for the first paid milestone: RPO < 24 hours, RTO < 4 hours. This is achievable for $5–$15/month and is probably fine for early customers.
 
-## Other Overhead And Variable Costs
+## Payment Processing
 
-These are not always cloud spend, but they affect what users must be charged.
+**Recommendation: LemonSqueezy (or Paddle) over raw Stripe.**
+
+Stripe is excellent but it makes *you* the merchant of record. That means you are responsible for collecting and remitting sales tax in every jurisdiction where you have "economic nexus" — which in the US means you can owe sales tax in states where you've never set foot, triggered by revenue thresholds. Architects are distributed across all 50 states. This is a real compliance burden for a one-person business.
+
+LemonSqueezy and Paddle are Merchants of Record: they collect the money, handle all tax compliance globally, and remit to you net of their fee. The fee (LemonSqueezy: 5% + $0.50/transaction) is higher than Stripe per transaction, but the tax compliance alone is worth it at this stage. You can switch to Stripe + a tax automation layer (Stripe Tax, TaxJar) later when the revenue justifies it.
+
+At $15/user/month with 100 users ($1,500 MRR):
+- **LemonSqueezy fee**: ~$125/month
+- **Stripe fee**: ~$74/month + your time managing sales tax compliance
+
+The $51/month difference buys meaningful peace of mind early. Revisit at 500+ users.
+
+## Other Overhead
 
 | Category | Cost behavior | Notes |
 |---|---|---|
-| Payment processing | Variable | Stripe's domestic card rate means low monthly prices lose a noticeable percentage to the fixed $0.30 fee. |
-| Support | Step function | Even 100 users can create hours of support work. This is likely bigger than cloud cost. |
-| Email | Mostly fixed | Google Workspace at one admin seat is around $7/mo. Transactional email may stay free/cheap at this scale. |
-| Observability | Free to $30+/mo | Netdata is self-hosted now. Add hosted error tracking only when it saves debugging time. |
+| Support | Step function | Even 50 active users can generate hours of support. This will likely exceed cloud cost at 100 users. |
+| Email | Mostly fixed | Transactional email (magic links, notifications) stays cheap via Resend or Postmark free tiers. Google Workspace is not necessary early — Gmail + a custom domain alias works fine. |
+| Observability | $0–$30/mo | Netdata is already self-hosted. Add hosted error tracking (Sentry free tier) only when it saves debugging time faster than logs. |
 | Security/compliance | Mostly labor | OAuth, backups, least-privilege API keys, audit logs, and data deletion are more important than paid tooling at this stage. |
-| Chrome Web Store | One-time | Chrome Web Store developer registration is a one-time fee, not meaningful monthly spend. |
-| Taxes/accounting/legal | Fixed/step | Not included in vendor-cost break-even; include in business pricing. |
+| Chrome Web Store | One-time | $5 developer registration. Already paid. |
+| Taxes / accounting / legal | Fixed/step | Not in vendor-cost break-even; include in business pricing. An accountant for a small SaaS runs $500–$2,000/year. |
 
 ## Break-Even User Pricing
 
-Stripe net revenue formula for a monthly per-user subscription:
+LemonSqueezy net revenue formula:
 
-```text
-net per user = (price * 0.971) - 0.30
-break-even price = (monthly vendor cost / user count + 0.30) / 0.971
+```
+net per user = (price × 0.95) − 0.50
+break-even price = (monthly vendor cost / user count + 0.50) / 0.95
 ```
 
 At 100 architect users:
 
-| Monthly vendor cost | Vendor cost/user | Stripe-adjusted break-even price |
+| Monthly vendor cost | Vendor cost/user | LemonSqueezy break-even |
 |---:|---:|---:|
-| $75 | $0.75 | $1.08/user/mo |
-| $150 | $1.50 | $1.85/user/mo |
-| $250 | $2.50 | $2.88/user/mo |
-| $350 | $3.50 | $3.91/user/mo |
+| $50 | $0.50 | $1.05/user/mo |
+| $100 | $1.00 | $1.58/user/mo |
+| $200 | $2.00 | $2.63/user/mo |
 
-That table only covers direct vendor costs. It does not fund support, product development, sales, admin time, tax overhead, refunds, or profit.
-
-Recommended early pricing guardrails:
-
-- Do not charge less than $10/architect/month if pricing per seat.
-- Prefer a firm/workspace plan over tiny per-seat pricing, for example $49-$99/month for a small architecture office.
-- Include a generous but explicit SPEC extraction allowance.
-- Treat contractor/share viewers as free until their traffic materially changes costs.
-- Consider usage guardrails: soft warnings at high extraction volume, then either throttle, require upgrade, or route to cheaper models.
+Infrastructure break-even is trivially low. The real question is what number makes the business worth running.
 
 Example plan economics at 100 users:
 
-| Price | Gross MRR | Approx Stripe fees | Net before vendor cost | Net after $150 vendor cost | Net after $300 vendor cost |
+| Price | Gross MRR | LemonSqueezy fees (~5%) | Net before vendor cost | Net after $100 infra | Net after $200 infra |
 |---:|---:|---:|---:|---:|---:|
-| $5/user/mo | $500 | $45 | $455 | $305 | $155 |
-| $10/user/mo | $1,000 | $59 | $941 | $791 | $641 |
-| $15/user/mo | $1,500 | $74 | $1,426 | $1,276 | $1,126 |
-| $25/user/mo | $2,500 | $103 | $2,397 | $2,247 | $2,097 |
+| $10/user/mo | $1,000 | $75 | $925 | $825 | $725 |
+| $15/user/mo | $1,500 | $100 | $1,400 | $1,300 | $1,200 |
+| $25/user/mo | $2,500 | $150 | $2,350 | $2,250 | $2,150 |
+| $49/firm/mo | varies | — | — | — | — |
 
-Recommendation: for early pilots, use pricing that is high enough to validate willingness to pay, not merely enough to cover infrastructure. A $10-$20/architect/month plan or $49-$99/firm/month plan easily covers 100-user vendor costs while leaving room for support.
+**Pricing guardrails:**
+
+- Do not charge less than $10/architect/month if pricing per seat. That is the floor where vendor costs become meaningless noise.
+- A per-firm plan ($49–$99/month for an office of 1–5 architects) may convert better than per-seat for small studios. Architects work in small teams; individual seat pricing feels like enterprise friction.
+- Include an explicit SPEC extraction allowance and be transparent about it. Users who understand usage limits self-regulate; those who don't will find any throttle feels arbitrary.
+- Treat contractor/share viewers as free permanently (or until viewer traffic meaningfully affects costs). Charging for viewers kills the "send a link to your contractor" value proposition.
+- Consider a one-time project fee as a future option: pay $X to create a project, no monthly commitment. Architects often work project-to-project.
 
 ## Key Risks
 
-- LLM quality may require stronger, more expensive models than the base estimate.
-- Long PDF/cut-sheet extraction can multiply token usage.
-- Users may retry failed extractions several times, raising LLM cost without creating value.
-- Public share links could create unexpected anonymous traffic.
-- Manual support may dominate all vendor costs.
-- Single-node database architecture creates downtime risk even if it keeps costs low.
-- Vendor pricing can change; re-check pricing monthly during pilot planning.
+- **LLM quality**: the cheap model may require frequent retries or produce too many missing fields, pushing actual LLM spend 2–5× above the base estimate.
+- **PDF extraction token explosion**: a 50-page cut-sheet can use 10× the tokens of a typical product page.
+- **Retry loops**: failed extractions may be retried several times, paying LLM cost without producing value. Cap retries; surface failure clearly.
+- **Share-link traffic**: public catalogs could create unexpected anonymous read volume.
+- **Single-node database**: planned downtime for Postgres upgrades, or unplanned node failure, creates outage. Acceptable at this stage with a tested restore runbook.
+- **Support load**: manual support from even 30 active users can dwarf all infrastructure costs.
+- **Vendor pricing changes**: LLM API pricing has been dropping, but capacity and availability can change. Re-check before launch.
 
-## Metrics To Add To The Cost Dashboard
+## Metrics To Instrument
 
-Sally's admin dashboard already tracks extraction stats. For pricing decisions, add or verify these metrics:
+Sally's admin dashboard already tracks extraction stats. Add or verify:
 
 - Extractions per user per day/week/month.
-- Prompt tokens and completion tokens per extraction.
-- LLM cost per extraction, derived from provider/model and token counts.
+- Prompt and completion tokens per extraction (already in `extraction_logs`).
+- Derived LLM cost per extraction (provider + model + token counts).
 - Retry rate and failure rate by provider/model.
-- Missing-fields count by provider/model.
-- Storage used by uploads and extracted documents.
-- Share-link page views by project.
-- Active architect users versus read-only contractor viewers.
-- Gross margin per account or project.
+- Missing-fields rate by provider/model (most important quality signal).
+- Storage used by uploads.
+- Share-link page views by project (watch for viral/high-traffic shares).
+- Active architect users vs. read-only contractor viewers.
 
-## Practical Recommendation
+## What I'd Actually Do
 
-Run the first paid 100-user milestone on a lean but production-like stack:
+**Right now (Stage 0–1):**
 
-- 2 GiB app VM.
-- Single-node managed Postgres.
-- Nightly database export to object storage.
-- Cloudflare DNS/Tunnel or normal HTTPS ingress.
-- Free/cheap uptime monitoring plus existing Netdata.
-- GPT-5.4 mini-class model as default extraction path.
-- Stronger model only for retry/escalation.
+1. Deploy on Fly.io. `fly launch` from the repo root, add a `fly.toml`, done. Takes an afternoon.
+2. Use Neon free tier for Postgres. Set up nightly `pg_dump` to Cloudflare R2 (free tier).
+3. Use GPT-4o mini as the default extraction model. It's 10–20× cheaper than Sonnet for comparable product-page quality.
+4. Keep Cloudflare for DNS. It already handles the domain.
+5. Set up Sentry free tier for error tracking.
+6. Budget: ~$5–$20/month for infrastructure. Everything else is LLM spend driven by actual usage.
 
-Use $150-$300/month as the planning envelope for the first 100 users. If 100 users are paying, vendor cost is not the constraint. The constraint is extraction quality, support load, and proving that architects get enough value to pay at least $10-$20 per month or that firms will pay $49-$99 per month.
+**Before first paid user:**
+
+1. Test the restore runbook (Postgres restore + redeploy) and record the time. Fix whatever is slow.
+2. Set up LemonSqueezy with a $15/architect/month or $49/firm/month plan.
+3. Instrument LLM cost per extraction in the admin dashboard.
+4. Decide on extraction soft-cap (e.g., warn at 200 extractions/month, hard-cap at 500 for base plan).
+
+**At 50–100 paying users:**
+
+1. Evaluate whether Fly.io shared VMs are hitting limits. If yes, upgrade to dedicated; still cheaper than a DO 4 GiB droplet.
+2. Evaluate Neon Pro ($19/month) if DB is growing.
+3. Consider adding a retry escalation path (GPT-4o mini → GPT-4o on field-missing failures).
+4. Revisit payment processor. If MRR is $5,000+, Stripe + Stripe Tax starts to make economic sense vs. LemonSqueezy's percentage fee.
+
+The entire stack for the first 100 users should cost less than a dinner out. The business risk is not the server bill.
