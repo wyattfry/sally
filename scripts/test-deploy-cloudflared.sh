@@ -22,11 +22,16 @@ cat >"${BIN_DIR}/cloudflared" <<'EOF'
 set -euo pipefail
 printf 'cloudflared %s\n' "$*" >>"${TEST_LOG_DIR}/commands.log"
 if [[ "${1:-}" == "tunnel" && "${2:-}" == "list" ]]; then
-  if grep -q "route dns" "${TEST_LOG_DIR}/commands.log" 2>/dev/null; then
+  if [[ "${3:-}" == "-o" && "${4:-}" == "json" ]]; then
     printf '[{"id":"tunnel-123","name":"sally-dev"}]\n'
   else
-    printf '[]\n'
+    printf 'ID         NAME      CREATED              CONNECTIONS\n'
+    printf 'tunnel-123 sally-dev 2026-01-01T00:00:00Z\n'
   fi
+  exit 0
+fi
+if [[ "${1:-}" == "tunnel" && "${2:-}" == "token" ]]; then
+  printf 'token-from-cert-%s\n' "${3:-}"
   exit 0
 fi
 exit 0
@@ -79,6 +84,9 @@ grep -F 'curl -fsS -X PUT' "${LOG_DIR}/commands.log" >/dev/null
 grep -F '/accounts/account-123/cfd_tunnel/tunnel-123/configurations' "${LOG_DIR}/curl.command" >/dev/null
 grep -F '"hostname": "dev.spexxtool.com"' "${LOG_DIR}/curl.args" >/dev/null
 grep -F '"service": "http://127.0.0.1:8080"' "${LOG_DIR}/curl.args" >/dev/null
-grep -F 'ExecStart=' "${SERVICE_FILE}" | grep -F 'cloudflared tunnel --no-autoupdate run --token test-token' >/dev/null
+# Ambient CLOUDFLARED_TUNNEL_TOKEN=test-token must be overridden by the locally-derived
+# token, because the cert + named tunnel are present.
+grep -F 'ExecStart=' "${SERVICE_FILE}" | grep -F 'cloudflared tunnel --no-autoupdate run --token token-from-cert-sally-dev' >/dev/null
+grep -F 'systemctl --user restart sally-cloudflared.service' "${LOG_DIR}/commands.log" >/dev/null
 
 echo "deploy-cloudflared test passed"

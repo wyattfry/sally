@@ -48,6 +48,20 @@ PY
   )"
 fi
 
+# When an origin cert and the named tunnel are present locally, derive the token from
+# `cloudflared tunnel token <name>` — that's the source of truth. Doing this even when
+# CLOUDFLARED_TUNNEL_TOKEN is already set in the environment protects against stale
+# shells / .bashrc exports left over from a different tunnel.
+if [[ "${CLOUDFLARED_QUICK_TUNNEL}" != "true" ]]; then
+  if [[ -f "${CERT_FILE}" ]] && cloudflared tunnel list 2>/dev/null | awk 'NR>1 {print $2}' | grep -Fxq "${CLOUDFLARED_TUNNEL_NAME}"; then
+    derived_token="$(cloudflared tunnel token "${CLOUDFLARED_TUNNEL_NAME}")"
+    if [[ -n "${CLOUDFLARED_TUNNEL_TOKEN:-}" && "${CLOUDFLARED_TUNNEL_TOKEN}" != "${derived_token}" ]]; then
+      echo "ignoring ambient CLOUDFLARED_TUNNEL_TOKEN (does not match local '${CLOUDFLARED_TUNNEL_NAME}' tunnel)" >&2
+    fi
+    CLOUDFLARED_TUNNEL_TOKEN="${derived_token}"
+  fi
+fi
+
 configure_named_tunnel() {
   if [[ -z "${public_hostname}" ]]; then
     return 0
@@ -57,14 +71,6 @@ configure_named_tunnel() {
     echo "cloudflared origin cert not found at ${CERT_FILE}" >&2
     exit 1
   fi
-
-  echo "Checking if the tunnel is already configured and running for ${public_hostname}..."
-  cloudflared tunnel list | grep -E "(${CLOUDFLARED_TUNNEL_NAME}|${public_hostname})" >/dev/null 2>&1 && {
-    echo "Tunnel ${CLOUDFLARED_TUNNEL_NAME} or hostname ${public_hostname} is already configured. Skipping tunnel creation." >&2
-    return 0
-  }
-
-  cloudflared tunnel route dns "${CLOUDFLARED_TUNNEL_NAME}" "${public_hostname}"
 
   tunnel_list_json="$(cloudflared tunnel list -o json)"
 
@@ -87,47 +93,110 @@ PY
     python3 - "${CERT_FILE}" <<'PY'
 import base64
 import json
+import re
 import sys
 
-with open(sys.argv[1], "rb") as fh:
-    payload = base64.b64decode(fh.read())
+with open(sys.argv[1], "r") as fh:
+    text = fh.read()
+
+# cloudflared cert.pem wraps the JSON-with-account-id-and-api-token in a PEM-style
+# block: -----BEGIN ARGO TUNNEL TOKEN----- ... -----END ARGO TUNNEL TOKEN-----.
+# Strip the markers and any whitespace before base64-decoding.
+match = re.search(
+    r"-----BEGIN ARGO TUNNEL TOKEN-----(.+?)-----END ARGO TUNNEL TOKEN-----",
+    text,
+    re.DOTALL,
+)
+b64 = re.sub(r"\s+", "", match.group(1) if match else text)
+payload = base64.b64decode(b64)
 data = json.loads(payload)
 print(data["accountID"], data["apiToken"])
 PY
   )
 
-  ingress_payload="$(
+  desired_ingress_json="$(
     python3 - "${public_hostname}" "${CLOUDFLARED_URL}" <<'PY'
 import json
 import sys
 
-print(json.dumps({
-    "config": {
-        "ingress": [
-            {"hostname": sys.argv[1], "service": sys.argv[2]},
-            {"service": "http_status:404"},
-        ]
-    }
-}))
+print(json.dumps([
+    {"hostname": sys.argv[1], "service": sys.argv[2]},
+    {"service": "http_status:404"},
+]))
 PY
   )"
 
-  response="$(
-    curl -fsS -X PUT \
+  # A fresh tunnel has no config yet; cloudflare returns 404. Drop -f and discard
+  # stderr so the missing-config case isn't reported as a script error.
+  current_config="$(
+    curl -sS \
       -H "Authorization: Bearer ${api_token}" \
-      -H "Content-Type: application/json" \
-      --data "${ingress_payload}" \
-      "https://api.cloudflare.com/client/v4/accounts/${account_id}/cfd_tunnel/${tunnel_id}/configurations"
+      "https://api.cloudflare.com/client/v4/accounts/${account_id}/cfd_tunnel/${tunnel_id}/configurations" \
+      2>/dev/null
+  )"
+  if [[ -z "${current_config}" ]]; then
+    current_config="{}"
+  fi
+
+  ingress_matches="$(
+    python3 - "${current_config}" "${desired_ingress_json}" <<'PY'
+import json
+import sys
+
+try:
+    current = json.loads(sys.argv[1])
+except json.JSONDecodeError:
+    current = {}
+desired = json.loads(sys.argv[2])
+got = (((current.get("result") or {}).get("config") or {}).get("ingress") or [])
+print("yes" if got == desired else "no")
+PY
   )"
 
-  python3 - "${response}" <<'PY'
+  if [[ "${ingress_matches}" == "yes" ]]; then
+    echo "tunnel ${CLOUDFLARED_TUNNEL_NAME} ingress already routes ${public_hostname} -> ${CLOUDFLARED_URL}"
+  else
+    echo "updating tunnel ${CLOUDFLARED_TUNNEL_NAME} ingress: ${public_hostname} -> ${CLOUDFLARED_URL}"
+    ingress_payload="$(
+      python3 - "${desired_ingress_json}" <<'PY'
+import json
+import sys
+
+print(json.dumps({"config": {"ingress": json.loads(sys.argv[1])}}))
+PY
+    )"
+
+    response="$(
+      curl -fsS -X PUT \
+        -H "Authorization: Bearer ${api_token}" \
+        -H "Content-Type: application/json" \
+        --data "${ingress_payload}" \
+        "https://api.cloudflare.com/client/v4/accounts/${account_id}/cfd_tunnel/${tunnel_id}/configurations"
+    )"
+
+    python3 - "${response}" <<'PY'
 import json
 import sys
 
 response = json.loads(sys.argv[1])
 if not response.get("success"):
+    print(json.dumps(response), file=sys.stderr)
     raise SystemExit(1)
 PY
+  fi
+
+  # `cloudflared tunnel route dns` fails if the DNS record already points elsewhere;
+  # tolerate that and just print the failure for the operator.
+  if ! cloudflared tunnel route dns "${CLOUDFLARED_TUNNEL_NAME}" "${public_hostname}" 2>/tmp/cf-route-dns.err; then
+    if grep -q "already exists" /tmp/cf-route-dns.err; then
+      echo "DNS route for ${public_hostname} already exists; leaving as-is"
+    else
+      cat /tmp/cf-route-dns.err >&2
+      rm -f /tmp/cf-route-dns.err
+      exit 1
+    fi
+  fi
+  rm -f /tmp/cf-route-dns.err
 }
 
 exec_start=()
@@ -157,7 +226,7 @@ CLOUDFLARED_TUNNEL_NAME=${CLOUDFLARED_TUNNEL_NAME}
 CLOUDFLARED_PUBLIC_URL=${CLOUDFLARED_PUBLIC_URL}
 EOF
 
-cat >"${SERVICE_FILE}" <<EOF
+new_unit="$(cat <<EOF
 [Unit]
 Description=Sally Cloudflare Tunnel
 After=network-online.target sally-server.service
@@ -174,9 +243,17 @@ WorkingDirectory=${DEPLOY_ROOT}
 [Install]
 WantedBy=default.target
 EOF
+)"
+
+printf '%s\n' "${new_unit}" >"${SERVICE_FILE}"
 
 systemctl --user daemon-reload
-systemctl --user enable --now "${CLOUDFLARED_SERVICE_NAME}"
+systemctl --user enable "${CLOUDFLARED_SERVICE_NAME}" >/dev/null
+
+# Always restart so the running process picks up the unit's ExecStart. A diff against
+# the file on disk isn't enough — the live process can drift from disk if a prior run
+# wrote a new unit but only called `enable --now`, which is a no-op when active.
+systemctl --user restart "${CLOUDFLARED_SERVICE_NAME}"
 
 sleep 3
 systemctl --user --no-pager --full status "${CLOUDFLARED_SERVICE_NAME}" || true
