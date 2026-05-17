@@ -48,6 +48,11 @@
 Bugs
 - [x] "extracted inappropriate value for zone": project with schedule with 0 items, spec'd a product, Zone field extracted value: `</zone><parameter name="suggestedScheduleName">Electrical Fixture Schedule` — sanitizeZone() strips XML artifacts; schema description + prompt reinforcement added
 - [x] item detail modal does not scroll
+- [x] it should prompt to make a project if none exist before extraction
+
+- [ ] some sites hide the SPEC button and panel
+    - https://www.aspectled.com/products/9-led-large-in-ground-in-wall-led-light-rgb-white-36w
+    - https://simplygoodcoffee.com/products/the-brewer-plastic-free
 - [ ] "[current selected]": this is still happening! investigate again. i had a project with a Windows Schedule with items. I went to a product page for a window, spec'd it, sallypanel wanted to make a new schedule called "Window Schedule [current selected]". 
 - [ ] "stale code prefix": project with a schedule with insulation items. spec'd a product page for a window, and it wanted to add it to the insulation schedule (the llm extraction should have decided that the item did not logically fit with the items in the insulation schedule). i opted to add it to a new schedule named 'Window Schedule', the fields in sallypanel correctly updated back to the default fields (no R-Value), but the CODE kept the "I-" prefix from the previous table, when it should have determined a new Code prefix and number. Investigate.
 - [ ] "empty custom fields": project with windows schedule with items, i added custom columns: rough opening, overall jamb, swing. i spec'd a window product page, the custom fields were empty. the product page has a Specifications collapsable section with the desired data for the custom fields, check whether the specs were sent to the LLM, if so, investigate why the custom fields came back empty. product page: https://www.homedepot.com/p/Hy-Lite-47-5-in-x-11-5-in-Manchester-Silkscreened-Decorative-Glass-White-New-Construction-Frame-Window-DF4711MCSSWHV1500/331463170
@@ -61,6 +66,7 @@ Bugs
 - [ ] warn if item is out of stock
 - [ ] actions menu, remove bold from all items
 
+
 Critical Path
 - [x] add an About page that epxlains what problem this app solves, how to use it, how to install it, FAQs, etc
 - [x] re-order schedules option in the Actions menu, modal that looks similar to the Edit Columns modal (up / down buttons, but no rename or delete. ideally don't need a page reload to see updates)
@@ -70,6 +76,9 @@ Critical Path
 - [ ] notes to support multiple "rows" or inner-sections?
 - [ ] a feature to delete all of a users data / opt-out
 - [ ] user account page, dummy billing, stripe?
+- [ ] add by URL in mothership instead of via chrome extension
+- [ ] defend against out of control infra costs / abuse
+- [ ] research cloudflare json extractor: https://developers.cloudflare.com/browser-run/quick-actions/json-endpoint/
 
 Nice To Have
 - [x] LLM: scrape PDF content
@@ -82,6 +91,7 @@ Nice To Have
 - [x] don't allow schedules with duplicate names
 - [x] admin: line graphs dont seem to work. Use a library? D3.js?
 
+- [ ] create a report of the expenses estimated for scaling up to the first milestone of users, e.g. 100? estimate the cost for cloud compute spend, database, LLM, what else? network traffic? BC/DR? Estimate what users would have to be charged to cover costs.
 - [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
 - [ ] mothership: add hint text while editing a field on how to save and cancel
 - [ ] add Swagger: https://github.com/swaggo/swag

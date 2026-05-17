@@ -8,6 +8,7 @@ import {
   checkAuth,
   getMothershipScheduleUrl,
   listMothershipProjects,
+  createMothershipProject,
   listMothershipSchedules,
   createMothershipSchedule,
   listMothershipScheduleColumns,
@@ -393,5 +394,40 @@ describe("App", () => {
     // New schedule stays selected, not reverted to original
     await waitFor(() => expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-new"));
     expect(getMothershipScheduleNextCode).toHaveBeenCalledWith("schedule-new");
+  });
+
+  it("prompts to create a project before extracting when the user has no projects", async () => {
+    const user = userEvent.setup();
+    vi.mocked(listMothershipProjects).mockResolvedValue([]);
+    vi.mocked(listMothershipSchedules).mockResolvedValue([]);
+    vi.mocked(createMothershipProject).mockImplementation(async (name: string) => ({
+      id: "project-new",
+      name,
+      address: "",
+      description: "",
+      updatedAt: "2026-01-01T00:00:00Z",
+    }));
+
+    render(<App />);
+    await user.click(await screen.findByRole("button", { name: "SPEC" }));
+
+    // Should prompt for a project, not extract.
+    expect(await screen.findByLabelText("Project name")).toBeInTheDocument();
+    expect(extractScheduleItem).not.toHaveBeenCalled();
+
+    // Once a project exists, extraction should proceed.
+    vi.mocked(listMothershipProjects).mockResolvedValue([
+      { id: "project-new", name: "Main St.", address: "", description: "", updatedAt: "2026-01-01T00:00:00Z" }
+    ]);
+    vi.mocked(listMothershipSchedules).mockResolvedValue([
+      { id: "schedule-1", projectId: "project-new", name: "Bath", kind: "items", notes: "", position: 1 }
+    ]);
+
+    await user.type(screen.getByLabelText("Project name"), "Main St.");
+    await user.click(screen.getByRole("button", { name: "Create and continue" }));
+
+    expect(await screen.findByDisplayValue("Wall Faucet")).toBeInTheDocument();
+    expect(createMothershipProject).toHaveBeenCalledWith("Main St.");
+    expect(extractScheduleItem).toHaveBeenCalled();
   });
 });

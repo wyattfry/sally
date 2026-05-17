@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SallyPanel } from "./components/SallyPanel";
 import { SpecButton } from "./components/SpecButton";
 import { capturePage } from "./lib/capturePage";
@@ -26,6 +26,7 @@ type PanelState =
   | { kind: "closed" }
   | { kind: "signed-out" }
   | { kind: "signing-in" }
+  | { kind: "needs-project" }
   | { kind: "thinking"; tokenCount: number }
   | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string }
   | { kind: "minimized"; draft: ScheduleItem }
@@ -144,6 +145,19 @@ export default function App() {
       setPanel({ kind: "signed-out" });
       return;
     }
+
+    // Check for at least one project before incurring extraction cost.
+    // If none exists, prompt the user to create one; extraction will run after creation.
+    const initialRefresh = await refreshContext();
+    if (!initialRefresh.activeContext?.projectId) {
+      setPanel({ kind: "needs-project" });
+      return;
+    }
+
+    await runExtraction();
+  }
+
+  async function runExtraction() {
     setPanel({ kind: "thinking", tokenCount: 0 });
 
     // Refresh schedules in parallel with a brief render-delay so "thinking" paints first.
@@ -298,6 +312,13 @@ export default function App() {
     }
   }
 
+  async function handleCreateProjectAndExtract(name: string): Promise<string | null> {
+    const error = await handleCreateProject(name);
+    if (error) return error;
+    await runExtraction();
+    return null;
+  }
+
   async function handleCreateSchedule(name: string): Promise<string | null> {
     if (!activeContext?.projectId) {
       return "Select a project first.";
@@ -396,6 +417,11 @@ export default function App() {
             </button>
           </div>
         </aside>
+      ) : panel.kind === "needs-project" ? (
+        <NeedsProjectPanel
+          onCancel={() => setPanel({ kind: "closed" })}
+          onCreate={handleCreateProjectAndExtract}
+        />
       ) : panel.kind === "added" ? (
         <AddedConfirmation
           scheduleName={panel.scheduleName}
@@ -425,6 +451,73 @@ export default function App() {
         />
       ) : null}
     </div>
+  );
+}
+
+function NeedsProjectPanel({ onCancel, onCreate }: {
+  onCancel: () => void;
+  onCreate: (name: string) => Promise<string | null>;
+}) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  async function submit() {
+    const trimmed = name.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    const err = await onCreate(trimmed);
+    if (err) {
+      setError(err);
+      setSubmitting(false);
+    }
+    // On success, parent transitions panel state; no further action here.
+  }
+
+  return (
+    <aside className="sally-panel" aria-label="Sally">
+      <div className="panel-header">
+        <div className="panel-title">Sally</div>
+      </div>
+      <div className="panel-body">
+        <p>You don't have any projects yet. Create one to start spec'ing.</p>
+        <div className="field">
+          <label htmlFor="needs-project-input">Project name</label>
+          <input
+            id="needs-project-input"
+            ref={inputRef}
+            value={name}
+            placeholder="e.g. 123 Main St. Renovation"
+            disabled={submitting}
+            onChange={(e) => { setName(e.target.value); setError(null); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submit();
+              if (e.key === "Escape") onCancel();
+            }}
+          />
+        </div>
+        {error ? <p className="panel-modal-error">{error}</p> : null}
+      </div>
+      <div className="panel-actions">
+        <button className="action-button secondary" type="button" onClick={onCancel} disabled={submitting}>
+          Cancel
+        </button>
+        <button
+          className="action-button primary"
+          type="button"
+          onClick={submit}
+          disabled={!name.trim() || submitting}
+        >
+          {submitting ? "Creating…" : "Create and continue"}
+        </button>
+      </div>
+    </aside>
   );
 }
 

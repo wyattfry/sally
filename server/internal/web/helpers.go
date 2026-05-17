@@ -7,11 +7,47 @@ import (
 	"errors"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
 	queries "sally/server/internal/db/generated"
 	"sally/server/internal/presets"
 )
+
+// naturalLess compares two strings using a natural-sort order: runs of digits
+// are compared numerically, runs of non-digits lexicographically (case-insensitive).
+// So "E-2" < "E-10" and "PT-1A" < "PT-1B" < "PT-2".
+func naturalLess(a, b string) bool {
+	a = strings.ToLower(a)
+	b = strings.ToLower(b)
+	i, j := 0, 0
+	for i < len(a) && j < len(b) {
+		ad := a[i] >= '0' && a[i] <= '9'
+		bd := b[j] >= '0' && b[j] <= '9'
+		if ad && bd {
+			ai := i
+			for i < len(a) && a[i] >= '0' && a[i] <= '9' {
+				i++
+			}
+			bj := j
+			for j < len(b) && b[j] >= '0' && b[j] <= '9' {
+				j++
+			}
+			an, _ := strconv.Atoi(a[ai:i])
+			bn, _ := strconv.Atoi(b[bj:j])
+			if an != bn {
+				return an < bn
+			}
+		} else {
+			if a[i] != b[j] {
+				return a[i] < b[j]
+			}
+			i++
+			j++
+		}
+	}
+	return len(a)-i < len(b)-j
+}
 
 type projectSchedule struct {
 	project  queries.Project
@@ -259,7 +295,7 @@ func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]schedu
 		for _, col := range cols {
 			if col.Key == "code" {
 				sort.Slice(views, func(i, j int) bool {
-					return strings.ToLower(views[i].DataMap["code"]) < strings.ToLower(views[j].DataMap["code"])
+					return naturalLess(views[i].DataMap["code"], views[j].DataMap["code"])
 				})
 				break
 			}

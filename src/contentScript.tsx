@@ -15,6 +15,16 @@ function mountSally() {
 
   const host = document.createElement("div");
   host.id = HOST_ID;
+  // Defeat hostile page CSS (e.g. `div:empty { display: none }`, which sees
+  // the host as empty because shadow-root content doesn't count for :empty).
+  host.style.setProperty("all", "initial", "important");
+  host.style.setProperty("display", "block", "important");
+  host.style.setProperty("position", "fixed", "important");
+  host.style.setProperty("top", "0", "important");
+  host.style.setProperty("left", "0", "important");
+  host.style.setProperty("width", "0", "important");
+  host.style.setProperty("height", "0", "important");
+  host.style.setProperty("z-index", "2147483647", "important");
   document.documentElement.append(host);
 
   const shadow = host.attachShadow({ mode: "open" });

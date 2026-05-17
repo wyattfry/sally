@@ -63,9 +63,9 @@ func (a app) createNote(w http.ResponseWriter, r *http.Request) {
 	for _, s := range existing {
 		taken[s.Name] = true
 	}
-	name := "Notes"
+	name := "New Note"
 	for i := 2; taken[name]; i++ {
-		name = fmt.Sprintf("Notes %d", i)
+		name = fmt.Sprintf("New Note %d", i)
 	}
 
 	schedule, err := a.queries.CreateSchedule(r.Context(), queries.CreateScheduleParams{

@@ -506,12 +506,12 @@
       </div>
       {{end}}
       {{if ne $sw.Schedule.Kind "note"}}
-      <div class="add-item-row">
+      <!-- <div class="add-item-row">
         <form hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/blank"
               hx-target="#tbody-{{$sw.Schedule.ID}}" hx-swap="beforeend">
           <button type="submit" class="button button-sm">+ Add item</button>
         </form>
-      </div>
+      </div> -->
       <dialog class="item-detail-modal" id="item-detail-{{$sw.Schedule.ID}}">
         <div class="item-detail-modal-inner">
           <div class="item-detail-modal-header">
