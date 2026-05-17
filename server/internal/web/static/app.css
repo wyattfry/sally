@@ -2142,3 +2142,75 @@ details.schedule-section table {
   border-color: var(--c-accent, #4f7eff);
   box-shadow: 0 0 0 2px var(--c-accent, #4f7eff);
 }
+
+/* Schedule list (project page) */
+.schedule-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: white;
+  overflow: hidden;
+}
+.schedule-list-row + .schedule-list-row {
+  border-top: 1px solid var(--c-border);
+}
+.schedule-list-link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.1s;
+}
+.schedule-list-link:hover {
+  background: var(--c-surface-raised);
+}
+.schedule-list-name {
+  font-size: 16px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.schedule-list-kind {
+  color: var(--c-text-muted);
+  font-weight: 400;
+  font-size: 13px;
+}
+.schedule-list-meta {
+  color: var(--c-text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.schedule-list-count {
+  margin-right: 4px;
+}
+
+/* Single-schedule page */
+.schedule-page {
+  background: white;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 18px 22px 22px;
+}
+.schedule-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+.schedule-page-header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.schedule-page-actions {
+  display: flex;
+  gap: 8px;
+}

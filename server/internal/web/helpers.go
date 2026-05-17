@@ -272,6 +272,62 @@ func groupByZone(items []scheduleItemView) []zoneGroup {
 	return groups
 }
 
+func (a app) scheduleSummaries(ctx context.Context, projectID string) ([]scheduleSummary, error) {
+	schedules, err := a.queries.ListSchedulesByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]scheduleSummary, 0, len(schedules))
+	for _, s := range schedules {
+		items, err := a.queries.ListScheduleItems(ctx, s.ID)
+		if err != nil {
+			return nil, err
+		}
+		last := s.UpdatedAt
+		for _, it := range items {
+			if it.UpdatedAt.After(last) {
+				last = it.UpdatedAt
+			}
+		}
+		out = append(out, scheduleSummary{
+			Schedule:    s,
+			ItemCount:   len(items),
+			LastUpdated: last,
+		})
+	}
+	return out, nil
+}
+
+// scheduleWithItemsByID loads a single schedule (with columns, items, zone grouping)
+// matching the shape used by schedulesWithItems.
+func (a app) scheduleWithItemsByID(ctx context.Context, schedule queries.Schedule) (scheduleWithItems, error) {
+	cols, err := a.queries.ListScheduleColumns(ctx, schedule.ID)
+	if err != nil {
+		return scheduleWithItems{}, err
+	}
+	rawItems, err := a.queries.ListScheduleItems(ctx, schedule.ID)
+	if err != nil {
+		return scheduleWithItems{}, err
+	}
+	views := make([]scheduleItemView, len(rawItems))
+	for i, it := range rawItems {
+		views[i] = toItemView(it)
+	}
+	for _, col := range cols {
+		if col.Key == "code" {
+			sort.Slice(views, func(i, j int) bool {
+				return naturalLess(views[i].DataMap["code"], views[j].DataMap["code"])
+			})
+			break
+		}
+	}
+	return scheduleWithItems{
+		Schedule: schedule,
+		Columns:  cols,
+		Groups:   groupByZone(views),
+	}, nil
+}
+
 func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]scheduleWithItems, error) {
 	schedules, err := a.queries.ListSchedulesByProject(ctx, projectID)
 	if err != nil {

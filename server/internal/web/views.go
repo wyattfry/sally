@@ -2,6 +2,7 @@ package web
 
 import (
 	"html/template"
+	"time"
 
 	queries "sally/server/internal/db/generated"
 )
@@ -23,7 +24,7 @@ type projectDetailPage struct {
 	Kind             string
 	Title            string
 	Project          queries.Project
-	Schedules        []scheduleWithItems
+	Schedules        []scheduleSummary
 	FirstItemImage   string
 	ActiveLink       *queries.ProjectShareLink
 	ShareBaseURL     string
@@ -31,6 +32,21 @@ type projectDetailPage struct {
 	IsOwner          bool
 	MemberError      string
 	OwnerDisplayName string
+}
+
+type scheduleDetailPage struct {
+	Kind             string
+	Title            string
+	Project          queries.Project
+	Schedule         scheduleWithItems
+	IsOwner          bool
+	OwnerDisplayName string
+}
+
+type scheduleSummary struct {
+	Schedule    queries.Schedule
+	ItemCount   int
+	LastUpdated time.Time
 }
 
 type projectEditPage struct {

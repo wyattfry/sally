@@ -1,6 +1,8 @@
 package web
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -44,7 +46,7 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) createNote(w http.ResponseWriter, r *http.Request) {
@@ -79,15 +81,49 @@ func (a app) createNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
-	loaded, ok := a.loadProjectSchedule(w, r, r.PathValue("projectID"), r.PathValue("scheduleID"))
+	user, project, ok := a.loadUserProject(w, r, r.PathValue("projectID"))
 	if !ok {
 		return
 	}
-	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
+	schedule, err := a.queries.GetSchedule(r.Context(), r.PathValue("scheduleID"))
+	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
+		renderNotFound(w)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load schedule", http.StatusInternalServerError)
+		return
+	}
+
+	sw, err := a.scheduleWithItemsByID(r.Context(), schedule)
+	if err != nil {
+		http.Error(w, "could not load schedule", http.StatusInternalServerError)
+		return
+	}
+
+	isOwner := project.OwnerUserID == user.ID || a.oauthConfig == nil
+	var ownerDisplayName string
+	if !isOwner {
+		if owner, ownerErr := a.queries.GetUser(r.Context(), project.OwnerUserID); ownerErr == nil {
+			ownerDisplayName = owner.Name
+			if ownerDisplayName == "" {
+				ownerDisplayName = owner.Email
+			}
+		}
+	}
+
+	render(w, scheduleDetailPage{
+		Kind:             "schedule",
+		Title:            schedule.Name + " — " + project.Name,
+		Project:          project,
+		Schedule:         sw,
+		IsOwner:          isOwner,
+		OwnerDisplayName: ownerDisplayName,
+	})
 }
 
 func (a app) deleteSchedule(w http.ResponseWriter, r *http.Request) {

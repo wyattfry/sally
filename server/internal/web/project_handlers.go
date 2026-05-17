@@ -232,23 +232,15 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 
 	isOwner := project.OwnerUserID == user.ID || a.oauthConfig == nil
 
-	schedules, err := a.schedulesWithItems(r.Context(), project.ID)
+	schedules, err := a.scheduleSummaries(r.Context(), project.ID)
 	if err != nil {
 		http.Error(w, "could not load schedules", http.StatusInternalServerError)
 		return
 	}
 
 	var firstItemImage string
-outer:
-	for _, sw := range schedules {
-		for _, g := range sw.Groups {
-			for _, item := range g.Items {
-				if item.SourceImageUrl != "" {
-					firstItemImage = item.SourceImageUrl
-					break outer
-				}
-			}
-		}
+	if imgs, _ := a.queries.GetProjectFirstItemImages(r.Context(), project.ID); len(imgs) > 0 {
+		firstItemImage = imgs[0]
 	}
 
 	activeLink, err := a.queries.GetActiveProjectShareLinkByProject(r.Context(), project.ID)

@@ -56,7 +56,7 @@ func (a app) createBlankScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+scheduleID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
 }
 
 func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 
-	http.Redirect(w, r, "/projects/"+projectID+"#schedule-"+scheduleID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+projectID+"/schedules/"+scheduleID, http.StatusSeeOther)
 }
 
 func (a app) editScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +202,7 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) deleteScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -218,7 +218,7 @@ func (a app) deleteScheduleItem(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)
 }
 
 func (a app) moveScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -280,7 +280,7 @@ func (a app) moveScheduleItem(w http.ResponseWriter, r *http.Request) {
 		_ = a.queries.UpdateScheduleItemPosition(r.Context(), swapWith.ID, posA)
 	}
 
-	http.Redirect(w, r, "/projects/"+loaded.project.ID+"#schedule-"+loaded.schedule.ID, http.StatusSeeOther)
+	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)
 }
 
 var knownDataFields = []struct{ key, label string }{

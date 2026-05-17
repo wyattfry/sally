@@ -403,11 +403,11 @@
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       }).then(function () {
-        var container = document.querySelector('.schedule-content');
-        var addRow = container.querySelector('.add-schedule-row');
+        var container = document.querySelector('.schedule-list');
+        if (!container) return;
         ids.forEach(function (id) {
           var el = document.getElementById('schedule-' + id);
-          if (el) container.insertBefore(el, addRow);
+          if (el) container.appendChild(el);
         });
       });
     }
@@ -415,161 +415,173 @@
 </div>
 <div id="copy-toast" class="copy-toast" aria-live="polite"></div>
 <div class="project-layout">
-  <!-- I intentionally removed the schedule-nav, it used previous horiz. space and didn't seem to add much value -->
   <div class="schedule-content">
-    {{range .Schedules}}
-    {{$sw := .}}
-    <details class="schedule-section" id="schedule-{{$sw.Schedule.ID}}" open>
-      <summary>
-        <span class="schedule-summary-label">{{$sw.Schedule.Name}}</span>
-        <span class="schedule-summary-actions">
-<button type="button" class="schedule-delete-btn" onclick="event.stopPropagation()"
-            hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/delete"
-            hx-confirm="{{if eq $sw.Schedule.Kind `note`}}Delete this note? This cannot be undone.{{else}}Delete this schedule and all its items? This cannot be undone.{{end}}">{{if eq $sw.Schedule.Kind "note"}}Delete note{{else}}Delete schedule{{end}}</button>
-        </span>
-        <span class="summary-toggle"></span>
-      </summary>
-      <h2 id="sname-{{$sw.Schedule.ID}}" class="schedule-name" data-field="name"
-        hx-get="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/fields/name/edit" hx-trigger="click"
-        hx-target="this" hx-swap="outerHTML">{{$sw.Schedule.Name}}</h2>
-      <div class="schedule-notes editable-notes" data-field="notes"
-        hx-get="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/fields/notes/edit" hx-trigger="click"
-        hx-target="this" hx-swap="outerHTML">{{if $sw.Schedule.Notes}}<span class="schedule-notes-text">{{nl2br $sw.Schedule.Notes}}</span>{{else}}<span class="notes-placeholder">Add notes…</span>{{end}}</div>
-      {{if ne $sw.Schedule.Kind "note"}}
-      <div class="schedule-table-wrap">
-        <table class="schedule-table">
-          <thead>
-            <tr>
-              <th></th>
-              {{range $sw.Columns}}<th class="col-{{.Key}}">{{.Label}}</th>{{end}}
-              <th class="col-actions-header">
-                <button type="button" class="edit-columns-btn"
-                  onclick="document.getElementById('col-modal-{{$sw.Schedule.ID}}').showModal()">Edit columns</button>
-              </th>
-            </tr>
-          </thead>
-          <tbody id="tbody-{{$sw.Schedule.ID}}">
-            {{if $sw.Groups}}
-            {{range $sw.Groups}}
-            {{$g := .}}
-            {{range $g.Items}}
-            {{$item := .}}
-            <tr class="item-row" id="item-row-{{$item.ID}}">
-              <td class="item-thumb-cell upload-target" id="item-thumb-{{$item.ID}}" title="Click to change image">
-                <button type="button" class="item-thumb-btn"
-                    hx-get="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/image-picker"
-                    hx-target="body" hx-swap="beforeend">
-                  {{if $item.SourceImageUrl}}
-                  <img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">
-                  {{else}}
-                  <div class="item-thumb-placeholder">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2"/>
-                      <circle cx="8.5" cy="8.5" r="1.5"/>
-                      <path d="m21 15-5-5L5 21"/>
-                    </svg>
-                  </div>
-                  {{end}}
-                  <div class="upload-overlay"><span>⊕</span></div>
-                </button>
-              </td>
-              {{range $sw.Columns}}
-              {{$cellEditURL := printf "/projects/%s/schedules/%s/items/%s/cells/%s/edit" $.Project.ID $sw.Schedule.ID $item.ID .Key}}
-              <td class="editable-cell col-{{.Key}}" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this" hx-swap="outerHTML">
-                {{$val := index $item.DataMap .Key}}
-                {{if $val}}<div class="cell-clamp">{{$val}}</div>{{else if eq .Key "zone"}}<div class="cell-clamp"><span class="cell-empty">—</span></div>{{else}}<span class="cell-placeholder">Click to edit…</span>{{end}}
-              </td>
-              {{end}}
-              <td class="row-actions">
-                <button class="detail-row-btn" title="View details"
-                  hx-get="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/detail"
-                  hx-target="#item-detail-body-{{$sw.Schedule.ID}}"
-                  hx-swap="innerHTML"
-                  hx-on::after-request="document.getElementById('item-detail-{{$sw.Schedule.ID}}').showModal()">Details</button>
-                <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/move" class="move-form">
-                  <input type="hidden" name="direction" value="up">
-                  <button type="submit" class="move-btn" title="Move up">↑</button>
-                </form>
-                <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/{{$item.ID}}/move" class="move-form">
-                  <input type="hidden" name="direction" value="down">
-                  <button type="submit" class="move-btn" title="Move down">↓</button>
-                </form>
-              </td>
-            </tr>
-            {{end}}
-            {{end}}
-            {{else}}
-            <tr class="item-row-empty"><td colspan="{{add (len $sw.Columns) 2}}" class="schedule-empty muted">No items yet.</td></tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
+    {{if .Schedules}}
+    <ul class="schedule-list">
+      {{range .Schedules}}
+      <li class="schedule-list-row" id="schedule-{{.Schedule.ID}}">
+        <a class="schedule-list-link" href="/projects/{{$.Project.ID}}/schedules/{{.Schedule.ID}}">
+          <span class="schedule-list-name">{{.Schedule.Name}}{{if eq .Schedule.Kind "note"}} <span class="schedule-list-kind">(note)</span>{{end}}</span>
+          <span class="schedule-list-meta">
+            {{if ne .Schedule.Kind "note"}}<span class="schedule-list-count">{{.ItemCount}} item{{if ne .ItemCount 1}}s{{end}}</span> ·{{end}}
+            <span class="schedule-list-updated">updated {{humanTime .LastUpdated}}</span>
+          </span>
+        </a>
+      </li>
       {{end}}
-      {{if ne $sw.Schedule.Kind "note"}}
-      <!-- <div class="add-item-row">
-        <form hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/items/blank"
-              hx-target="#tbody-{{$sw.Schedule.ID}}" hx-swap="beforeend">
-          <button type="submit" class="button button-sm">+ Add item</button>
-        </form>
-      </div> -->
-      <dialog class="item-detail-modal" id="item-detail-{{$sw.Schedule.ID}}">
-        <div class="item-detail-modal-inner">
-          <div class="item-detail-modal-header">
-            <h3 class="columns-modal-title">Item Detail</h3>
-            <button type="button" class="item-detail-close" onclick="this.closest('dialog').close()" aria-label="Close">✕</button>
-          </div>
-          <div id="item-detail-body-{{$sw.Schedule.ID}}" class="item-detail-slot"></div>
-        </div>
-      </dialog>
-      <dialog class="columns-modal" id="col-modal-{{$sw.Schedule.ID}}">
-        <div class="columns-modal-inner">
-          <h3 class="columns-modal-title">Edit Columns</h3>
-          <ul class="col-modal-list" id="col-modal-list-{{$sw.Schedule.ID}}"
-              data-project-id="{{$.Project.ID}}" data-schedule-id="{{$sw.Schedule.ID}}">
-            {{range $sw.Columns}}
-            <li class="col-modal-row" id="col-row-{{.ID}}" data-col-id="{{.ID}}">
-              <div class="col-modal-move-btns">
-                <button class="col-modal-move" type="button" onclick="moveColRow(this,-1)" title="Move up">↑</button>
-                <button class="col-modal-move" type="button" onclick="moveColRow(this,1)" title="Move down">↓</button>
-              </div>
-              <input class="col-modal-label" type="text" value="{{.Label}}"
-                hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/columns/{{.ID}}/rename"
-                hx-trigger="change" hx-swap="none"
-                hx-on::after-request="window.__columnsChanged=true; var k=this.dataset.colKey,s=this.closest('[data-schedule-id]').dataset.scheduleId,th=document.querySelector('#schedule-'+s+' th.col-'+k);if(th)th.textContent=this.value;"
-                data-col-key="{{.Key}}"
-                name="label">
-              <button class="col-modal-delete" type="button"
-                hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/columns/{{.ID}}/delete"
-                hx-target="#col-row-{{.ID}}" hx-swap="delete"
-                hx-confirm="Delete column '{{.Label}}'? Existing data in this column will be hidden but not lost."
-                hx-on::before-request="window.__columnsChanged=true">Delete</button>
-            </li>
-            {{end}}
-          </ul>
-          <form hx-post="/projects/{{$.Project.ID}}/schedules/{{$sw.Schedule.ID}}/columns"
-            hx-target="#col-modal-list-{{$sw.Schedule.ID}}" hx-swap="beforeend"
-            hx-on::after-request="window.__columnsChanged=true; this.reset(); refreshColMoveButtons(this.closest('.columns-modal-inner').querySelector('.col-modal-list'))"
-            class="col-modal-add-form">
-            <input type="text" name="label" placeholder="Column name" required class="col-modal-new-input">
-            <button type="submit" class="button button-sm">Add</button>
-          </form>
-          <div class="col-modal-footer">
-            <button type="button" class="button" onclick="this.closest('dialog').close()">Done</button>
-          </div>
-        </div>
-      </dialog>
-      {{end}}
-    </details>
+    </ul>
+    {{else}}
+    <p class="muted">No schedules yet — add one below.</p>
     {{end}}
     <div class="add-schedule-row">
-      <form method="post" action="/projects/{{$.Project.ID}}/schedules">
+      <form method="post" action="/projects/{{.Project.ID}}/schedules">
         <button type="submit" class="button button-sm">+ New schedule</button>
       </form>
-      <form method="post" action="/projects/{{$.Project.ID}}/notes">
+      <form method="post" action="/projects/{{.Project.ID}}/notes">
         <button type="submit" class="button button-sm button-secondary">+ New note</button>
       </form>
     </div>
   </div>
+</div>
+
+{{else if eq .Kind "schedule"}}
+{{$sw := .Schedule}}
+{{$s := $sw.Schedule}}
+<nav class="breadcrumb">
+  <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
+  <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
+  {{$s.Name}}
+</nav>
+<div class="schedule-page">
+  <div class="schedule-page-header">
+    <h1 id="sname-{{$s.ID}}" class="editable-h1" data-field="name"
+      hx-get="/projects/{{.Project.ID}}/schedules/{{$s.ID}}/fields/name/edit" hx-trigger="click"
+      hx-target="this" hx-swap="outerHTML">{{$s.Name}}</h1>
+    <div class="schedule-page-actions">
+      <button type="button" class="schedule-delete-btn"
+        hx-post="/projects/{{.Project.ID}}/schedules/{{$s.ID}}/delete"
+        hx-confirm="{{if eq $s.Kind `note`}}Delete this note? This cannot be undone.{{else}}Delete this schedule and all its items? This cannot be undone.{{end}}">{{if eq $s.Kind "note"}}Delete note{{else}}Delete schedule{{end}}</button>
+    </div>
+  </div>
+  <div class="schedule-notes editable-notes" data-field="notes"
+    hx-get="/projects/{{.Project.ID}}/schedules/{{$s.ID}}/fields/notes/edit" hx-trigger="click"
+    hx-target="this" hx-swap="outerHTML">{{if $s.Notes}}<span class="schedule-notes-text">{{nl2br $s.Notes}}</span>{{else}}<span class="notes-placeholder">Add notes…</span>{{end}}</div>
+  {{if ne $s.Kind "note"}}
+  <div class="schedule-table-wrap">
+    <table class="schedule-table">
+      <thead>
+        <tr>
+          <th></th>
+          {{range $sw.Columns}}<th class="col-{{.Key}}">{{.Label}}</th>{{end}}
+          <th class="col-actions-header">
+            <button type="button" class="edit-columns-btn"
+              onclick="document.getElementById('col-modal-{{$s.ID}}').showModal()">Edit columns</button>
+          </th>
+        </tr>
+      </thead>
+      <tbody id="tbody-{{$s.ID}}">
+        {{if $sw.Groups}}
+        {{range $sw.Groups}}
+        {{$g := .}}
+        {{range $g.Items}}
+        {{$item := .}}
+        <tr class="item-row" id="item-row-{{$item.ID}}">
+          <td class="item-thumb-cell upload-target" id="item-thumb-{{$item.ID}}" title="Click to change image">
+            <button type="button" class="item-thumb-btn"
+                hx-get="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{$item.ID}}/image-picker"
+                hx-target="body" hx-swap="beforeend">
+              {{if $item.SourceImageUrl}}
+              <img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">
+              {{else}}
+              <div class="item-thumb-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <path d="m21 15-5-5L5 21"/>
+                </svg>
+              </div>
+              {{end}}
+              <div class="upload-overlay"><span>⊕</span></div>
+            </button>
+          </td>
+          {{range $sw.Columns}}
+          {{$cellEditURL := printf "/projects/%s/schedules/%s/items/%s/cells/%s/edit" $.Project.ID $s.ID $item.ID .Key}}
+          <td class="editable-cell col-{{.Key}}" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this" hx-swap="outerHTML">
+            {{$val := index $item.DataMap .Key}}
+            {{if $val}}<div class="cell-clamp">{{$val}}</div>{{else if eq .Key "zone"}}<div class="cell-clamp"><span class="cell-empty">—</span></div>{{else}}<span class="cell-placeholder">Click to edit…</span>{{end}}
+          </td>
+          {{end}}
+          <td class="row-actions">
+            <button class="detail-row-btn" title="View details"
+              hx-get="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{$item.ID}}/detail"
+              hx-target="#item-detail-body-{{$s.ID}}"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('item-detail-{{$s.ID}}').showModal()">Details</button>
+            <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{$item.ID}}/move" class="move-form">
+              <input type="hidden" name="direction" value="up">
+              <button type="submit" class="move-btn" title="Move up">↑</button>
+            </form>
+            <form method="post" action="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{$item.ID}}/move" class="move-form">
+              <input type="hidden" name="direction" value="down">
+              <button type="submit" class="move-btn" title="Move down">↓</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+        {{end}}
+        {{else}}
+        <tr class="item-row-empty"><td colspan="{{add (len $sw.Columns) 2}}" class="schedule-empty muted">No items yet.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <dialog class="item-detail-modal" id="item-detail-{{$s.ID}}">
+    <div class="item-detail-modal-inner">
+      <div class="item-detail-modal-header">
+        <h3 class="columns-modal-title">Item Detail</h3>
+        <button type="button" class="item-detail-close" onclick="this.closest('dialog').close()" aria-label="Close">✕</button>
+      </div>
+      <div id="item-detail-body-{{$s.ID}}" class="item-detail-slot"></div>
+    </div>
+  </dialog>
+  <dialog class="columns-modal" id="col-modal-{{$s.ID}}">
+    <div class="columns-modal-inner">
+      <h3 class="columns-modal-title">Edit Columns</h3>
+      <ul class="col-modal-list" id="col-modal-list-{{$s.ID}}"
+          data-project-id="{{.Project.ID}}" data-schedule-id="{{$s.ID}}">
+        {{range $sw.Columns}}
+        <li class="col-modal-row" id="col-row-{{.ID}}" data-col-id="{{.ID}}">
+          <div class="col-modal-move-btns">
+            <button class="col-modal-move" type="button" onclick="moveColRow(this,-1)" title="Move up">↑</button>
+            <button class="col-modal-move" type="button" onclick="moveColRow(this,1)" title="Move down">↓</button>
+          </div>
+          <input class="col-modal-label" type="text" value="{{.Label}}"
+            hx-post="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/columns/{{.ID}}/rename"
+            hx-trigger="change" hx-swap="none"
+            hx-on::after-request="window.__columnsChanged=true; var k=this.dataset.colKey,th=document.querySelector('th.col-'+k);if(th)th.textContent=this.value;"
+            data-col-key="{{.Key}}"
+            name="label">
+          <button class="col-modal-delete" type="button"
+            hx-post="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/columns/{{.ID}}/delete"
+            hx-target="#col-row-{{.ID}}" hx-swap="delete"
+            hx-confirm="Delete column '{{.Label}}'? Existing data in this column will be hidden but not lost."
+            hx-on::before-request="window.__columnsChanged=true">Delete</button>
+        </li>
+        {{end}}
+      </ul>
+      <form hx-post="/projects/{{.Project.ID}}/schedules/{{$s.ID}}/columns"
+        hx-target="#col-modal-list-{{$s.ID}}" hx-swap="beforeend"
+        hx-on::after-request="window.__columnsChanged=true; this.reset(); refreshColMoveButtons(this.closest('.columns-modal-inner').querySelector('.col-modal-list'))"
+        class="col-modal-add-form">
+        <input type="text" name="label" placeholder="Column name" required class="col-modal-new-input">
+        <button type="submit" class="button button-sm">Add</button>
+      </form>
+      <div class="col-modal-footer">
+        <button type="button" class="button" onclick="this.closest('dialog').close()">Done</button>
+      </div>
+    </div>
+  </dialog>
+  {{end}}
 </div>
 
 {{else if eq .Kind "edit-project"}}
