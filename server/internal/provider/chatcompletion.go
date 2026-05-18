@@ -169,7 +169,21 @@ Visible text excerpt: BEHR MARQUEE. Color: N250-2 Spiced Beige. Sheen: Eggshell.
 
 Expected output (finish is the sheen, color is in customFields):
 {"title":"MARQUEE Interior Paint and Primer","manufacturer":"Behr","modelNumber":"N250-2","category":"Paint","description":"Stain-resistant one-coat interior paint and primer with eggshell sheen.","finish":"Eggshell","finishModelNumber":"","availableFinishes":["Flat","Eggshell","Satin","Semi-Gloss","Hi-Gloss"],"finishModelMappings":[],"requiredAddOns":[],"optionalCompanions":[],"room":"","suggestedScheduleName":"Paint","analysis":{"missingFields":[],"warnings":[],"confidence":{"overall":0.95,"title":0.95,"manufacturer":0.99,"modelNumber":0.95,"category":0.99,"description":0.9,"finish":0.99,"requiredAddOns":0.9}},"customFields":{"color":"Spiced Beige"}}
-END EXAMPLE 2`
+END EXAMPLE 2
+
+FINISH VARIANTS — when a product page lists multiple finishes/colors with distinct model numbers:
+- Populate "availableFinishes" with every finish offered.
+- Populate "finishModelMappings" with one entry per finish, pairing the finish to its specific SKU.
+- Set "finish" to the currently-selected finish on the page (or the first listed if none is selected).
+- Set "finishModelNumber" to the SKU matching that selected finish.
+
+EXAMPLE 3 — product with multiple finishes:
+Product page title: KOHLER Cardale Single Handle Pull-Down Kitchen Faucet
+Visible text excerpt: KOHLER K-35908-4 Cardale Pull-Down Kitchen Faucet. Finish: Vibrant Brushed Nickel. Available finishes: Polished Chrome (K-35908-4-CP), Vibrant Polished Nickel (K-35908-4-SN), Vibrant Brushed Moderne Brass (K-35908-4-2MB), Vibrant Brushed Nickel (K-35908-4-BN).
+
+Expected output (mappings populated):
+{"title":"Cardale Pull-Down Kitchen Faucet","manufacturer":"Kohler","modelNumber":"K-35908-4","category":"Faucet","description":"Pull-down kitchen faucet with single-handle control.","finish":"Vibrant Brushed Nickel","finishModelNumber":"K-35908-4-BN","availableFinishes":["Polished Chrome","Vibrant Polished Nickel","Vibrant Brushed Moderne Brass","Vibrant Brushed Nickel"],"finishModelMappings":[{"finish":"Polished Chrome","modelNumber":"K-35908-4-CP"},{"finish":"Vibrant Polished Nickel","modelNumber":"K-35908-4-SN"},{"finish":"Vibrant Brushed Moderne Brass","modelNumber":"K-35908-4-2MB"},{"finish":"Vibrant Brushed Nickel","modelNumber":"K-35908-4-BN"}],"requiredAddOns":[],"optionalCompanions":[],"room":"","suggestedScheduleName":"Plumbing","analysis":{"missingFields":[],"warnings":[],"confidence":{"overall":0.95,"title":0.95,"manufacturer":0.99,"modelNumber":0.95,"category":0.99,"description":0.9,"finish":0.95,"requiredAddOns":0.9}},"customFields":{}}
+END EXAMPLE 3`
 
 func buildChatCompletionRequest(req extract.ExtractSpecRequest, model, responseFormat string) chatCompletionRequest {
 	var format *chatResponseFormat

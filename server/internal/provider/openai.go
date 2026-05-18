@@ -15,7 +15,7 @@ import (
 	"sally/server/internal/extract"
 )
 
-const PromptVersion = "extract-spec-v4"
+const PromptVersion = "extract-spec-v5"
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)

@@ -20,7 +20,7 @@ import {
   getActiveContext,
   saveActiveContext,
 } from "./lib/storage";
-import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "./lib/types";
+import type { ActiveContext, FinishModelMapping, Project, Schedule, ScheduleColumn, ScheduleItem } from "./lib/types";
 
 type PanelState =
   | { kind: "closed" }
@@ -28,8 +28,8 @@ type PanelState =
   | { kind: "signing-in" }
   | { kind: "needs-project" }
   | { kind: "thinking"; tokenCount: number }
-  | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string }
-  | { kind: "minimized"; draft: ScheduleItem }
+  | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string; availableFinishes?: string[]; finishModelMappings?: FinishModelMapping[] }
+  | { kind: "minimized"; draft: ScheduleItem; availableFinishes?: string[]; finishModelMappings?: FinishModelMapping[] }
   | { kind: "added"; projectId: string; scheduleId: string; scheduleName: string }
   | { kind: "error"; message: string };
 
@@ -79,7 +79,7 @@ export default function App() {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && panel.kind === "review") {
-        setPanel({ kind: "minimized", draft: panel.draft });
+        setPanel({ kind: "minimized", draft: panel.draft, availableFinishes: panel.availableFinishes, finishModelMappings: panel.finishModelMappings });
       }
     }
 
@@ -229,7 +229,9 @@ export default function App() {
         kind: "review",
         draft: item,
         suggestedNewScheduleName:
-          suggestedScheduleName && !matchingSchedule ? suggestedScheduleName : undefined
+          suggestedScheduleName && !matchingSchedule ? suggestedScheduleName : undefined,
+        availableFinishes: extracted.availableFinishes,
+        finishModelMappings: extracted.finishModelMappings
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not extract item.";
@@ -389,7 +391,7 @@ export default function App() {
         <button
           className="restore-draft-button"
           type="button"
-          onClick={() => setPanel({ kind: "review", draft: panel.draft })}
+          onClick={() => setPanel({ kind: "review", draft: panel.draft, availableFinishes: panel.availableFinishes, finishModelMappings: panel.finishModelMappings })}
         >
           Restore Sally draft
         </button>
@@ -437,6 +439,8 @@ export default function App() {
           rooms={rooms}
           activeContext={activeContext}
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
+          availableFinishes={panel.kind === "review" ? panel.availableFinishes : undefined}
+          finishModelMappings={panel.kind === "review" ? panel.finishModelMappings : undefined}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
             panel.kind === "review" ? setPanel({ ...panel, draft }) : undefined

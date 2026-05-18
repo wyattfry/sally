@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ActiveContext, Project, Schedule, ScheduleColumn, ScheduleItem } from "../lib/types";
+import type { ActiveContext, FinishModelMapping, Project, Schedule, ScheduleColumn, ScheduleItem } from "../lib/types";
 import {
   addMothershipScheduleColumn,
   renameMothershipScheduleColumn,
@@ -20,6 +20,8 @@ type SallyPanelProps = {
   rooms: string[];
   activeContext: ActiveContext | null;
   suggestedNewScheduleName?: string;
+  availableFinishes?: string[];
+  finishModelMappings?: FinishModelMapping[];
   onChange: (draft: ScheduleItem) => void;
   onSelectProject: (projectId: string) => void;
   onSelectSchedule: (scheduleId: string) => void;
@@ -41,6 +43,8 @@ export function SallyPanel({
   rooms,
   activeContext,
   suggestedNewScheduleName,
+  availableFinishes,
+  finishModelMappings,
   onChange,
   onSelectProject,
   onSelectSchedule,
@@ -391,16 +395,44 @@ export function SallyPanel({
               </select>
             </div>
 
-            {columns.filter((col) => col.key !== "room").map((col) => (
+            {columns.filter((col) => col.key !== "room").map((col) => {
+              const showFinishCombobox =
+                col.key === "finish" &&
+                availableFinishes && availableFinishes.length > 1;
+              return (
               <div className="field" key={col.key}>
                 <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
-                <input
-                  id={`sally-col-${col.key}`}
-                  value={draft?.data[col.key] ?? ""}
-                  onChange={(event) => updateData(col.key, event.target.value)}
-                />
+                {showFinishCombobox ? (
+                  <>
+                    <input
+                      id={`sally-col-${col.key}`}
+                      list="sally-finish-list"
+                      value={draft?.data[col.key] ?? ""}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        if (!draft) return;
+                        const mapping = (finishModelMappings ?? []).find((m) => m.finish === next);
+                        const nextData = { ...draft.data, [col.key]: next };
+                        if (mapping) nextData.model_number = mapping.modelNumber;
+                        onChange({ ...draft, data: nextData });
+                      }}
+                    />
+                    <datalist id="sally-finish-list">
+                      {availableFinishes!.map((f) => (
+                        <option key={f} value={f} />
+                      ))}
+                    </datalist>
+                  </>
+                ) : (
+                  <input
+                    id={`sally-col-${col.key}`}
+                    value={draft?.data[col.key] ?? ""}
+                    onChange={(event) => updateData(col.key, event.target.value)}
+                  />
+                )}
               </div>
-            ))}
+              );
+            })}
 
             {draft?.sourcePdfLinks?.length ? (
               <div className="source-links">

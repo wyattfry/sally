@@ -125,6 +125,32 @@ describe("extractScheduleItem", () => {
     expect(item.id).toBeTruthy();
   });
 
+  it("prefers the finish-specific SKU and surfaces finish mappings for the panel", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(sseDone(successResponse()), {
+          status: 200,
+          headers: { "Content-Type": "text/event-stream" }
+        })
+      )
+    );
+
+    const result = await extractScheduleItem({
+      capturedPage: capturedPage(),
+      knownCategories: [],
+      now: FIXED_NOW
+    });
+
+    // model_number takes the finish-specific SKU when the LLM returned a mapping
+    // for the selected finish, even though `modelNumber` itself was the base.
+    expect(result.item.data.model_number).toBe("WF-200-PC");
+    expect(result.availableFinishes).toEqual(["Polished Chrome"]);
+    expect(result.finishModelMappings).toEqual([
+      { finish: "Polished Chrome", modelNumber: "WF-200-PC" }
+    ]);
+  });
+
   it("strips <UNKNOWN> room sentinel from the proposal", async () => {
     vi.stubGlobal(
       "fetch",

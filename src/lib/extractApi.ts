@@ -3,6 +3,7 @@ import type {
   ColumnDefinition,
   ExtractSpecRequest,
   ExtractSpecResponse,
+  FinishModelMapping,
   ScheduleColumn,
   ScheduleItem
 } from "./types";
@@ -44,6 +45,11 @@ type ExtractScheduleItemResult = {
   item: ScheduleItem;
   suggestedScheduleName?: string;
   knownRooms: string[];
+  // Per-spec-session UI hints. Not persisted on the item; used by the panel
+  // to render a finish combobox that swaps the model number when the user
+  // picks a different available finish. Discarded on save.
+  availableFinishes?: string[];
+  finishModelMappings?: FinishModelMapping[];
 };
 
 export async function extractScheduleItem({
@@ -308,10 +314,19 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
   if (response.nextCode) data.code = response.nextCode;
   const title = clean(proposal.title); if (title) data.title = title;
   const manufacturer = clean(proposal.manufacturer); if (manufacturer) data.manufacturer = manufacturer;
-  const modelNumber = clean(proposal.modelNumber); if (modelNumber) data.model_number = modelNumber;
+  const baseModel = clean(proposal.modelNumber);
+  const finish = clean(proposal.finish);
+  const finishModelNumber = clean(proposal.finishModelNumber);
+  const mappings = (proposal.finishModelMappings ?? []).filter(m => m.finish && m.modelNumber);
+  // Prefer the finish-specific SKU for the Model column when we have one,
+  // so users see the orderable variant out of the gate. Fall back to the
+  // base model otherwise.
+  const matchedMapping = finish ? mappings.find(m => m.finish === finish) : undefined;
+  const initialModel = matchedMapping?.modelNumber || finishModelNumber || baseModel;
+  if (initialModel) data.model_number = initialModel;
   const description = clean(proposal.description); if (description) data.description = description;
-  const finish = clean(proposal.finish); if (finish) data.finish = finish;
-  const finishModelNumber = clean(proposal.finishModelNumber); if (finishModelNumber) data.finish_model_number = finishModelNumber;
+  if (finish) data.finish = finish;
+  if (finishModelNumber) data.finish_model_number = finishModelNumber;
   const notes = [...(proposal.requiredAddOns ?? []), ...(proposal.optionalCompanions ?? [])]
     .map(clean).filter(Boolean).join("; ");
   if (notes) data.notes = notes;
@@ -335,7 +350,9 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
       sourcePdfLinks: proposal.sourcePdfLinks ?? []
     },
     suggestedScheduleName: proposal.suggestedScheduleName || undefined,
-    knownRooms: response.knownRooms ?? []
+    knownRooms: response.knownRooms ?? [],
+    availableFinishes: (proposal.availableFinishes ?? []).filter(Boolean),
+    finishModelMappings: mappings
   };
 }
 
