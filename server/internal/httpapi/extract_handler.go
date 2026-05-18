@@ -57,9 +57,8 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 					for _, s := range allSchedules {
 						items, _ := q.ListScheduleItems(r.Context(), s.ID)
 						summaries = append(summaries, extract.ScheduleSummary{
-							Name:       s.Name,
-							IsSelected: s.ID == req.ScheduleID,
-							Rooms:      roomsFromItems(items),
+							Name:  s.Name,
+							Rooms: roomsFromItems(items),
 						})
 					}
 					req.ProjectContext.Schedules = summaries
@@ -149,6 +148,19 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 		}
 		resp.NextCode = computedNextCode
 		resp.KnownRooms = selectedRooms
+		// Snap LLM's suggestedScheduleName to an existing schedule when it's
+		// clearly the same thing (synonym, plural, suffix variation). Keeps
+		// the user's existing names canonical without forcing the LLM to
+		// guess them. See provider/provider.go snapSuggestedScheduleName.
+		if resp.Proposal != nil && len(req.ProjectContext.Schedules) > 0 {
+			names := make([]string, 0, len(req.ProjectContext.Schedules))
+			for _, s := range req.ProjectContext.Schedules {
+				names = append(names, s.Name)
+			}
+			if snapped, ok := provider.SnapSuggestedScheduleName(resp.Proposal.SuggestedScheduleName, names); ok {
+				resp.Proposal.SuggestedScheduleName = snapped
+			}
+		}
 		// Pass all captured image URLs through from the page payload.
 		if resp.Proposal != nil && len(req.Page.AllImageURLs) > 0 {
 			seen := make(map[string]bool)

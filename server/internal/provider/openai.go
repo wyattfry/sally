@@ -15,7 +15,7 @@ import (
 	"sally/server/internal/extract"
 )
 
-const PromptVersion = "extract-spec-v2"
+const PromptVersion = "extract-spec-v3"
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -261,21 +261,16 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 	knownCategories, _ := json.Marshal(req.ProjectContext.KnownCategories)
 
 	var scheduleContext string
-	if len(req.ProjectContext.Schedules) > 0 {
-		lines := make([]string, 0, len(req.ProjectContext.Schedules))
-		var selectedName string
-		for _, s := range req.ProjectContext.Schedules {
+	candidates := filterPromptableSchedules(req.ProjectContext.Schedules)
+	if len(candidates) > 0 {
+		lines := make([]string, 0, len(candidates))
+		for _, s := range candidates {
 			roomsJSON, _ := json.Marshal(s.Rooms)
-			if s.IsSelected {
-				selectedName = s.Name
-			}
 			lines = append(lines, fmt.Sprintf("  - %s: rooms in use: %s", s.Name, roomsJSON))
 		}
-		header := `Project schedules (set suggestedScheduleName to the exact name from this list, or a new descriptive name if none fit):`
-		if selectedName != "" {
-			header += ` Currently selected: "` + selectedName + `".`
-		}
-		scheduleContext = header + "\n" +
+		scheduleContext = "Existing schedules in this project — pick the suggestedScheduleName that best fits this item by category. " +
+			"If the item does not belong with any of these, propose a NEW descriptive name (e.g. \"Plumbing Fixtures\" for a toilet, \"Lighting\" for a light fixture). " +
+			"Do not force the item onto an existing schedule when the categories don't match.\n" +
 			strings.Join(lines, "\n") +
 			"\nFor room: use a plain room or area name (e.g. 'Kitchen', 'Master Bath'). Pick from existing rooms above if the item fits, or leave empty. Never output XML tags or markup in this field."
 	} else {

@@ -47,9 +47,8 @@ type ProjectContext struct {
 
 // ScheduleSummary carries per-schedule room context sent to the LLM.
 type ScheduleSummary struct {
-	Name       string   `json:"name"`
-	IsSelected bool     `json:"isSelected,omitempty"`
-	Rooms      []string `json:"rooms"`
+	Name  string   `json:"name"`
+	Rooms []string `json:"rooms"`
 }
 
 type ExtractSpecOptions struct {
