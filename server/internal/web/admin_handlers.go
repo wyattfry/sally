@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	appdb "sally/server/internal/db"
 	dbgen "sally/server/internal/db/generated"
 	"sally/server/internal/share"
 )
@@ -68,40 +69,40 @@ func (a app) adminDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	counts, err := dbgen.QueryAdminTableCounts(ctx, a.db)
+	counts, err := appdb.QueryAdminTableCounts(ctx, a.db)
 	if err != nil {
 		http.Error(w, "could not load counts: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	extractSummary, err := dbgen.QueryExtractionSummary(ctx, a.db)
+	extractSummary, err := appdb.QueryExtractionSummary(ctx, a.db)
 	if err != nil {
 		http.Error(w, "could not load extraction summary: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	providerStats, err := dbgen.QueryExtractionProviderStats(ctx, a.db)
+	providerStats, err := appdb.QueryExtractionProviderStats(ctx, a.db)
 	if err != nil {
 		http.Error(w, "could not load provider stats: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	itemDaily, err := dbgen.QueryDailyItemSeries(ctx, a.db, 7)
+	itemDaily, err := appdb.QueryDailyItemSeries(ctx, a.db, 7)
 	if err != nil {
 		http.Error(w, "could not load item series: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	itemHourly, err := dbgen.QueryHourlyItemSeries(ctx, a.db, 24)
+	itemHourly, err := appdb.QueryHourlyItemSeries(ctx, a.db, 24)
 	if err != nil {
 		http.Error(w, "could not load item hourly: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	extractDaily, err := dbgen.QueryDailyExtractionSeries(ctx, a.db, 7)
+	extractDaily, err := appdb.QueryDailyExtractionSeries(ctx, a.db, 7)
 	if err != nil {
 		http.Error(w, "could not load extraction series: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	extractHourly, err := dbgen.QueryHourlyExtractionSeries(ctx, a.db, 24)
+	extractHourly, err := appdb.QueryHourlyExtractionSeries(ctx, a.db, 24)
 	if err != nil {
 		http.Error(w, "could not load extraction hourly: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -126,7 +127,7 @@ func (a app) adminUsers(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {
 		return
 	}
-	users, err := dbgen.QueryAdminUsers(r.Context(), a.db)
+	users, err := appdb.QueryAdminUsers(r.Context(), a.db)
 	if err != nil {
 		http.Error(w, "could not load users: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -203,7 +204,7 @@ func (a app) makeLoginToken(r *http.Request, userID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := a.queries.CreateLoginToken(r.Context(), userID, share.HashToken(token)); err != nil {
+	if _, err := a.queries.CreateLoginToken(r.Context(), dbgen.CreateLoginTokenParams{UserID: userID, TokenHash: share.HashToken(token)}); err != nil {
 		return "", err
 	}
 	return requestBaseURL(r) + "/auth/token?t=" + token, nil
@@ -250,7 +251,7 @@ func (a app) adminCreateAPIToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not generate token: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if _, err := a.queries.CreateAPIToken(r.Context(), user.ID, label, share.HashToken(raw)); err != nil {
+	if _, err := a.queries.CreateAPIToken(r.Context(), dbgen.CreateAPITokenParams{UserID: user.ID, Label: label, TokenHash: share.HashToken(raw)}); err != nil {
 		http.Error(w, "could not create token: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -273,7 +274,7 @@ func (a app) adminExtractions(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {
 		return
 	}
-	logs, err := dbgen.QueryRecentExtractionLogs(r.Context(), a.db, 500)
+	logs, err := appdb.QueryRecentExtractionLogs(r.Context(), a.db, 500)
 	if err != nil {
 		http.Error(w, "could not load extractions: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -290,7 +291,7 @@ func (a app) adminExtractionDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	requestID := r.PathValue("requestID")
-	log, err := dbgen.QueryExtractionLogByRequestID(r.Context(), a.db, requestID)
+	log, err := appdb.QueryExtractionLogByRequestID(r.Context(), a.db, requestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		renderNotFound(w)
 		return
@@ -316,13 +317,13 @@ func (a app) adminExtractionLogsJSON(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-	logs, err := dbgen.QueryRecentExtractionLogs(r.Context(), a.db, limit)
+	logs, err := appdb.QueryRecentExtractionLogs(r.Context(), a.db, limit)
 	if err != nil {
 		http.Error(w, `{"error":"could not load logs"}`, http.StatusInternalServerError)
 		return
 	}
 	if logs == nil {
-		logs = []dbgen.ExtractionLogRow{}
+		logs = []appdb.ExtractionLogRow{}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"logs": logs})
@@ -333,7 +334,7 @@ func (a app) adminExtractionLogDetailJSON(w http.ResponseWriter, r *http.Request
 		return
 	}
 	requestID := r.PathValue("requestID")
-	log, err := dbgen.QueryExtractionLogByRequestID(r.Context(), a.db, requestID)
+	log, err := appdb.QueryExtractionLogByRequestID(r.Context(), a.db, requestID)
 	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 		return

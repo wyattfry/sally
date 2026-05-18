@@ -64,24 +64,6 @@ func (q *Queries) DeleteScheduleColumnsBySchedule(ctx context.Context, scheduleI
 	return err
 }
 
-const updateScheduleColumnLabel = `-- name: UpdateScheduleColumnLabel :exec
-update schedule_columns set label = $2 where id = $1
-`
-
-func (q *Queries) UpdateScheduleColumnLabel(ctx context.Context, id string, label string) error {
-	_, err := q.db.ExecContext(ctx, updateScheduleColumnLabel, id, label)
-	return err
-}
-
-const updateScheduleColumnPosition = `-- name: UpdateScheduleColumnPosition :exec
-update schedule_columns set position = $2 where id = $1
-`
-
-func (q *Queries) UpdateScheduleColumnPosition(ctx context.Context, id string, position int32) error {
-	_, err := q.db.ExecContext(ctx, updateScheduleColumnPosition, id, position)
-	return err
-}
-
 const listScheduleColumns = `-- name: ListScheduleColumns :many
 select id, schedule_id, key, label, kind, position, created_at
 from schedule_columns
@@ -118,4 +100,32 @@ func (q *Queries) ListScheduleColumns(ctx context.Context, scheduleID string) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateScheduleColumnLabel = `-- name: UpdateScheduleColumnLabel :exec
+update schedule_columns set label = $2 where id = $1
+`
+
+type UpdateScheduleColumnLabelParams struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+func (q *Queries) UpdateScheduleColumnLabel(ctx context.Context, arg UpdateScheduleColumnLabelParams) error {
+	_, err := q.db.ExecContext(ctx, updateScheduleColumnLabel, arg.ID, arg.Label)
+	return err
+}
+
+const updateScheduleColumnPosition = `-- name: UpdateScheduleColumnPosition :exec
+update schedule_columns set position = $2 where id = $1
+`
+
+type UpdateScheduleColumnPositionParams struct {
+	ID       string `json:"id"`
+	Position int32  `json:"position"`
+}
+
+func (q *Queries) UpdateScheduleColumnPosition(ctx context.Context, arg UpdateScheduleColumnPositionParams) error {
+	_, err := q.db.ExecContext(ctx, updateScheduleColumnPosition, arg.ID, arg.Position)
+	return err
 }

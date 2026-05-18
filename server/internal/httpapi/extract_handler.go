@@ -111,10 +111,10 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 					Provider:      meta.Provider,
 					Model:         meta.Model,
 					PromptVersion: meta.PromptVersion,
-					DurationMS:    int(elapsed.Milliseconds()),
+					DurationMs:    int32(elapsed.Milliseconds()),
 					Success:       false,
 					ErrorMessage:  err.Error(),
-					PageURL:       req.Page.URL,
+					PageUrl:       req.Page.URL,
 				})
 			}
 
@@ -137,12 +137,12 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 				Provider:          meta.Provider,
 				Model:             meta.Model,
 				PromptVersion:     meta.PromptVersion,
-				DurationMS:        int(elapsed.Milliseconds()),
+				DurationMs:        int32(elapsed.Milliseconds()),
 				Success:           true,
-				PageURL:           req.Page.URL,
-				PromptTokens:      meta.PromptTokens,
-				CompletionTokens:  meta.CompletionTokens,
-				MissingFieldCount: missingCount,
+				PageUrl:           req.Page.URL,
+				PromptTokens:      int32(meta.PromptTokens),
+				CompletionTokens:  int32(meta.CompletionTokens),
+				MissingFieldsCount: int32(missingCount),
 				PromptText:        resp.PromptText,
 				ResponseText:      resp.ResponseText,
 			})

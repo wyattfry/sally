@@ -276,8 +276,8 @@ func (a app) moveScheduleItem(w http.ResponseWriter, r *http.Request) {
 		if posA == posB {
 			posA, posB = int32(idx+1), int32(idx)
 		}
-		_ = a.queries.UpdateScheduleItemPosition(r.Context(), item.ID, posB)
-		_ = a.queries.UpdateScheduleItemPosition(r.Context(), swapWith.ID, posA)
+		_ = a.queries.UpdateScheduleItemPosition(r.Context(), queries.UpdateScheduleItemPositionParams{ID: item.ID, Position: posB})
+		_ = a.queries.UpdateScheduleItemPosition(r.Context(), queries.UpdateScheduleItemPositionParams{ID: swapWith.ID, Position: posA})
 	}
 
 	http.Redirect(w, r, "/projects/"+loaded.project.ID+"/schedules/"+loaded.schedule.ID, http.StatusSeeOther)

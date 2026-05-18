@@ -55,15 +55,6 @@ func (q *Queries) DeleteSchedule(ctx context.Context, id string) error {
 	return err
 }
 
-const updateSchedulePosition = `-- name: UpdateSchedulePosition :exec
-update schedules set position = $2, updated_at = now() where id = $1
-`
-
-func (q *Queries) UpdateSchedulePosition(ctx context.Context, id string, position int32) error {
-	_, err := q.db.ExecContext(ctx, updateSchedulePosition, id, position)
-	return err
-}
-
 const getSchedule = `-- name: GetSchedule :one
 select id, project_id, name, position, created_at, updated_at, notes, kind
 from schedules
@@ -164,4 +155,18 @@ func (q *Queries) UpdateSchedule(ctx context.Context, arg UpdateScheduleParams) 
 		&i.Kind,
 	)
 	return i, err
+}
+
+const updateSchedulePosition = `-- name: UpdateSchedulePosition :exec
+update schedules set position = $2, updated_at = now() where id = $1
+`
+
+type UpdateSchedulePositionParams struct {
+	ID       string `json:"id"`
+	Position int32  `json:"position"`
+}
+
+func (q *Queries) UpdateSchedulePosition(ctx context.Context, arg UpdateSchedulePositionParams) error {
+	_, err := q.db.ExecContext(ctx, updateSchedulePosition, arg.ID, arg.Position)
+	return err
 }

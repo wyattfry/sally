@@ -159,7 +159,7 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	sharedItems := make([]projectListItem, 0, len(sharedRaw))
 	for _, sp := range sharedRaw {
-		imgs, _ := a.queries.GetProjectFirstItemImages(r.Context(), sp.ID)
+		imgs, _ := a.queries.GetProjectFirstItemImages(r.Context(), sp.Project.ID)
 		padded := make([]string, 4)
 		for i, u := range imgs {
 			if i < 4 {
@@ -262,7 +262,7 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 		activeLinkPtr = &activeLink
 	}
 
-	var members []queries.ProjectMemberWithUser
+	var members []queries.ListProjectMembersWithUserRow
 	if isOwner {
 		members, _ = a.queries.ListProjectMembersWithUser(r.Context(), project.ID)
 	}

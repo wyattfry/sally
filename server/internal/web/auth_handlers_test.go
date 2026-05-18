@@ -395,7 +395,7 @@ func TestTokenLoginRedirectsToProjectsAndSetsSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new token: %v", err)
 	}
-	if _, err := q.CreateLoginToken(context.Background(), user.ID, share.HashToken(rawToken)); err != nil {
+	if _, err := q.CreateLoginToken(context.Background(), queries.CreateLoginTokenParams{UserID: user.ID, TokenHash: share.HashToken(rawToken)}); err != nil {
 		t.Fatalf("create login token: %v", err)
 	}
 
@@ -459,7 +459,7 @@ func TestTokenLoginRejectsAlreadyUsedToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new token: %v", err)
 	}
-	lt, err := q.CreateLoginToken(context.Background(), user.ID, share.HashToken(rawToken))
+	lt, err := q.CreateLoginToken(context.Background(), queries.CreateLoginTokenParams{UserID: user.ID, TokenHash: share.HashToken(rawToken)})
 	if err != nil {
 		t.Fatalf("create login token: %v", err)
 	}

@@ -25,16 +25,16 @@ func TestAdminDashboardRendersChartSeriesAsJavaScriptArrays(t *testing.T) {
 	render(resp, adminPage{
 		Kind:  "admin",
 		Title: "Admin",
-		ItemHourlyJSON: mustJSON([]queries.DailyPoint{
+		ItemHourlyJSON: mustJSON([]appdb.DailyPoint{
 			{Date: "05-10 16:00", Count: 2},
 		}),
-		ItemDailyJSON: mustJSON([]queries.DailyPoint{
+		ItemDailyJSON: mustJSON([]appdb.DailyPoint{
 			{Date: "2026-05-10", Count: 3},
 		}),
-		ExtractHourlyJSON: mustJSON([]queries.DailyPoint{
+		ExtractHourlyJSON: mustJSON([]appdb.DailyPoint{
 			{Date: "05-10 16:00", Count: 4, Extra: 1},
 		}),
-		ExtractDailyJSON: mustJSON([]queries.DailyPoint{
+		ExtractDailyJSON: mustJSON([]appdb.DailyPoint{
 			{Date: "2026-05-10", Count: 5, Extra: 2},
 		}),
 	})
@@ -107,7 +107,7 @@ func TestAdminExtractionLogsJSONAcceptsAPIToken(t *testing.T) {
 		t.Fatalf("create user: %v", err)
 	}
 	rawToken := "admin-api-token-test-" + time.Now().Format("150405000")
-	if _, err := q.CreateAPIToken(context.Background(), user.ID, "notebook", share.HashToken(rawToken)); err != nil {
+	if _, err := q.CreateAPIToken(context.Background(), queries.CreateAPITokenParams{UserID: user.ID, Label: "notebook", TokenHash: share.HashToken(rawToken)}); err != nil {
 		t.Fatalf("create api token: %v", err)
 	}
 

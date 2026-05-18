@@ -154,7 +154,7 @@ func (a app) reorderSchedules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i, id := range r.Form["ids"] {
-		_ = a.queries.UpdateSchedulePosition(r.Context(), id, int32(i+1))
+		_ = a.queries.UpdateSchedulePosition(r.Context(), queries.UpdateSchedulePositionParams{ID: id, Position: int32(i + 1)})
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

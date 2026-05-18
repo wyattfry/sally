@@ -233,7 +233,7 @@ func TestAdminQueries(t *testing.T) {
 		ScheduleID:       schedule.ID,
 		Provider:         "openai",
 		Model:            "gpt-4o",
-		DurationMS:       1234,
+		DurationMs:       1234,
 		Success:          true,
 		PromptTokens:     500,
 		CompletionTokens: 120,
@@ -242,31 +242,31 @@ func TestAdminQueries(t *testing.T) {
 	}
 
 	t.Run("QueryAdminTableCounts", func(t *testing.T) {
-		if _, err := queries.QueryAdminTableCounts(ctx, conn); err != nil {
+		if _, err := QueryAdminTableCounts(ctx, conn); err != nil {
 			t.Fatalf("QueryAdminTableCounts: %v", err)
 		}
 	})
 
 	t.Run("QueryExtractionSummary", func(t *testing.T) {
-		if _, err := queries.QueryExtractionSummary(ctx, conn); err != nil {
+		if _, err := QueryExtractionSummary(ctx, conn); err != nil {
 			t.Fatalf("QueryExtractionSummary: %v", err)
 		}
 	})
 
 	t.Run("QueryExtractionProviderStats", func(t *testing.T) {
-		if _, err := queries.QueryExtractionProviderStats(ctx, conn); err != nil {
+		if _, err := QueryExtractionProviderStats(ctx, conn); err != nil {
 			t.Fatalf("QueryExtractionProviderStats: %v", err)
 		}
 	})
 
 	t.Run("QueryRecentExtractionLogs", func(t *testing.T) {
-		if _, err := queries.QueryRecentExtractionLogs(ctx, conn, 10); err != nil {
+		if _, err := QueryRecentExtractionLogs(ctx, conn, 10); err != nil {
 			t.Fatalf("QueryRecentExtractionLogs: %v", err)
 		}
 	})
 
 	t.Run("QueryAdminUsers", func(t *testing.T) {
-		rows, err := queries.QueryAdminUsers(ctx, conn)
+		rows, err := QueryAdminUsers(ctx, conn)
 		if err != nil {
 			t.Fatalf("QueryAdminUsers: %v", err)
 		}
@@ -285,7 +285,7 @@ func TestAdminQueries(t *testing.T) {
 	})
 
 	t.Run("QueryDailyItemSeries", func(t *testing.T) {
-		pts, err := queries.QueryDailyItemSeries(ctx, conn, 28)
+		pts, err := QueryDailyItemSeries(ctx, conn, 28)
 		if err != nil {
 			t.Fatalf("QueryDailyItemSeries: %v", err)
 		}
@@ -295,7 +295,7 @@ func TestAdminQueries(t *testing.T) {
 	})
 
 	t.Run("QueryDailyExtractionSeries", func(t *testing.T) {
-		pts, err := queries.QueryDailyExtractionSeries(ctx, conn, 28)
+		pts, err := QueryDailyExtractionSeries(ctx, conn, 28)
 		if err != nil {
 			t.Fatalf("QueryDailyExtractionSeries: %v", err)
 		}
@@ -305,7 +305,7 @@ func TestAdminQueries(t *testing.T) {
 	})
 
 	t.Run("QueryHourlyItemSeries", func(t *testing.T) {
-		pts, err := queries.QueryHourlyItemSeries(ctx, conn, 24)
+		pts, err := QueryHourlyItemSeries(ctx, conn, 24)
 		if err != nil {
 			t.Fatalf("QueryHourlyItemSeries: %v", err)
 		}
@@ -315,7 +315,7 @@ func TestAdminQueries(t *testing.T) {
 	})
 
 	t.Run("QueryHourlyExtractionSeries", func(t *testing.T) {
-		pts, err := queries.QueryHourlyExtractionSeries(ctx, conn, 24)
+		pts, err := QueryHourlyExtractionSeries(ctx, conn, 24)
 		if err != nil {
 			t.Fatalf("QueryHourlyExtractionSeries: %v", err)
 		}

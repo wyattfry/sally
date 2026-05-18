@@ -2,9 +2,6 @@
 // versions:
 //   sqlc v1.30.0
 // source: items.sql
-//
-// NOTE: contains hand-edits mirroring items.sql (zone→room rename,
-// migration 00016). See the note at the top of models.go.
 
 package generated
 
@@ -28,7 +25,7 @@ insert into schedule_items (
     position
 )
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
+returning id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, room, data, source_image_urls
 `
 
 type CreateScheduleItemParams struct {
@@ -62,24 +59,15 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
-		pq.Array(&i.SourceImageUrls),
 		pq.Array(&i.SourcePdfLinks),
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Room,
 		&i.Data,
+		pq.Array(&i.SourceImageUrls),
 	)
 	return i, err
-}
-
-const updateScheduleItemPosition = `-- name: UpdateScheduleItemPosition :exec
-update schedule_items set position = $2, updated_at = now() where id = $1
-`
-
-func (q *Queries) UpdateScheduleItemPosition(ctx context.Context, id string, position int32) error {
-	_, err := q.db.ExecContext(ctx, updateScheduleItemPosition, id, position)
-	return err
 }
 
 const deleteScheduleItem = `-- name: DeleteScheduleItem :exec
@@ -93,7 +81,7 @@ func (q *Queries) DeleteScheduleItem(ctx context.Context, id string) error {
 }
 
 const getScheduleItem = `-- name: GetScheduleItem :one
-select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
+select id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, room, data, source_image_urls
 from schedule_items
 where id = $1
 `
@@ -107,19 +95,19 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
-		pq.Array(&i.SourceImageUrls),
 		pq.Array(&i.SourcePdfLinks),
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Room,
 		&i.Data,
+		pq.Array(&i.SourceImageUrls),
 	)
 	return i, err
 }
 
 const listScheduleItems = `-- name: ListScheduleItems :many
-select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
+select id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, room, data, source_image_urls
 from schedule_items
 where schedule_id = $1
 order by room asc, position asc, created_at asc
@@ -140,13 +128,13 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 			&i.SourceUrl,
 			&i.SourceTitle,
 			&i.SourceImageUrl,
-			pq.Array(&i.SourceImageUrls),
 			pq.Array(&i.SourcePdfLinks),
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Room,
 			&i.Data,
+			pq.Array(&i.SourceImageUrls),
 		); err != nil {
 			return nil, err
 		}
@@ -173,7 +161,7 @@ set data              = $2,
     position          = $9,
     updated_at        = now()
 where id = $1
-returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
+returning id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, room, data, source_image_urls
 `
 
 type UpdateScheduleItemParams struct {
@@ -207,13 +195,27 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 		&i.SourceUrl,
 		&i.SourceTitle,
 		&i.SourceImageUrl,
-		pq.Array(&i.SourceImageUrls),
 		pq.Array(&i.SourcePdfLinks),
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Room,
 		&i.Data,
+		pq.Array(&i.SourceImageUrls),
 	)
 	return i, err
+}
+
+const updateScheduleItemPosition = `-- name: UpdateScheduleItemPosition :exec
+update schedule_items set position = $2, updated_at = now() where id = $1
+`
+
+type UpdateScheduleItemPositionParams struct {
+	ID       string `json:"id"`
+	Position int32  `json:"position"`
+}
+
+func (q *Queries) UpdateScheduleItemPosition(ctx context.Context, arg UpdateScheduleItemPositionParams) error {
+	_, err := q.db.ExecContext(ctx, updateScheduleItemPosition, arg.ID, arg.Position)
+	return err
 }

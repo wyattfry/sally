@@ -15,8 +15,13 @@ values ($1, $2)
 returning id, user_id, token_hash, expires_at, used_at, created_at
 `
 
-func (q *Queries) CreateLoginToken(ctx context.Context, userID, tokenHash string) (LoginToken, error) {
-	row := q.db.QueryRowContext(ctx, createLoginToken, userID, tokenHash)
+type CreateLoginTokenParams struct {
+	UserID    string `json:"user_id"`
+	TokenHash string `json:"token_hash"`
+}
+
+func (q *Queries) CreateLoginToken(ctx context.Context, arg CreateLoginTokenParams) (LoginToken, error) {
+	row := q.db.QueryRowContext(ctx, createLoginToken, arg.UserID, arg.TokenHash)
 	var i LoginToken
 	err := row.Scan(
 		&i.ID,

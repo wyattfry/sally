@@ -6,10 +6,11 @@ insert into schedule_items (
     source_url,
     source_title,
     source_image_url,
+    source_image_urls,
     source_pdf_links,
     position
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 returning *;
 
 -- name: GetScheduleItem :one
@@ -25,14 +26,15 @@ order by room asc, position asc, created_at asc;
 
 -- name: UpdateScheduleItem :one
 update schedule_items
-set data             = $2,
-    room             = $3,
-    source_url       = $4,
-    source_title     = $5,
-    source_image_url = $6,
-    source_pdf_links = $7,
-    position         = $8,
-    updated_at       = now()
+set data              = $2,
+    room              = $3,
+    source_url        = $4,
+    source_title      = $5,
+    source_image_url  = $6,
+    source_image_urls = $7,
+    source_pdf_links  = $8,
+    position          = $9,
+    updated_at        = now()
 where id = $1
 returning *;
 

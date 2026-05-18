@@ -27,21 +27,6 @@ func (q *Queries) AddProjectMember(ctx context.Context, arg AddProjectMemberPara
 	return err
 }
 
-const removeProjectMember = `-- name: RemoveProjectMember :exec
-delete from project_members
-where project_id = $1 and user_id = $2
-`
-
-type RemoveProjectMemberParams struct {
-	ProjectID string `json:"project_id"`
-	UserID    string `json:"user_id"`
-}
-
-func (q *Queries) RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error {
-	_, err := q.db.ExecContext(ctx, removeProjectMember, arg.ProjectID, arg.UserID)
-	return err
-}
-
 const getProjectMember = `-- name: GetProjectMember :one
 select id, project_id, user_id, invited_by_user_id, created_at
 from project_members
@@ -75,7 +60,7 @@ where pm.project_id = $1
 order by pm.created_at
 `
 
-type ProjectMemberWithUser struct {
+type ListProjectMembersWithUserRow struct {
 	ID              string    `json:"id"`
 	ProjectID       string    `json:"project_id"`
 	UserID          string    `json:"user_id"`
@@ -85,15 +70,15 @@ type ProjectMemberWithUser struct {
 	UserName        string    `json:"user_name"`
 }
 
-func (q *Queries) ListProjectMembersWithUser(ctx context.Context, projectID string) ([]ProjectMemberWithUser, error) {
+func (q *Queries) ListProjectMembersWithUser(ctx context.Context, projectID string) ([]ListProjectMembersWithUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listProjectMembersWithUser, projectID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ProjectMemberWithUser
+	var items []ListProjectMembersWithUserRow
 	for rows.Next() {
-		var i ProjectMemberWithUser
+		var i ListProjectMembersWithUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProjectID,
@@ -102,54 +87,6 @@ func (q *Queries) ListProjectMembersWithUser(ctx context.Context, projectID stri
 			&i.CreatedAt,
 			&i.UserEmail,
 			&i.UserName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSharedProjectsWithOwner = `-- name: ListSharedProjectsWithOwner :many
-select p.id, p.owner_user_id, p.name, p.address, p.created_at, p.updated_at, p.description, p.thumbnail_url,
-       coalesce(nullif(u.name, ''), u.email, p.owner_user_id::text) as owner_display_name
-from projects p
-join project_members pm on pm.project_id = p.id
-join users u on u.id = p.owner_user_id
-where pm.user_id = $1
-order by p.updated_at desc, p.created_at desc
-`
-
-type SharedProjectWithOwner struct {
-	Project
-	OwnerDisplayName string `json:"owner_display_name"`
-}
-
-func (q *Queries) ListSharedProjectsWithOwner(ctx context.Context, userID string) ([]SharedProjectWithOwner, error) {
-	rows, err := q.db.QueryContext(ctx, listSharedProjectsWithOwner, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []SharedProjectWithOwner
-	for rows.Next() {
-		var i SharedProjectWithOwner
-		if err := rows.Scan(
-			&i.ID,
-			&i.OwnerUserID,
-			&i.Name,
-			&i.Address,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Description,
-			&i.ThumbnailUrl,
-			&i.OwnerDisplayName,
 		); err != nil {
 			return nil, err
 		}
@@ -202,4 +139,67 @@ func (q *Queries) ListSharedProjects(ctx context.Context, userID string) ([]Proj
 		return nil, err
 	}
 	return items, nil
+}
+
+const listSharedProjectsWithOwner = `-- name: ListSharedProjectsWithOwner :many
+select p.id, p.owner_user_id, p.name, p.address, p.created_at, p.updated_at, p.description, p.thumbnail_url,
+       coalesce(nullif(u.name, ''), u.email, p.owner_user_id::text) as owner_display_name
+from projects p
+join project_members pm on pm.project_id = p.id
+join users u on u.id = p.owner_user_id
+where pm.user_id = $1
+order by p.updated_at desc, p.created_at desc
+`
+
+type ListSharedProjectsWithOwnerRow struct {
+	Project          Project `json:"project"`
+	OwnerDisplayName string  `json:"owner_display_name"`
+}
+
+func (q *Queries) ListSharedProjectsWithOwner(ctx context.Context, userID string) ([]ListSharedProjectsWithOwnerRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSharedProjectsWithOwner, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSharedProjectsWithOwnerRow
+	for rows.Next() {
+		var i ListSharedProjectsWithOwnerRow
+		if err := rows.Scan(
+			&i.Project.ID,
+			&i.Project.OwnerUserID,
+			&i.Project.Name,
+			&i.Project.Address,
+			&i.Project.CreatedAt,
+			&i.Project.UpdatedAt,
+			&i.Project.Description,
+			&i.Project.ThumbnailUrl,
+			&i.OwnerDisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const removeProjectMember = `-- name: RemoveProjectMember :exec
+delete from project_members
+where project_id = $1 and user_id = $2
+`
+
+type RemoveProjectMemberParams struct {
+	ProjectID string `json:"project_id"`
+	UserID    string `json:"user_id"`
+}
+
+func (q *Queries) RemoveProjectMember(ctx context.Context, arg RemoveProjectMemberParams) error {
+	_, err := q.db.ExecContext(ctx, removeProjectMember, arg.ProjectID, arg.UserID)
+	return err
 }

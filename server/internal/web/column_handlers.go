@@ -112,7 +112,7 @@ func (a app) reorderScheduleColumns(w http.ResponseWriter, r *http.Request) {
 	}
 	ids := r.Form["ids"]
 	for i, id := range ids {
-		_ = a.queries.UpdateScheduleColumnPosition(r.Context(), id, int32(i+1))
+		_ = a.queries.UpdateScheduleColumnPosition(r.Context(), queries.UpdateScheduleColumnPositionParams{ID: id, Position: int32(i + 1)})
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -135,7 +135,7 @@ func (a app) renameScheduleColumn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := a.queries.UpdateScheduleColumnLabel(r.Context(), columnID, label); err != nil {
+	if err := a.queries.UpdateScheduleColumnLabel(r.Context(), queries.UpdateScheduleColumnLabelParams{ID: columnID, Label: label}); err != nil {
 		http.Error(w, "could not rename column", http.StatusInternalServerError)
 		return
 	}

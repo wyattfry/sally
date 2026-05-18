@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"time"
 
+	appdb "sally/server/internal/db"
 	queries "sally/server/internal/db/generated"
 )
 
@@ -28,7 +29,7 @@ type projectDetailPage struct {
 	FirstItemImage   string
 	ActiveLink       *queries.ProjectShareLink
 	ShareBaseURL     string
-	Members          []queries.ProjectMemberWithUser
+	Members          []queries.ListProjectMembersWithUserRow
 	IsOwner          bool
 	MemberError      string
 	OwnerDisplayName string
@@ -97,9 +98,9 @@ type publicSharePage struct {
 type adminPage struct {
 	Kind              string
 	Title             string
-	Counts            queries.AdminTableCounts
-	ExtractionSum     queries.ExtractionSummary
-	ProviderStats     []queries.ExtractionProviderStat
+	Counts            appdb.AdminTableCounts
+	ExtractionSum     appdb.ExtractionSummary
+	ProviderStats     []appdb.ExtractionProviderStat
 	StorageBytes      int64
 	StorageDir        string
 	ItemDailyJSON     template.JS // daily series, 7d
@@ -111,7 +112,7 @@ type adminPage struct {
 type adminUsersPage struct {
 	Kind         string
 	Title        string
-	Users        []queries.AdminUserRow
+	Users        []appdb.AdminUserRow
 	NewLoginURL  string
 	NewLoginName string
 }
@@ -127,11 +128,11 @@ type adminAPITokensPage struct {
 type adminExtractionsPage struct {
 	Kind       string
 	Title      string
-	RecentLogs []queries.ExtractionLogRow
+	RecentLogs []appdb.ExtractionLogRow
 }
 
 type adminExtractionDetailPage struct {
 	Kind  string
 	Title string
-	Log   queries.ExtractionLogRow
+	Log   appdb.ExtractionLogRow
 }
