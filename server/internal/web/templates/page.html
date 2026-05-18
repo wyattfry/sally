@@ -424,7 +424,7 @@
           <span class="schedule-list-name">{{.Schedule.Name}}{{if eq .Schedule.Kind "note"}} <span class="schedule-list-kind">(note)</span>{{end}}</span>
           <span class="schedule-list-meta">
             {{if ne .Schedule.Kind "note"}}<span class="schedule-list-count">{{.ItemCount}} item{{if ne .ItemCount 1}}s{{end}}</span> ·{{end}}
-            <span class="schedule-list-updated">updated {{humanTime .LastUpdated}}</span>
+            <span class="schedule-list-updated">updated <time class="local-time" datetime="{{isoTime .LastUpdated}}">{{humanTime .LastUpdated}}</time></span>
           </span>
         </a>
       </li>
