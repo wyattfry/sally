@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	queries "sally/server/internal/db/generated"
+	"sally/server/internal/presets"
 )
 
 func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +42,8 @@ func (a app) createSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := seedColumns(r.Context(), a.queries, schedule.ID, "general"); err != nil {
+	preset, _ := presets.InferByName(name)
+	if err := seedColumns(r.Context(), a.queries, schedule.ID, preset); err != nil {
 		http.Error(w, "could not seed columns", http.StatusInternalServerError)
 		return
 	}

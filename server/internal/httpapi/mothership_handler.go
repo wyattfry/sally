@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -209,7 +210,11 @@ func (api mothershipAPI) createSchedule(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if req.Kind == "items" {
-		for _, col := range presets.Get(req.Preset) {
+		preset := req.Preset
+		if preset == "" {
+			preset, _ = presets.InferByName(req.Name)
+		}
+		for _, col := range presets.Get(preset) {
 			if _, err := api.queries.CreateScheduleColumn(r.Context(), queries.CreateScheduleColumnParams{
 				ScheduleID: schedule.ID,
 				Key:        col.Key,
@@ -333,7 +338,38 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 		writeJSONError(w, http.StatusInternalServerError, "could not create item")
 		return
 	}
+
+	// Paint extractions populate data.color even when the schedule doesn't
+	// yet have a Color column — add the column on first such save so the
+	// value becomes visible rather than orphaned in the data jsonb.
+	if strings.TrimSpace(req.Data["color"]) != "" {
+		api.ensureColumn(r.Context(), scheduleID, "color", "Color")
+	}
+
 	writeJSON(w, http.StatusCreated, toScheduleItemResponse(item))
+}
+
+func (api mothershipAPI) ensureColumn(ctx context.Context, scheduleID, key, label string) {
+	cols, err := api.queries.ListScheduleColumns(ctx, scheduleID)
+	if err != nil {
+		return
+	}
+	maxPos := int32(0)
+	for _, c := range cols {
+		if c.Key == key {
+			return
+		}
+		if c.Position > maxPos {
+			maxPos = c.Position
+		}
+	}
+	_, _ = api.queries.CreateScheduleColumn(ctx, queries.CreateScheduleColumnParams{
+		ScheduleID: scheduleID,
+		Key:        key,
+		Label:      label,
+		Kind:       "text",
+		Position:   maxPos + 1,
+	})
 }
 
 type projectResponse struct {

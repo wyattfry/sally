@@ -394,18 +394,11 @@ export function SallyPanel({
             {columns.filter((col) => col.key !== "room").map((col) => (
               <div className="field" key={col.key}>
                 <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
-                {col.key === "code"
-                  ? <CodeField
-                      id={`sally-col-${col.key}`}
-                      value={draft?.data[col.key] ?? ""}
-                      onChange={(v) => updateData(col.key, v)}
-                    />
-                  : <input
-                      id={`sally-col-${col.key}`}
-                      value={draft?.data[col.key] ?? ""}
-                      onChange={(event) => updateData(col.key, event.target.value)}
-                    />
-                }
+                <input
+                  id={`sally-col-${col.key}`}
+                  value={draft?.data[col.key] ?? ""}
+                  onChange={(event) => updateData(col.key, event.target.value)}
+                />
               </div>
             ))}
 
@@ -454,33 +447,3 @@ export function SallyPanel({
   );
 }
 
-function parseCode(value: string): { prefix: string; suffix: string } | null {
-  const i = value.lastIndexOf("-");
-  if (i <= 0) return null;
-  const suffix = value.slice(i + 1);
-  if (!/^\d+$/.test(suffix)) return null;
-  return { prefix: value.slice(0, i), suffix };
-}
-
-function CodeField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
-  const parsed = parseCode(value);
-  if (!parsed) {
-    return <input id={id} value={value} onChange={(e) => onChange(e.target.value)} />;
-  }
-  const { prefix, suffix } = parsed;
-  return (
-    <div className="code-field">
-      <span className="code-prefix" aria-hidden="true">{prefix}-</span>
-      <input
-        id={id}
-        className="code-suffix"
-        value={suffix}
-        inputMode="numeric"
-        onChange={(e) => {
-          const n = e.target.value.replace(/\D/g, "");
-          onChange(`${prefix}-${n || "1"}`);
-        }}
-      />
-    </div>
-  );
-}

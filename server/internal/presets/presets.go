@@ -1,5 +1,7 @@
 package presets
 
+import "strings"
+
 // ColumnDef describes a single column in a schedule preset.
 type ColumnDef struct {
 	Key      string
@@ -54,8 +56,9 @@ var Schedules = map[string][]ColumnDef{
 	"paint": {
 		{Key: "code", Label: "Code", Position: 1},
 		{Key: "color", Label: "Color", Position: 2},
-		{Key: "manufacturer", Label: "Manufacturer", Position: 3},
-		{Key: "notes", Label: "Notes", Position: 4},
+		{Key: "finish", Label: "Finish", Position: 3},
+		{Key: "manufacturer", Label: "Manufacturer", Position: 4},
+		{Key: "notes", Label: "Notes", Position: 5},
 	},
 	"insulation": {
 		{Key: "description", Label: "Description", Position: 1},
@@ -79,4 +82,30 @@ func Get(name string) []ColumnDef {
 		return cols
 	}
 	return Default()
+}
+
+// InferByName guesses a preset key from a schedule name (case-insensitive
+// substring match). Returns ("", false) if no domain-specific match — the
+// caller should fall back to "general".
+func InferByName(name string) (string, bool) {
+	n := strings.ToLower(name)
+	// Ordered: longer/more-specific keywords first so "door hardware" wins
+	// over "door".
+	for _, kw := range []struct{ word, preset string }{
+		{"door hardware", "door_hardware"},
+		{"paint", "paint"},
+		{"appliance", "appliance"},
+		{"window", "window"},
+		{"door", "door"},
+		{"insulation", "insulation"},
+		{"electrical", "electrical_fixture"},
+		{"lighting", "electrical_fixture"},
+		{"light fixture", "electrical_fixture"},
+		{"specialt", "specialties"},
+	} {
+		if strings.Contains(n, kw.word) {
+			return kw.preset, true
+		}
+	}
+	return "", false
 }

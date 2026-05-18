@@ -343,7 +343,7 @@ describe("App", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     // Cancel restores the original schedule and re-fetches its next code
     expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-1");
-    await waitFor(() => expect(screen.getByLabelText("Code")).toHaveValue("4")); // "A-4" suffix
+    await waitFor(() => expect(screen.getByLabelText("Code")).toHaveValue("A-4"));
     expect(getMothershipScheduleNextCode).toHaveBeenCalledWith("schedule-1");
   });
 
@@ -369,7 +369,7 @@ describe("App", () => {
     // Panel switches to Paint Schedule
     await waitFor(() => expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-paint"));
     // Code is for Paint Schedule ("P-4"), not the stale "A-6" from the extraction response
-    expect(screen.getByLabelText("Code")).toHaveValue("4"); // suffix of "P-4"
+    expect(screen.getByLabelText("Code")).toHaveValue("P-4");
     expect(getMothershipScheduleNextCode).toHaveBeenCalledWith("schedule-paint");
   });
 

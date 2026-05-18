@@ -156,7 +156,20 @@ Key rules illustrated:
 - room is a room name (e.g. "Kitchen") or empty — never XML or markup.
 - suggestedScheduleName matches an existing schedule name exactly when the item fits, or is a short descriptive name.
 - title omits the manufacturer name (it has its own field).
-END EXAMPLE`
+END EXAMPLE
+
+PAINT-SPECIFIC RULES — when the product is paint:
+- "finish" is the SHEEN, one of: Flat, Matte, Eggshell, Satin, Semi-Gloss, Hi-Gloss (or close equivalent). It is NEVER the color.
+- Put the paint's color in customFields.color (e.g., "Ultra Pure White", "Spiced Beige", "Behr N250-2"). "color" is always available in customFields for paint, even if it is not listed as a column.
+- "availableFinishes" lists sheens, not colors.
+
+EXAMPLE 2 — paint product:
+Product page title: BEHR MARQUEE 1 gal. #N250-2 Spiced Beige Eggshell Enamel Interior Paint and Primer
+Visible text excerpt: BEHR MARQUEE. Color: N250-2 Spiced Beige. Sheen: Eggshell. Interior Paint and Primer. Stain-resistant. One-coat hide. Available in Flat, Eggshell, Satin, Semi-Gloss, Hi-Gloss.
+
+Expected output (finish is the sheen, color is in customFields):
+{"title":"MARQUEE Interior Paint and Primer","manufacturer":"Behr","modelNumber":"N250-2","category":"Paint","description":"Stain-resistant one-coat interior paint and primer with eggshell sheen.","finish":"Eggshell","finishModelNumber":"","availableFinishes":["Flat","Eggshell","Satin","Semi-Gloss","Hi-Gloss"],"finishModelMappings":[],"requiredAddOns":[],"optionalCompanions":[],"room":"","suggestedScheduleName":"Paint","analysis":{"missingFields":[],"warnings":[],"confidence":{"overall":0.95,"title":0.95,"manufacturer":0.99,"modelNumber":0.95,"category":0.99,"description":0.9,"finish":0.99,"requiredAddOns":0.9}},"customFields":{"color":"Spiced Beige"}}
+END EXAMPLE 2`
 
 func buildChatCompletionRequest(req extract.ExtractSpecRequest, model, responseFormat string) chatCompletionRequest {
 	var format *chatResponseFormat

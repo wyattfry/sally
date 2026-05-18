@@ -15,7 +15,7 @@ import (
 	"sally/server/internal/extract"
 )
 
-const PromptVersion = "extract-spec-v3"
+const PromptVersion = "extract-spec-v4"
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -394,18 +394,25 @@ func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
 		"analysis",
 	}
 
-	if len(customColumns) > 0 {
-		customProps := make(map[string]any, len(customColumns))
-		for _, col := range customColumns {
-			customProps[col.Key] = map[string]any{"type": "string", "description": col.Label}
-		}
-		properties["customFields"] = map[string]any{
-			"type":                 "object",
-			"properties":          customProps,
-			"additionalProperties": false,
-		}
-		required = append(required, "customFields")
+	customProps := make(map[string]any, len(customColumns)+1)
+	for _, col := range customColumns {
+		customProps[col.Key] = map[string]any{"type": "string", "description": col.Label}
 	}
+	// "color" is always extractable so paint items can carry their color
+	// regardless of whether the schedule already has a Color column. The
+	// backend auto-adds the column on save when this is non-empty.
+	if _, present := customProps["color"]; !present {
+		customProps["color"] = map[string]any{
+			"type":        "string",
+			"description": "Paint color name (e.g., 'Ultra Pure White'). Required for paint items. Leave empty for non-paint items.",
+		}
+	}
+	properties["customFields"] = map[string]any{
+		"type":                 "object",
+		"properties":           customProps,
+		"additionalProperties": false,
+	}
+	required = append(required, "customFields")
 
 	return map[string]any{
 		"type":                 "object",
