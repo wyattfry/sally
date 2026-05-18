@@ -268,7 +268,7 @@ func (api mothershipAPI) getScheduleNextCode(w http.ResponseWriter, r *http.Requ
 
 type createScheduleItemRequest struct {
 	Data            map[string]string `json:"data"`
-	Zone            string            `json:"zone"`
+	Room            string            `json:"room"`
 	SourceURL       string            `json:"sourceUrl"`
 	SourceTitle     string            `json:"sourceTitle"`
 	SourceImageURL  string            `json:"sourceImageUrl"`
@@ -321,7 +321,7 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 	item, err := api.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
 		ScheduleID:      scheduleID,
 		Data:            dataJSON,
-		Zone:            strings.TrimSpace(req.Zone),
+		Room:            strings.TrimSpace(req.Room),
 		SourceUrl:       strings.TrimSpace(req.SourceURL),
 		SourceTitle:     strings.TrimSpace(req.SourceTitle),
 		SourceImageUrl:  strings.TrimSpace(req.SourceImageURL),
@@ -366,7 +366,7 @@ type scheduleItemResponse struct {
 	ID              string            `json:"id"`
 	ScheduleID      string            `json:"scheduleId"`
 	Data            map[string]string `json:"data"`
-	Zone            string            `json:"zone"`
+	Room            string            `json:"room"`
 	SourceURL       string            `json:"sourceUrl"`
 	SourceTitle     string            `json:"sourceTitle"`
 	SourceImageURL  string            `json:"sourceImageUrl"`
@@ -426,7 +426,7 @@ func toScheduleItemResponse(item queries.ScheduleItem) scheduleItemResponse {
 		ID:              item.ID,
 		ScheduleID:      item.ScheduleID,
 		Data:            data,
-		Zone:            item.Zone,
+		Room:            item.Room,
 		SourceURL:       item.SourceUrl,
 		SourceTitle:     item.SourceTitle,
 		SourceImageURL:  item.SourceImageUrl,

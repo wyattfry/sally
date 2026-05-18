@@ -45,15 +45,15 @@ import App from "./App";
 
 const storageState: Record<string, unknown> = {};
 
-function extractedResult(itemOverrides: Partial<ScheduleItem> = {}, options: { suggestedScheduleName?: string; knownZones?: string[] } = {}) {
-  return { item: extractedItem(itemOverrides), knownZones: options.knownZones ?? [], suggestedScheduleName: options.suggestedScheduleName };
+function extractedResult(itemOverrides: Partial<ScheduleItem> = {}, options: { suggestedScheduleName?: string; knownRooms?: string[] } = {}) {
+  return { item: extractedItem(itemOverrides), knownRooms: options.knownRooms ?? [], suggestedScheduleName: options.suggestedScheduleName };
 }
 
 function extractedItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
     id: "draft-request-123",
     capturedAt: "2026-04-24T18:30:00.000Z",
-    zone: "Primary Bath",
+    room: "Primary Bath",
     data: {
       title: "Wall Faucet",
       manufacturer: "Example Co.",
@@ -152,7 +152,7 @@ describe("App", () => {
     expect(screen.getByLabelText("Project")).toHaveValue("project-1");
     expect(screen.getByLabelText("Schedule")).toHaveValue("schedule-1");
 
-    await user.selectOptions(screen.getByLabelText("Zone"), "Primary Bath");
+    await user.selectOptions(screen.getByLabelText("Room"), "Primary Bath");
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Wall faucet revised");
     await user.click(screen.getByRole("button", { name: "OK" }));
@@ -223,21 +223,21 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: "Undo" })).not.toBeInTheDocument();
   });
 
-  it("supports selecting an existing zone and adding a new zone", async () => {
+  it("supports selecting an existing room and adding a new room", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: "SPEC" }));
     await screen.findByDisplayValue("Wall Faucet");
 
-    await user.selectOptions(screen.getByLabelText("Zone"), "Primary Bath");
-    expect(screen.getByLabelText("Zone")).toHaveValue("Primary Bath");
+    await user.selectOptions(screen.getByLabelText("Room"), "Primary Bath");
+    expect(screen.getByLabelText("Room")).toHaveValue("Primary Bath");
 
-    await user.selectOptions(screen.getByLabelText("Zone"), "__add_new__");
+    await user.selectOptions(screen.getByLabelText("Room"), "__add_new__");
     await user.type(screen.getByLabelText("Name"), "Guest Bath");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
-    expect(screen.getByLabelText("Zone")).toHaveValue("Guest Bath");
+    expect(screen.getByLabelText("Room")).toHaveValue("Guest Bath");
   });
 
   it("minimizes on Escape and restores the draft without discarding edits", async () => {
@@ -356,7 +356,7 @@ describe("App", () => {
     // Extraction server returns nextCode "A-6" (for Appliance Schedule) but suggests Paint Schedule
     vi.mocked(extractScheduleItem).mockResolvedValue({
       item: extractedItem({ data: { code: "A-6", title: "Wall Paint" } }),
-      knownZones: [],
+      knownRooms: [],
       suggestedScheduleName: "Paint Schedule",
     });
     vi.mocked(getMothershipScheduleNextCode).mockImplementation(async (scheduleId) =>

@@ -80,7 +80,7 @@ export async function saveMothershipScheduleItem(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       data: item.data,
-      zone: item.zone ?? "",
+      room: item.room ?? "",
       sourceUrl: item.sourceUrl,
       sourceTitle: item.sourceTitle,
       sourceImageUrl: item.sourceImageUrl ?? "",

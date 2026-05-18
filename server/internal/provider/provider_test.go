@@ -209,7 +209,7 @@ const validRequestJSON = `{
 	},
 	"projectContext": {
 		"projectName": "My New Project",
-		"knownZones": ["Primary Bath"],
+		"knownRooms": ["Primary Bath"],
 		"knownCategories": ["Plumbing Fixture"]
 	},
 	"options": {
@@ -237,7 +237,7 @@ func validRequest() extract.ExtractSpecRequest {
 		},
 		ProjectContext: extract.ProjectContext{
 			ProjectName:     "My New Project",
-			KnownZones:      []string{"Primary Bath"},
+			KnownRooms:      []string{"Primary Bath"},
 			KnownCategories: []string{"Plumbing Fixture"},
 		},
 		Options: extract.ExtractSpecOptions{

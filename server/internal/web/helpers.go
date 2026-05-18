@@ -209,8 +209,8 @@ func seedColumns(ctx context.Context, q *queries.Queries, scheduleID, presetName
 func buildDataMap(r *http.Request, columns []queries.ScheduleColumn) map[string]string {
 	data := make(map[string]string, len(columns))
 	for _, col := range columns {
-		if col.Key == "zone" {
-			continue // zone has its own DB column; not stored in data JSONB
+		if col.Key == "room" {
+			continue // room has its own DB column; not stored in data JSONB
 		}
 		if v := strings.TrimSpace(r.Form.Get("col_" + col.Key)); v != "" {
 			data[col.Key] = v
@@ -231,7 +231,7 @@ func toItemView(item queries.ScheduleItem) scheduleItemView {
 	if dm == nil {
 		dm = map[string]string{}
 	}
-	dm["zone"] = item.Zone
+	dm["room"] = item.Room
 	return scheduleItemView{ScheduleItem: item, DataMap: dm}
 }
 
@@ -247,26 +247,26 @@ func itemDisplayTitle(item queries.ScheduleItem) string {
 	return "item"
 }
 
-type zoneGroup struct {
-	Zone  string
+type roomGroup struct {
+	Room  string
 	Items []scheduleItemView
 }
 
 type scheduleWithItems struct {
 	Schedule queries.Schedule
 	Columns  []queries.ScheduleColumn
-	Groups   []zoneGroup
+	Groups   []roomGroup
 }
 
-func groupByZone(items []scheduleItemView) []zoneGroup {
+func groupByRoom(items []scheduleItemView) []roomGroup {
 	seen := map[string]int{}
-	var groups []zoneGroup
+	var groups []roomGroup
 	for _, item := range items {
-		if idx, ok := seen[item.Zone]; ok {
+		if idx, ok := seen[item.Room]; ok {
 			groups[idx].Items = append(groups[idx].Items, item)
 		} else {
-			seen[item.Zone] = len(groups)
-			groups = append(groups, zoneGroup{Zone: item.Zone, Items: []scheduleItemView{item}})
+			seen[item.Room] = len(groups)
+			groups = append(groups, roomGroup{Room: item.Room, Items: []scheduleItemView{item}})
 		}
 	}
 	return groups
@@ -298,7 +298,7 @@ func (a app) scheduleSummaries(ctx context.Context, projectID string) ([]schedul
 	return out, nil
 }
 
-// scheduleWithItemsByID loads a single schedule (with columns, items, zone grouping)
+// scheduleWithItemsByID loads a single schedule (with columns, items, room grouping)
 // matching the shape used by schedulesWithItems.
 func (a app) scheduleWithItemsByID(ctx context.Context, schedule queries.Schedule) (scheduleWithItems, error) {
 	cols, err := a.queries.ListScheduleColumns(ctx, schedule.ID)
@@ -324,7 +324,7 @@ func (a app) scheduleWithItemsByID(ctx context.Context, schedule queries.Schedul
 	return scheduleWithItems{
 		Schedule: schedule,
 		Columns:  cols,
-		Groups:   groupByZone(views),
+		Groups:   groupByRoom(views),
 	}, nil
 }
 
@@ -359,7 +359,7 @@ func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]schedu
 		result = append(result, scheduleWithItems{
 			Schedule: schedule,
 			Columns:  cols,
-			Groups:   groupByZone(views),
+			Groups:   groupByRoom(views),
 		})
 	}
 	return result, nil

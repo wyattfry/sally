@@ -52,7 +52,7 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [columns, setColumns] = useState<ScheduleColumn[]>([]);
-  const [zones, setZones] = useState<string[]>([]);
+  const [rooms, setRooms] = useState<string[]>([]);
   const [activeContext, setActiveContext] = useState<ActiveContext | null>(null);
 
   useEffect(() => {
@@ -224,7 +224,7 @@ export default function App() {
         }
       }
 
-      setZones(extracted.knownZones);
+      setRooms(extracted.knownRooms);
       setPanel({
         kind: "review",
         draft: item,
@@ -434,7 +434,7 @@ export default function App() {
           projects={projects}
           schedules={schedules}
           columns={columns}
-          zones={zones}
+          rooms={rooms}
           activeContext={activeContext}
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
           onCancel={() => setPanel({ kind: "closed" })}

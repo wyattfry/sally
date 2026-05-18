@@ -63,7 +63,7 @@ func (a app) uploadItemImage(w http.ResponseWriter, r *http.Request) {
 	_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 		ID:              item.ID,
 		Data:            item.Data,
-		Zone:            item.Zone,
+		Room:            item.Room,
 		SourceUrl:       item.SourceUrl,
 		SourceTitle:     item.SourceTitle,
 		SourceImageUrl:  url,

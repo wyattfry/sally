@@ -121,7 +121,7 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 			FinishModelMappings:   output.FinishModelMappings,
 			RequiredAddOns:        output.RequiredAddOns,
 			OptionalCompanions:    output.OptionalCompanions,
-			Zone:                  sanitizeZone(output.Zone),
+			Room:                  sanitizeRoom(output.Room),
 			SuggestedScheduleName: output.SuggestedScheduleName,
 			SourceURL:             req.Page.URL,
 			SourceTitle:           req.Page.Title,
@@ -206,7 +206,7 @@ type openAIExtractionOutput struct {
 	FinishModelMappings   []extract.FinishModelMapping `json:"finishModelMappings"`
 	RequiredAddOns        []string                     `json:"requiredAddOns"`
 	OptionalCompanions    []string                     `json:"optionalCompanions"`
-	Zone                  string                       `json:"zone"`
+	Room                  string                       `json:"room"`
 	SuggestedScheduleName string                       `json:"suggestedScheduleName"`
 	Analysis              *extract.Analysis            `json:"analysis"`
 	CustomFields          map[string]string            `json:"customFields,omitempty"`
@@ -265,11 +265,11 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 		lines := make([]string, 0, len(req.ProjectContext.Schedules))
 		var selectedName string
 		for _, s := range req.ProjectContext.Schedules {
-			zonesJSON, _ := json.Marshal(s.Zones)
+			roomsJSON, _ := json.Marshal(s.Rooms)
 			if s.IsSelected {
 				selectedName = s.Name
 			}
-			lines = append(lines, fmt.Sprintf("  - %s: zones in use: %s", s.Name, zonesJSON))
+			lines = append(lines, fmt.Sprintf("  - %s: rooms in use: %s", s.Name, roomsJSON))
 		}
 		header := `Project schedules (set suggestedScheduleName to the exact name from this list, or a new descriptive name if none fit):`
 		if selectedName != "" {
@@ -277,11 +277,11 @@ func buildUserPrompt(req extract.ExtractSpecRequest) string {
 		}
 		scheduleContext = header + "\n" +
 			strings.Join(lines, "\n") +
-			"\nFor zone: use a plain room or area name (e.g. 'Kitchen', 'Master Bath'). Pick from existing zones above if the item fits, or leave empty. Never output XML tags or markup in this field."
+			"\nFor room: use a plain room or area name (e.g. 'Kitchen', 'Master Bath'). Pick from existing rooms above if the item fits, or leave empty. Never output XML tags or markup in this field."
 	} else {
-		knownZones, _ := json.Marshal(req.ProjectContext.KnownZones)
+		knownRooms, _ := json.Marshal(req.ProjectContext.KnownRooms)
 		knownScheduleNames, _ := json.Marshal(req.ProjectContext.KnownScheduleNames)
-		scheduleContext = "Known zones: " + string(knownZones) + "\n" +
+		scheduleContext = "Known rooms: " + string(knownRooms) + "\n" +
 			"Known schedule names: " + string(knownScheduleNames) + " — pick the best match for suggestedScheduleName, or propose a new descriptive name if none fit."
 	}
 
@@ -336,9 +336,9 @@ func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
 		},
 		"requiredAddOns":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 		"optionalCompanions":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-		"zone": map[string]any{
+		"room": map[string]any{
 				"type":        "string",
-				"description": "A plain room or area name (e.g. 'Kitchen', 'Master Bath', 'Living Room'). Use an existing zone from the schedule context if provided, or leave empty. Plain text only — no XML, no markup, no JSON.",
+				"description": "A plain room or area name (e.g. 'Kitchen', 'Master Bath', 'Living Room'). Use an existing room from the schedule context if provided, or leave empty. Plain text only — no XML, no markup, no JSON.",
 			},
 		"suggestedScheduleName": map[string]any{"type": "string"},
 		"analysis": map[string]any{
@@ -394,7 +394,7 @@ func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
 		"finishModelMappings",
 		"requiredAddOns",
 		"optionalCompanions",
-		"zone",
+		"room",
 		"suggestedScheduleName",
 		"analysis",
 	}

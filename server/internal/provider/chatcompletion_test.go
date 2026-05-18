@@ -130,7 +130,7 @@ func TestChatCompletionExtractorNormalizesNullArrayFields(t *testing.T) {
 		writeChatCompletionResponse(w, map[string]any{
 			"title": "Wall Faucet", "manufacturer": "Example Co.", "modelNumber": "WF-200",
 			"category": "Plumbing Fixture", "description": "A faucet.", "finish": "Chrome",
-			"finishModelNumber": "", "zone": "",
+			"finishModelNumber": "", "room": "",
 			"availableFinishes":   nil,
 			"finishModelMappings": nil,
 			"requiredAddOns":      nil,
@@ -218,7 +218,7 @@ func goodExtractionPayload() map[string]any {
 		"finishModelMappings": []map[string]any{{"finish": "Polished Chrome", "modelNumber": "WF-200-PC"}},
 		"requiredAddOns":      []string{"Rough valve body"},
 		"optionalCompanions":  []string{"Drain assembly"},
-		"zone":                "Primary Bath",
+		"room":                "Primary Bath",
 		"analysis": map[string]any{
 			"missingFields": []string{},
 			"warnings":      []string{},

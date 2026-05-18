@@ -47,7 +47,7 @@ func TestOllamaExtractorMapsJSONResponseIntoContract(t *testing.T) {
 				],
 				"requiredAddOns":["Rough valve body"],
 				"optionalCompanions":["Drain assembly"],
-				"zone":"Primary Bath",
+				"room":"Primary Bath",
 				"analysis":{
 					"missingFields":[],
 					"warnings":["Verify finish mapping."],

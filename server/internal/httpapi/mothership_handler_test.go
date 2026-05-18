@@ -119,7 +119,7 @@ func TestMothershipAPISavesScheduleItem(t *testing.T) {
 	}
 }
 
-func TestMothershipAPIZoneRoundTrips(t *testing.T) {
+func TestMothershipAPIRoomRoundTrips(t *testing.T) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("DATABASE_URL is not set")
@@ -137,15 +137,15 @@ func TestMothershipAPIZoneRoundTrips(t *testing.T) {
 
 	q := queries.New(conn)
 	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
-		Email: "api-zone-test@example.com",
-		Name:  "API Zone Test",
+		Email: "api-room-test@example.com",
+		Name:  "API Room Test",
 	})
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
 		OwnerUserID: user.ID,
-		Name:        "Zone API Project",
+		Name:        "Room API Project",
 	})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
@@ -162,8 +162,8 @@ func TestMothershipAPIZoneRoundTrips(t *testing.T) {
 
 	router := NewRouterWithDeps(config.Config{}, provider.NewStubExtractor(), web.Deps{
 		Queries:      q,
-		DevUserEmail: "api-zone-test@example.com",
-		DevUserName:  "API Zone Test",
+		DevUserEmail: "api-room-test@example.com",
+		DevUserName:  "API Room Test",
 	})
 
 	body := bytes.NewBufferString(`{
@@ -173,7 +173,7 @@ func TestMothershipAPIZoneRoundTrips(t *testing.T) {
 			"model_number": "RH-100",
 			"finish": "Stainless"
 		},
-		"zone": "Kitchen",
+		"room": "Kitchen",
 		"sourcePdfLinks": []
 	}`)
 	createResp := httptest.NewRecorder()
@@ -185,13 +185,13 @@ func TestMothershipAPIZoneRoundTrips(t *testing.T) {
 	}
 
 	var created struct {
-		Zone string `json:"zone"`
+		Room string `json:"room"`
 	}
 	if err := json.Unmarshal(createResp.Body.Bytes(), &created); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if created.Zone != "Kitchen" {
-		t.Fatalf("expected zone %q, got %q", "Kitchen", created.Zone)
+	if created.Room != "Kitchen" {
+		t.Fatalf("expected room %q, got %q", "Kitchen", created.Room)
 	}
 }
 

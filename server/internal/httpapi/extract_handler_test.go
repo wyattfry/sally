@@ -47,7 +47,7 @@ func TestExtractSpecHandlerReturnsOKForValidRequest(t *testing.T) {
 		},
 		"projectContext": {
 			"projectName": "My New Project",
-			"knownZones": ["Primary Bath"],
+			"knownRooms": ["Primary Bath"],
 			"knownCategories": ["Plumbing Fixture"]
 		},
 		"options": {
@@ -124,7 +124,7 @@ func TestExtractSpecHandlerReturnsBadRequestForMissingRequiredField(t *testing.T
 		},
 		"projectContext": {
 			"projectName": "My New Project",
-			"knownZones": ["Primary Bath"],
+			"knownRooms": ["Primary Bath"],
 			"knownCategories": ["Plumbing Fixture"]
 		},
 		"options": {

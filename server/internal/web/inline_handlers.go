@@ -24,13 +24,13 @@ func (a app) editItemCell(w http.ResponseWriter, r *http.Request) {
 	value := itemCellValue(item, key)
 	saveURL := itemCellURL(r, key)
 	w.Header().Set("Content-Type", "text/html")
-	if key == "zone" {
+	if key == "room" {
 		allItems, err := a.queries.ListScheduleItems(r.Context(), loaded.schedule.ID)
 		if err != nil {
 			http.Error(w, "could not load items", http.StatusInternalServerError)
 			return
 		}
-		writeCellEditZone(w, saveURL, value, loaded.schedule.ID, uniqueZones(allItems))
+		writeCellEditRoom(w, saveURL, value, loaded.schedule.ID, uniqueRooms(allItems))
 		return
 	}
 	writeCellEdit(w, saveURL, value, key == "notes")
@@ -56,11 +56,11 @@ func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
 		dataMap = map[string]string{}
 	}
 
-	if key == "zone" {
+	if key == "room" {
 		_, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 			ID:              item.ID,
 			Data:            item.Data,
-			Zone:            value,
+			Room:            value,
 			SourceUrl:       item.SourceUrl,
 			SourceTitle:     item.SourceTitle,
 			SourceImageUrl:  item.SourceImageUrl,
@@ -86,7 +86,7 @@ func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
 		_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 			ID:              item.ID,
 			Data:            dataJSON,
-			Zone:            item.Zone,
+			Room:            item.Room,
 			SourceUrl:       item.SourceUrl,
 			SourceTitle:     item.SourceTitle,
 			SourceImageUrl:  item.SourceImageUrl,
@@ -102,7 +102,7 @@ func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
 
 	editURL := itemCellURL(r, key) + "/edit"
 	displayValue := value
-	if key != "zone" {
+	if key != "room" {
 		displayValue = dataMap[key]
 	}
 	isCode := key == "code"
@@ -116,8 +116,8 @@ func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
 }
 
 func itemCellValue(item queries.ScheduleItem, key string) string {
-	if key == "zone" {
-		return item.Zone
+	if key == "room" {
+		return item.Room
 	}
 	var dm map[string]string
 	_ = json.Unmarshal(item.Data, &dm)
@@ -138,7 +138,7 @@ func writeCellDisplay(w io.Writer, editURL, value, key string, isCode bool, sour
 	switch {
 	case isCode:
 		inner = html.EscapeString(value)
-	case key == "zone" && value == "":
+	case key == "room" && value == "":
 		inner = `<div class="cell-clamp"><span class="cell-empty">—</span></div>`
 	case value == "":
 		inner = `<span class="cell-placeholder">Click to edit…</span>`
@@ -150,31 +150,31 @@ func writeCellDisplay(w io.Writer, editURL, value, key string, isCode bool, sour
 		class, html.EscapeString(editURL), inner)
 }
 
-func writeCellEditZone(w http.ResponseWriter, saveURL, value, scheduleID string, zones []string) {
+func writeCellEditRoom(w http.ResponseWriter, saveURL, value, scheduleID string, rooms []string) {
 	v := html.EscapeString(value)
 	s := html.EscapeString(saveURL)
 	listID := "zl-" + scheduleID
 	esc := `onkeydown="if(event.key==='Escape'){this.value=this.dataset.original;htmx.trigger(this,'blur')}"`
 	var opts strings.Builder
-	opts.WriteString(`<option value="">No zone</option>`)
-	for _, z := range zones {
+	opts.WriteString(`<option value="">No room</option>`)
+	for _, z := range rooms {
 		fmt.Fprintf(&opts, `<option value="%s">`, html.EscapeString(z))
 	}
 	fmt.Fprintf(w,
-		`<td class="editing-cell col-zone">`+
+		`<td class="editing-cell col-room">`+
 			`<input class="cell-input" list="%s" name="value" value="%s" data-original="%s" autocomplete="off" autofocus `+
 			`hx-post="%s" hx-trigger="blur, keyup[key=='Enter']" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s>`+
 			`<datalist id="%s">%s</datalist></td>`,
 		listID, v, v, s, esc, listID, opts.String())
 }
 
-func uniqueZones(items []queries.ScheduleItem) []string {
+func uniqueRooms(items []queries.ScheduleItem) []string {
 	seen := map[string]bool{}
 	var out []string
 	for _, it := range items {
-		if it.Zone != "" && !seen[it.Zone] {
-			seen[it.Zone] = true
-			out = append(out, it.Zone)
+		if it.Room != "" && !seen[it.Room] {
+			seen[it.Room] = true
+			out = append(out, it.Room)
 		}
 	}
 	return out
@@ -462,7 +462,7 @@ func writeItemRow(w io.Writer, projectID, scheduleID string, item queries.Schedu
 	if dm == nil {
 		dm = map[string]string{}
 	}
-	dm["zone"] = item.Zone
+	dm["room"] = item.Room
 
 	thumbPickerURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image-picker", projectID, scheduleID, item.ID)
 	moveURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/move", projectID, scheduleID, item.ID)

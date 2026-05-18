@@ -55,7 +55,7 @@
   --c-danger-border: #9b2b2b;
   --c-danger-text:   #5c1a1a;
   --c-warning:       #b35c00;
-  --c-zone-bg:       #f0f3ed;
-  --c-zone-border:   #cfd8cb;
-  --c-zone-text:     #354832;
+  --c-room-bg:       #f0f3ed;
+  --c-room-border:   #cfd8cb;
+  --c-room-text:     #354832;
 }

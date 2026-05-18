@@ -11,7 +11,7 @@ export type CapturedPage = {
 export type ScheduleItem = {
   id: string;
   capturedAt: string;
-  zone?: string;
+  room?: string;
   data: Record<string, string>;
   sourceUrl: string;
   sourceTitle: string;
@@ -76,7 +76,7 @@ export type ClientInfo = {
 export type ProjectContext = {
   projectName: string;
   knownCategories: string[];
-  knownZones: string[];
+  knownRooms: string[];
   knownScheduleNames: string[];
 };
 
@@ -93,7 +93,7 @@ export type ExtractSpecResponse = {
   error?: ExtractErrorPayload;
   meta: ExtractResponseMeta;
   nextCode?: string;
-  knownZones?: string[];
+  knownRooms?: string[];
 };
 
 export type ExtractedProposal = {
@@ -108,7 +108,7 @@ export type ExtractedProposal = {
   finishModelMappings: FinishModelMapping[];
   requiredAddOns: string[];
   optionalCompanions: string[];
-  zone?: string;
+  room?: string;
   suggestedScheduleName?: string;
   sourceUrl: string;
   sourceTitle: string;

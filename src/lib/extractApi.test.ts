@@ -89,7 +89,7 @@ describe("extractScheduleItem", () => {
     expect(body.projectContext).toEqual({
       projectName: "",
       knownCategories: ["Plumbing Fixture", "Lighting"],
-      knownZones: [],
+      knownRooms: [],
       knownScheduleNames: []
     });
     expect(body.options).toEqual({
@@ -125,12 +125,12 @@ describe("extractScheduleItem", () => {
     expect(item.id).toBeTruthy();
   });
 
-  it("strips <UNKNOWN> zone sentinel from the proposal", async () => {
+  it("strips <UNKNOWN> room sentinel from the proposal", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
         new Response(
-          sseDone(successResponse({ proposal: { ...successResponse().proposal!, zone: "<UNKNOWN>" } })),
+          sseDone(successResponse({ proposal: { ...successResponse().proposal!, room: "<UNKNOWN>" } })),
           { status: 200, headers: { "Content-Type": "text/event-stream" } }
         )
       )
@@ -142,7 +142,7 @@ describe("extractScheduleItem", () => {
       now: FIXED_NOW
     });
 
-    expect(item.zone).toBeUndefined();
+    expect(item.room).toBeUndefined();
   });
 
   it("throws on non-OK backend responses", async () => {

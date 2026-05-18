@@ -216,7 +216,7 @@ func validExtractionPayload() map[string]any {
 		},
 		"requiredAddOns":     []string{"Rough valve body"},
 		"optionalCompanions": []string{"Drain assembly"},
-		"zone":               "Primary Bath",
+		"room":               "Primary Bath",
 		"analysis": map[string]any{
 			"missingFields": []string{},
 			"warnings":      []string{},

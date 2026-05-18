@@ -198,50 +198,50 @@ func TestProjectPagesUpdateAndDeleteProject(t *testing.T) {
 	}
 }
 
-func TestGroupByZone(t *testing.T) {
+func TestGroupByRoom(t *testing.T) {
 	t.Run("empty items yields no groups", func(t *testing.T) {
-		groups := groupByZone(nil)
+		groups := groupByRoom(nil)
 		if len(groups) != 0 {
 			t.Fatalf("expected no groups, got %d", len(groups))
 		}
 	})
 
-	t.Run("items without zone form one unnamed group", func(t *testing.T) {
+	t.Run("items without room form one unnamed group", func(t *testing.T) {
 		items := []scheduleItemView{
-			{ScheduleItem: queries.ScheduleItem{Zone: ""}},
-			{ScheduleItem: queries.ScheduleItem{Zone: ""}},
+			{ScheduleItem: queries.ScheduleItem{Room: ""}},
+			{ScheduleItem: queries.ScheduleItem{Room: ""}},
 		}
-		groups := groupByZone(items)
+		groups := groupByRoom(items)
 		if len(groups) != 1 {
 			t.Fatalf("expected 1 group, got %d", len(groups))
 		}
-		if groups[0].Zone != "" {
-			t.Fatalf("expected empty zone, got %q", groups[0].Zone)
+		if groups[0].Room != "" {
+			t.Fatalf("expected empty room, got %q", groups[0].Room)
 		}
 		if len(groups[0].Items) != 2 {
 			t.Fatalf("expected 2 items, got %d", len(groups[0].Items))
 		}
 	})
 
-	t.Run("items with zones are grouped in first-appearance order", func(t *testing.T) {
+	t.Run("items with rooms are grouped in first-appearance order", func(t *testing.T) {
 		items := []scheduleItemView{
-			{ScheduleItem: queries.ScheduleItem{Zone: ""}},
-			{ScheduleItem: queries.ScheduleItem{Zone: "Kitchen"}},
-			{ScheduleItem: queries.ScheduleItem{Zone: "Kitchen"}},
-			{ScheduleItem: queries.ScheduleItem{Zone: "Primary Bath"}},
+			{ScheduleItem: queries.ScheduleItem{Room: ""}},
+			{ScheduleItem: queries.ScheduleItem{Room: "Kitchen"}},
+			{ScheduleItem: queries.ScheduleItem{Room: "Kitchen"}},
+			{ScheduleItem: queries.ScheduleItem{Room: "Primary Bath"}},
 		}
-		groups := groupByZone(items)
+		groups := groupByRoom(items)
 		if len(groups) != 3 {
 			t.Fatalf("expected 3 groups, got %d", len(groups))
 		}
-		if groups[0].Zone != "" || len(groups[0].Items) != 1 {
-			t.Fatalf("group[0] unexpected: zone=%q items=%d", groups[0].Zone, len(groups[0].Items))
+		if groups[0].Room != "" || len(groups[0].Items) != 1 {
+			t.Fatalf("group[0] unexpected: room=%q items=%d", groups[0].Room, len(groups[0].Items))
 		}
-		if groups[1].Zone != "Kitchen" || len(groups[1].Items) != 2 {
-			t.Fatalf("group[1] unexpected: zone=%q items=%d", groups[1].Zone, len(groups[1].Items))
+		if groups[1].Room != "Kitchen" || len(groups[1].Items) != 2 {
+			t.Fatalf("group[1] unexpected: room=%q items=%d", groups[1].Room, len(groups[1].Items))
 		}
-		if groups[2].Zone != "Primary Bath" || len(groups[2].Items) != 1 {
-			t.Fatalf("group[2] unexpected: zone=%q items=%d", groups[2].Zone, len(groups[2].Items))
+		if groups[2].Room != "Primary Bath" || len(groups[2].Items) != 1 {
+			t.Fatalf("group[2] unexpected: room=%q items=%d", groups[2].Room, len(groups[2].Items))
 		}
 	})
 }

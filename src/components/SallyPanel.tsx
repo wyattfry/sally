@@ -17,7 +17,7 @@ type SallyPanelProps = {
   projects: Project[];
   schedules: Schedule[];
   columns: ScheduleColumn[];
-  zones: string[];
+  rooms: string[];
   activeContext: ActiveContext | null;
   suggestedNewScheduleName?: string;
   onChange: (draft: ScheduleItem) => void;
@@ -38,7 +38,7 @@ export function SallyPanel({
   projects,
   schedules,
   columns,
-  zones,
+  rooms,
   activeContext,
   suggestedNewScheduleName,
   onChange,
@@ -52,12 +52,12 @@ export function SallyPanel({
   onCancelAutoSchedule,
 }: SallyPanelProps) {
   const draft = panel.kind === "review" ? panel.draft : undefined;
-  const [modal, setModal] = useState<null | "project" | "schedule" | "zone" | "image" | "columns">(null);
+  const [modal, setModal] = useState<null | "project" | "schedule" | "room" | "image" | "columns">(null);
   const [modalInputValue, setModalInputValue] = useState("");
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalAutoTriggered, setModalAutoTriggered] = useState(false);
   const modalInputRef = useRef<HTMLInputElement>(null);
-  const [localZones, setLocalZones] = useState<string[]>(zones);
+  const [localRooms, setLocalRooms] = useState<string[]>(rooms);
   const [editColumns, setEditColumns] = useState<ScheduleColumn[]>([]);
   const [addColLabel, setAddColLabel] = useState("");
   const [colError, setColError] = useState<string | null>(null);
@@ -133,7 +133,7 @@ export function SallyPanel({
     if (!addColLabel.trim() || !activeContext?.projectId || !activeContext?.scheduleId) return;
     try {
       const updated = await addMothershipScheduleColumn(activeContext.projectId, activeContext.scheduleId, addColLabel.trim());
-      setEditColumns(updated.filter(c => c.key !== "zone"));
+      setEditColumns(updated.filter(c => c.key !== "room"));
       setAddColLabel("");
       setColError(null);
     } catch (e) {
@@ -144,9 +144,9 @@ export function SallyPanel({
   async function submitModal() {
     const name = modalInputValue.trim();
     if (!name) return;
-    if (modal === "zone") {
-      setLocalZones((prev) => prev.includes(name) ? prev : [...prev, name]);
-      onChange({ ...draft!, zone: name });
+    if (modal === "room") {
+      setLocalRooms((prev) => prev.includes(name) ? prev : [...prev, name]);
+      onChange({ ...draft!, room: name });
       closeModal();
       return;
     }
@@ -238,7 +238,7 @@ export function SallyPanel({
             ) : (
               <>
                 <p className="panel-modal-title">
-                  {modal === "project" ? "New project" : modal === "schedule" ? "New schedule" : "New zone"}
+                  {modal === "project" ? "New project" : modal === "schedule" ? "New schedule" : "New room"}
                 </p>
                 {modal === "schedule" && modalAutoTriggered && (
                   <p className="panel-modal-hint">
@@ -369,29 +369,29 @@ export function SallyPanel({
             ) : null}
 
             <div className="field">
-              <label htmlFor="sally-zone">Zone</label>
+              <label htmlFor="sally-room">Room</label>
               <select
-                id="sally-zone"
-                value={draft?.zone ?? ""}
+                id="sally-room"
+                value={draft?.room ?? ""}
                 onChange={(event) => {
                   if (event.target.value === ADD_NEW_VALUE) {
-                    setModal("zone");
+                    setModal("room");
                     setModalInputValue("");
                     setModalError(null);
                     return;
                   }
-                  onChange({ ...draft!, zone: event.target.value });
+                  onChange({ ...draft!, room: event.target.value });
                 }}
               >
-                <option value="">No zone</option>
-                {[...new Set([...(draft?.zone ? [draft.zone] : []), ...localZones])].map((z) => (
+                <option value="">No room</option>
+                {[...new Set([...(draft?.room ? [draft.room] : []), ...localRooms])].map((z) => (
                   <option key={z} value={z}>{z}</option>
                 ))}
-                <option value={ADD_NEW_VALUE}>New zone...</option>
+                <option value={ADD_NEW_VALUE}>New room...</option>
               </select>
             </div>
 
-            {columns.filter((col) => col.key !== "zone").map((col) => (
+            {columns.filter((col) => col.key !== "room").map((col) => (
               <div className="field" key={col.key}>
                 <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
                 {col.key === "code"
@@ -429,7 +429,7 @@ export function SallyPanel({
             type="button"
             style={{ marginRight: "auto" }}
             onClick={() => {
-              setEditColumns(columns.filter(c => c.key !== "zone"));
+              setEditColumns(columns.filter(c => c.key !== "room"));
               setAddColLabel("");
               setColError(null);
               setModal("columns");

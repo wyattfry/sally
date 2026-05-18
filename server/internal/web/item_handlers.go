@@ -36,7 +36,7 @@ func (a app) createBlankScheduleItem(w http.ResponseWriter, r *http.Request) {
 	created, err := a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
 		ScheduleID:      scheduleID,
 		Data:            dataJSON,
-		Zone:            "",
+		Room:            "",
 		SourceUrl:       "",
 		SourceTitle:     "",
 		SourceImageUrl:  "",
@@ -93,7 +93,7 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 	created, err := a.queries.CreateScheduleItem(r.Context(), queries.CreateScheduleItemParams{
 		ScheduleID:      scheduleID,
 		Data:            dataJSON,
-		Zone:            strings.TrimSpace(r.Form.Get("col_zone")),
+		Room:            strings.TrimSpace(r.Form.Get("col_room")),
 		SourceUrl:       strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:     strings.TrimSpace(r.Form.Get("source_title")),
 		SourceImageUrl:  sourceImageUrl,
@@ -119,7 +119,7 @@ func (a app) createScheduleItem(w http.ResponseWriter, r *http.Request) {
 			_, _ = a.queries.UpdateScheduleItem(ctx, queries.UpdateScheduleItemParams{
 				ID:              snap.ID,
 				Data:            snap.Data,
-				Zone:            snap.Zone,
+				Room:            snap.Room,
 				SourceUrl:       snap.SourceUrl,
 				SourceTitle:     snap.SourceTitle,
 				SourceImageUrl:  localURL,
@@ -189,7 +189,7 @@ func (a app) updateScheduleItem(w http.ResponseWriter, r *http.Request) {
 	_, err = a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 		ID:              item.ID,
 		Data:            dataJSON,
-		Zone:            strings.TrimSpace(r.Form.Get("col_zone")),
+		Room:            strings.TrimSpace(r.Form.Get("col_room")),
 		SourceUrl:       strings.TrimSpace(r.Form.Get("source_url")),
 		SourceTitle:     strings.TrimSpace(r.Form.Get("source_title")),
 		SourceImageUrl:  sourceImageURL,
@@ -242,10 +242,10 @@ func (a app) moveScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Collect items in the same zone, sorted by (position, created_at) — same order as ListScheduleItems.
+	// Collect items in the same room, sorted by (position, created_at) — same order as ListScheduleItems.
 	var peers []queries.ScheduleItem
 	for _, it := range all {
-		if it.Zone == item.Zone {
+		if it.Room == item.Room {
 			peers = append(peers, it)
 		}
 	}
@@ -295,7 +295,7 @@ var knownDataFields = []struct{ key, label string }{
 	{"availableFinishes", "Available Finishes"},
 	{"requiredAddOns", "Required Add-Ons"},
 	{"optionalCompanions", "Optional Companions"},
-	{"zone", "Zone"},
+	{"room", "Room"},
 }
 
 // showImagePickerDialog returns a fixed-position overlay div appended to <body>
@@ -388,7 +388,7 @@ func (a app) pickItemImage(w http.ResponseWriter, r *http.Request) {
 	if _, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 		ID:              item.ID,
 		Data:            item.Data,
-		Zone:            item.Zone,
+		Room:            item.Room,
 		SourceUrl:       item.SourceUrl,
 		SourceTitle:     item.SourceTitle,
 		SourceImageUrl:  newURL,
@@ -446,7 +446,7 @@ func (a app) selectItemImage(w http.ResponseWriter, r *http.Request) {
 	updated, err := a.queries.UpdateScheduleItem(r.Context(), queries.UpdateScheduleItemParams{
 		ID:              item.ID,
 		Data:            item.Data,
-		Zone:            item.Zone,
+		Room:            item.Room,
 		SourceUrl:       item.SourceUrl,
 		SourceTitle:     item.SourceTitle,
 		SourceImageUrl:  newURL,
@@ -470,8 +470,8 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 	if dm == nil {
 		dm = map[string]any{}
 	}
-	if item.Zone != "" {
-		dm["zone"] = item.Zone
+	if item.Room != "" {
+		dm["room"] = item.Room
 	}
 
 	knownKeys := make(map[string]bool, len(knownDataFields))
@@ -614,7 +614,7 @@ func (a app) exportProjectCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 
 	cw := csv.NewWriter(w)
-	_ = cw.Write(append([]string{"Schedule", "Zone"}, colLabels...))
+	_ = cw.Write(append([]string{"Schedule", "Room"}, colLabels...))
 
 	for _, sw := range schedules {
 		if sw.Schedule.Kind == "note" {
@@ -622,7 +622,7 @@ func (a app) exportProjectCSV(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, g := range sw.Groups {
 			for _, item := range g.Items {
-				row := []string{sw.Schedule.Name, item.Zone}
+				row := []string{sw.Schedule.Name, item.Room}
 				for _, key := range colKeys {
 					row = append(row, item.DataMap[key])
 				}

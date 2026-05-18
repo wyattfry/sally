@@ -46,7 +46,7 @@ func TestOpenAIExtractorRequestIncludesModelPromptVersionAndInputs(t *testing.T)
 			},
 			"requiredAddOns":     []string{"Rough valve body"},
 			"optionalCompanions": []string{"Drain assembly"},
-			"zone":               "Primary Bath",
+			"room":               "Primary Bath",
 			"analysis": map[string]any{
 				"missingFields": []string{},
 				"warnings":      []string{},
@@ -119,7 +119,7 @@ func TestOpenAIExtractorMapsStructuredOutputIntoContract(t *testing.T) {
 			},
 			"requiredAddOns":     []string{"Rough valve body"},
 			"optionalCompanions": []string{"Drain assembly"},
-			"zone":               "Primary Bath",
+			"room":               "Primary Bath",
 			"sourceUrl":          "https://ignored.example.com/other",
 			"sourceTitle":        "Ignored Source",
 			"sourceImageUrl":     "https://ignored.example.com/other.jpg",
@@ -322,7 +322,7 @@ func validOpenAIRequest() extract.ExtractSpecRequest {
 		},
 		ProjectContext: extract.ProjectContext{
 			ProjectName:     "My New Project",
-			KnownZones:      []string{"Primary Bath"},
+			KnownRooms:      []string{"Primary Bath"},
 			KnownCategories: []string{"Plumbing Fixture"},
 		},
 		Options: extract.ExtractSpecOptions{

@@ -51,7 +51,7 @@ func (s StubExtractor) Extract(_ context.Context, req extract.ExtractSpecRequest
 			FinishModelMappings: []extract.FinishModelMapping{},
 			RequiredAddOns:      []string{},
 			OptionalCompanions:  []string{},
-			Zone:                firstOrDefault(req.ProjectContext.KnownZones, ""),
+			Room:                firstOrDefault(req.ProjectContext.KnownRooms, ""),
 			SourceURL:           req.Page.URL,
 			SourceTitle:         req.Page.Title,
 			SourceImageURL:      req.Page.MainImageURL,
@@ -93,9 +93,9 @@ func coalesceFinishMappings(s []extract.FinishModelMapping) []extract.FinishMode
 
 var xmlTagRe = regexp.MustCompile(`<[^>]+>`)
 
-// sanitizeZone strips XML/markup artifacts that models occasionally inject into
-// plain-text fields (e.g. "</zone><parameter ...>").
-func sanitizeZone(s string) string {
+// sanitizeRoom strips XML/markup artifacts that models occasionally inject into
+// plain-text fields (e.g. "</room><parameter ...>").
+func sanitizeRoom(s string) string {
 	s = xmlTagRe.ReplaceAllString(s, "")
 	return strings.TrimSpace(s)
 }

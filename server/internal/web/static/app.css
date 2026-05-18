@@ -285,7 +285,7 @@ button,
 .schedule-table th:first-child,
 .schedule-table td:first-child,
 .schedule-table .col-code,
-.schedule-table .col-zone,
+.schedule-table .col-room,
 .schedule-table .col-model_number,
 .schedule-table .col-manufacturer,
 .schedule-table .col-finish {
@@ -293,7 +293,7 @@ button,
   white-space: nowrap;
 }
 
-.schedule-table .col-zone {
+.schedule-table .col-room {
   min-width: 80px;
 }
 
@@ -1492,7 +1492,7 @@ details.schedule-section table {
   color: var(--c-text-muted);
 }
 
-.share-zone-name {
+.share-room-name {
   color: var(--c-text-muted);
   font-size: 12px;
   font-weight: 700;

@@ -508,7 +508,7 @@
           {{$cellEditURL := printf "/projects/%s/schedules/%s/items/%s/cells/%s/edit" $.Project.ID $s.ID $item.ID .Key}}
           <td class="editable-cell col-{{.Key}}" hx-get="{{$cellEditURL}}" hx-trigger="click" hx-target="this" hx-swap="outerHTML">
             {{$val := index $item.DataMap .Key}}
-            {{if $val}}<div class="cell-clamp">{{$val}}</div>{{else if eq .Key "zone"}}<div class="cell-clamp"><span class="cell-empty">—</span></div>{{else}}<span class="cell-placeholder">Click to edit…</span>{{end}}
+            {{if $val}}<div class="cell-clamp">{{$val}}</div>{{else if eq .Key "room"}}<div class="cell-clamp"><span class="cell-empty">—</span></div>{{else}}<span class="cell-placeholder">Click to edit…</span>{{end}}
           </td>
           {{end}}
           <td class="row-actions">
@@ -701,11 +701,11 @@
     {{if $sw.Schedule.Notes}}<p class="share-schedule-notes">{{nl2br $sw.Schedule.Notes}}</p>{{end}}
     {{range $sw.Groups}}
     {{$g := .}}
-    {{if $g.Zone}}<h3 class="share-zone-name">{{$g.Zone}}</h3>{{end}}
+    {{if $g.Room}}<h3 class="share-room-name">{{$g.Room}}</h3>{{end}}
     <div class="spec-cards">
       {{range $g.Items}}
       {{$item := .}}
-      <div class="spec-card" data-search-text="{{$item.Zone}} {{range $sw.Columns}}{{index $item.DataMap .Key}} {{end}}{{$item.SourceTitle}}">
+      <div class="spec-card" data-search-text="{{$item.Room}} {{range $sw.Columns}}{{index $item.DataMap .Key}} {{end}}{{$item.SourceTitle}}">
         <div class="spec-card-top">
           {{with index $item.DataMap "code"}}<span class="spec-code">{{.}}</span>{{end}}
           {{with index $item.DataMap "title"}}<p class="spec-title">{{.}}</p>{{end}}
@@ -714,7 +714,7 @@
         <dl class="spec-fields">
           {{range $sw.Columns}}
           {{$col := .}}
-          {{if and (ne $col.Key "code") (ne $col.Key "title") (ne $col.Key "zone")}}
+          {{if and (ne $col.Key "code") (ne $col.Key "title") (ne $col.Key "room")}}
           {{$val := index $item.DataMap $col.Key}}
           {{if $val}}
           <div class="spec-field">

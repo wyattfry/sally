@@ -45,12 +45,12 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 		start := time.Now()
 
 		var computedNextCode string
-		var selectedZones []string
+		var selectedRooms []string
 		if q != nil && req.ScheduleID != "" {
 			if schedule, err := q.GetSchedule(r.Context(), req.ScheduleID); err == nil {
 				if items, err := q.ListScheduleItems(r.Context(), req.ScheduleID); err == nil {
 					computedNextCode = nextCode(items, schedule.Name)
-					selectedZones = zonesFromItems(items)
+					selectedRooms = roomsFromItems(items)
 				}
 				if allSchedules, err := q.ListSchedulesByProject(r.Context(), schedule.ProjectID); err == nil {
 					summaries := make([]extract.ScheduleSummary, 0, len(allSchedules))
@@ -59,12 +59,12 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 						summaries = append(summaries, extract.ScheduleSummary{
 							Name:       s.Name,
 							IsSelected: s.ID == req.ScheduleID,
-							Zones:      zonesFromItems(items),
+							Rooms:      roomsFromItems(items),
 						})
 					}
 					req.ProjectContext.Schedules = summaries
 				}
-				req.ProjectContext.KnownZones = selectedZones
+				req.ProjectContext.KnownRooms = selectedRooms
 			}
 		}
 
@@ -148,7 +148,7 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 			})
 		}
 		resp.NextCode = computedNextCode
-		resp.KnownZones = selectedZones
+		resp.KnownRooms = selectedRooms
 		// Pass all captured image URLs through from the page payload.
 		if resp.Proposal != nil && len(req.Page.AllImageURLs) > 0 {
 			seen := make(map[string]bool)
@@ -166,13 +166,13 @@ func NewExtractHandler(extractor provider.Extractor, q scheduleQuerier, logger e
 	}
 }
 
-func zonesFromItems(items []queries.ScheduleItem) []string {
+func roomsFromItems(items []queries.ScheduleItem) []string {
 	seen := map[string]bool{}
 	var out []string
 	for _, it := range items {
-		if it.Zone != "" && !seen[it.Zone] {
-			seen[it.Zone] = true
-			out = append(out, it.Zone)
+		if it.Room != "" && !seen[it.Room] {
+			seen[it.Room] = true
+			out = append(out, it.Room)
 		}
 	}
 	return out

@@ -12,7 +12,7 @@ type ColumnDef struct {
 // columns after the fact.
 var Schedules = map[string][]ColumnDef{
 	"general": {
-		{Key: "zone", Label: "Zone", Position: 1},
+		{Key: "room", Label: "Room", Position: 1},
 		{Key: "code", Label: "Code", Position: 2},
 		{Key: "manufacturer", Label: "Manufacturer", Position: 3},
 		{Key: "model_number", Label: "Model", Position: 4},

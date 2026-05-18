@@ -32,7 +32,7 @@ export class ExtractionError extends Error {
 type ExtractScheduleItemArgs = {
   capturedPage: CapturedPage;
   knownCategories: string[];
-  knownZones?: string[];
+  knownRooms?: string[];
   knownScheduleNames?: string[];
   columns?: ScheduleColumn[];
   scheduleId?: string;
@@ -43,13 +43,13 @@ type ExtractScheduleItemArgs = {
 type ExtractScheduleItemResult = {
   item: ScheduleItem;
   suggestedScheduleName?: string;
-  knownZones: string[];
+  knownRooms: string[];
 };
 
 export async function extractScheduleItem({
   capturedPage,
   knownCategories,
-  knownZones = [],
+  knownRooms = [],
   knownScheduleNames = [],
   columns = [],
   scheduleId,
@@ -59,7 +59,7 @@ export async function extractScheduleItem({
   const request = buildExtractSpecRequest({
     capturedPage,
     knownCategories,
-    knownZones,
+    knownRooms,
     knownScheduleNames,
     columns,
     scheduleId,
@@ -258,14 +258,14 @@ function getRuntimeConfig(): Required<SallyRuntimeConfig> {
 function buildExtractSpecRequest({
   capturedPage,
   knownCategories,
-  knownZones,
+  knownRooms,
   knownScheduleNames,
   columns,
   scheduleId,
   now
 }: Required<Omit<ExtractScheduleItemArgs, "onProgress" | "scheduleId">> & { scheduleId?: string; now: Date }): ExtractSpecRequest {
   const customColumns: ColumnDefinition[] = columns
-    .filter((c) => c.key !== "zone" && c.key !== "code")
+    .filter((c) => c.key !== "room" && c.key !== "code")
     .map((c) => ({ key: c.key, label: c.label }));
 
   return {
@@ -280,7 +280,7 @@ function buildExtractSpecRequest({
     projectContext: {
       projectName: "",
       knownCategories,
-      knownZones,
+      knownRooms,
       knownScheduleNames
     },
     scheduleId,
@@ -321,12 +321,12 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
     }
   }
 
-  const zone = clean(proposal.zone);
+  const room = clean(proposal.room);
   return {
     item: {
       id: `draft-${response.requestId}`,
       capturedAt: now.toISOString(),
-      zone: zone || undefined,
+      room: room || undefined,
       data,
       sourceUrl: proposal.sourceUrl,
       sourceTitle: proposal.sourceTitle,
@@ -335,7 +335,7 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
       sourcePdfLinks: proposal.sourcePdfLinks ?? []
     },
     suggestedScheduleName: proposal.suggestedScheduleName || undefined,
-    knownZones: response.knownZones ?? []
+    knownRooms: response.knownRooms ?? []
   };
 }
 

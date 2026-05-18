@@ -39,17 +39,17 @@ type PagePayload struct {
 
 type ProjectContext struct {
 	ProjectName        string            `json:"projectName"`
-	KnownZones         []string          `json:"knownZones"`
+	KnownRooms         []string          `json:"knownRooms"`
 	KnownCategories    []string          `json:"knownCategories"`
 	KnownScheduleNames []string          `json:"knownScheduleNames"`
 	Schedules          []ScheduleSummary `json:"schedules,omitempty"`
 }
 
-// ScheduleSummary carries per-schedule zone context sent to the LLM.
+// ScheduleSummary carries per-schedule room context sent to the LLM.
 type ScheduleSummary struct {
 	Name       string   `json:"name"`
 	IsSelected bool     `json:"isSelected,omitempty"`
-	Zones      []string `json:"zones"`
+	Rooms      []string `json:"rooms"`
 }
 
 type ExtractSpecOptions struct {
@@ -65,7 +65,7 @@ type ExtractSpecResponse struct {
 	Error     *ErrorPayload `json:"error,omitempty"`
 	Meta      ResponseMeta  `json:"meta"`
 	NextCode   string        `json:"nextCode,omitempty"`
-	KnownZones []string      `json:"knownZones,omitempty"`
+	KnownRooms []string      `json:"knownRooms,omitempty"`
 	// PromptText and ResponseText are captured server-side for admin logging only.
 	// They are never serialised to the client.
 	PromptText   string `json:"-"`
@@ -84,7 +84,7 @@ type Proposal struct {
 	FinishModelMappings []FinishModelMapping `json:"finishModelMappings"`
 	RequiredAddOns      []string             `json:"requiredAddOns"`
 	OptionalCompanions  []string             `json:"optionalCompanions"`
-	Zone                  string               `json:"zone"`
+	Room                  string               `json:"room"`
 	SuggestedScheduleName string               `json:"suggestedScheduleName"`
 	SourceURL             string               `json:"sourceUrl"`
 	SourceTitle           string               `json:"sourceTitle"`

@@ -316,7 +316,7 @@ func TestItemPagesUpdateAndDeleteItem(t *testing.T) {
 	}
 }
 
-func TestItemZoneAppearsOnProjectPage(t *testing.T) {
+func TestItemRoomAppearsOnProjectPage(t *testing.T) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("DATABASE_URL is not set")
@@ -334,15 +334,15 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 
 	q := queries.New(conn)
 	user, err := q.CreateUser(context.Background(), queries.CreateUserParams{
-		Email: "item-zone-test@example.com",
-		Name:  "Item Zone Test",
+		Email: "item-room-test@example.com",
+		Name:  "Item Room Test",
 	})
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	project, err := q.CreateProject(context.Background(), queries.CreateProjectParams{
 		OwnerUserID: user.ID,
-		Name:        "Zone Test Project " + time.Now().Format("150405.000000"),
+		Name:        "Room Test Project " + time.Now().Format("150405.000000"),
 	})
 	if err != nil {
 		t.Fatalf("create project: %v", err)
@@ -363,14 +363,14 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 	router := http.NewServeMux()
 	RegisterRoutes(router, Deps{
 		Queries:      q,
-		DevUserEmail: "item-zone-test@example.com",
-		DevUserName:  "Item Zone Test",
+		DevUserEmail: "item-room-test@example.com",
+		DevUserName:  "Item Room Test",
 	})
 
-	// Create an item via the web form with a zone.
+	// Create an item via the web form with a room.
 	form := url.Values{}
 	form.Set("col_description", "Range Hood")
-	form.Set("zone", "Kitchen")
+	form.Set("room", "Kitchen")
 	form.Set("col_product_info", "Example Co.")
 
 	path := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items"
@@ -382,7 +382,7 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 		t.Fatalf("expected 303, got %d", createResp.Code)
 	}
 
-	// Verify the zone header appears on the project page.
+	// Verify the room header appears on the project page.
 	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
 	showResp := httptest.NewRecorder()
 	router.ServeHTTP(showResp, showReq)
@@ -394,10 +394,10 @@ func TestItemZoneAppearsOnProjectPage(t *testing.T) {
 		t.Fatalf("expected item description in project page, got:\n%s", body)
 	}
 	if !strings.Contains(body, "Kitchen") {
-		t.Fatalf("expected zone header on project page, got:\n%s", body)
+		t.Fatalf("expected room header on project page, got:\n%s", body)
 	}
-	if !strings.Contains(body, "zone-row") {
-		t.Fatalf("expected zone-row CSS class on project page, got:\n%s", body)
+	if !strings.Contains(body, "room-row") {
+		t.Fatalf("expected room-row CSS class on project page, got:\n%s", body)
 	}
 }
 
@@ -464,13 +464,13 @@ func TestEditItemPreservesSourceImageUrl(t *testing.T) {
 		DevUserName:  "Item Preserve Test",
 	})
 
-	// Edit the item to add a zone, sending only the fields the edit form exposes.
+	// Edit the item to add a room, sending only the fields the edit form exposes.
 	editPath := "/projects/" + project.ID + "/schedules/" + schedule.ID + "/items/" + item.ID + "/edit"
 
 	// Simulate what the edit form sends: hidden fields for source_image_url etc.
 	form := url.Values{}
 	form.Set("col_title", "Wall Faucet")
-	form.Set("zone", "Primary Bath")
+	form.Set("room", "Primary Bath")
 	form.Set("source_image_url", item.SourceImageUrl)
 	form.Set("source_title", item.SourceTitle)
 	form.Set("source_pdf_links", strings.Join(item.SourcePdfLinks, "\n"))
@@ -484,16 +484,16 @@ func TestEditItemPreservesSourceImageUrl(t *testing.T) {
 		t.Fatalf("expected 303, got %d", resp.Code)
 	}
 
-	// The project page must still show the thumbnail after the zone edit.
+	// The project page must still show the thumbnail after the room edit.
 	showReq := httptest.NewRequest(http.MethodGet, "/projects/"+project.ID, nil)
 	showResp := httptest.NewRecorder()
 	router.ServeHTTP(showResp, showReq)
 	body := showResp.Body.String()
 	if !strings.Contains(body, "https://example.com/faucet.jpg") {
-		t.Fatalf("expected source_image_url preserved after zone edit, got:\n%s", body)
+		t.Fatalf("expected source_image_url preserved after room edit, got:\n%s", body)
 	}
 	if !strings.Contains(body, "Primary Bath") {
-		t.Fatalf("expected zone header after edit, got:\n%s", body)
+		t.Fatalf("expected room header after edit, got:\n%s", body)
 	}
 }
 

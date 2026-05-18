@@ -26,7 +26,7 @@ func TestExtractSpecRequestJSONDecodesApprovedContract(t *testing.T) {
 		},
 		"projectContext": {
 			"projectName": "My New Project",
-			"knownZones": ["Primary Bath", "Powder Room"],
+			"knownRooms": ["Primary Bath", "Powder Room"],
 			"knownCategories": [
 				"Plumbing Fixture",
 				"Lighting",
@@ -108,7 +108,7 @@ func TestExtractSpecResponseJSONDecodesApprovedContract(t *testing.T) {
 			],
 			"requiredAddOns": ["Rough valve body"],
 			"optionalCompanions": ["Drain assembly"],
-			"zone": "",
+			"room": "",
 			"sourceUrl": "https://example.com/products/wf-200",
 			"sourceTitle": "Example Co. WF-200 Wall Faucet",
 			"sourceImageUrl": "https://example.com/faucet.jpg",

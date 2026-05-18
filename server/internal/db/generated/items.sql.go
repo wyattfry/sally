@@ -2,6 +2,9 @@
 // versions:
 //   sqlc v1.30.0
 // source: items.sql
+//
+// NOTE: contains hand-edits mirroring items.sql (zone→room rename,
+// migration 00016). See the note at the top of models.go.
 
 package generated
 
@@ -16,7 +19,7 @@ const createScheduleItem = `-- name: CreateScheduleItem :one
 insert into schedule_items (
     schedule_id,
     data,
-    zone,
+    room,
     source_url,
     source_title,
     source_image_url,
@@ -25,13 +28,13 @@ insert into schedule_items (
     position
 )
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
+returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
 `
 
 type CreateScheduleItemParams struct {
 	ScheduleID      string          `json:"schedule_id"`
 	Data            json.RawMessage `json:"data"`
-	Zone            string          `json:"zone"`
+	Room            string          `json:"room"`
 	SourceUrl       string          `json:"source_url"`
 	SourceTitle     string          `json:"source_title"`
 	SourceImageUrl  string          `json:"source_image_url"`
@@ -44,7 +47,7 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 	row := q.db.QueryRowContext(ctx, createScheduleItem,
 		arg.ScheduleID,
 		arg.Data,
-		arg.Zone,
+		arg.Room,
 		arg.SourceUrl,
 		arg.SourceTitle,
 		arg.SourceImageUrl,
@@ -64,7 +67,7 @@ func (q *Queries) CreateScheduleItem(ctx context.Context, arg CreateScheduleItem
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Zone,
+		&i.Room,
 		&i.Data,
 	)
 	return i, err
@@ -90,7 +93,7 @@ func (q *Queries) DeleteScheduleItem(ctx context.Context, id string) error {
 }
 
 const getScheduleItem = `-- name: GetScheduleItem :one
-select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
+select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
 from schedule_items
 where id = $1
 `
@@ -109,17 +112,17 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Zone,
+		&i.Room,
 		&i.Data,
 	)
 	return i, err
 }
 
 const listScheduleItems = `-- name: ListScheduleItems :many
-select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
+select id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
 from schedule_items
 where schedule_id = $1
-order by zone asc, position asc, created_at asc
+order by room asc, position asc, created_at asc
 `
 
 func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]ScheduleItem, error) {
@@ -142,7 +145,7 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Zone,
+			&i.Room,
 			&i.Data,
 		); err != nil {
 			return nil, err
@@ -161,7 +164,7 @@ func (q *Queries) ListScheduleItems(ctx context.Context, scheduleID string) ([]S
 const updateScheduleItem = `-- name: UpdateScheduleItem :one
 update schedule_items
 set data              = $2,
-    zone              = $3,
+    room              = $3,
     source_url        = $4,
     source_title      = $5,
     source_image_url  = $6,
@@ -170,13 +173,13 @@ set data              = $2,
     position          = $9,
     updated_at        = now()
 where id = $1
-returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, zone, data
+returning id, schedule_id, source_url, source_title, source_image_url, source_image_urls, source_pdf_links, position, created_at, updated_at, room, data
 `
 
 type UpdateScheduleItemParams struct {
 	ID              string          `json:"id"`
 	Data            json.RawMessage `json:"data"`
-	Zone            string          `json:"zone"`
+	Room            string          `json:"room"`
 	SourceUrl       string          `json:"source_url"`
 	SourceTitle     string          `json:"source_title"`
 	SourceImageUrl  string          `json:"source_image_url"`
@@ -189,7 +192,7 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 	row := q.db.QueryRowContext(ctx, updateScheduleItem,
 		arg.ID,
 		arg.Data,
-		arg.Zone,
+		arg.Room,
 		arg.SourceUrl,
 		arg.SourceTitle,
 		arg.SourceImageUrl,
@@ -209,7 +212,7 @@ func (q *Queries) UpdateScheduleItem(ctx context.Context, arg UpdateScheduleItem
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Zone,
+		&i.Room,
 		&i.Data,
 	)
 	return i, err
