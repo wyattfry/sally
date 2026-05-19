@@ -39,14 +39,107 @@ function captureVisibleText(doc: Document): string {
     }
   }
 
-  const visible = chunks.join("\n");
-  if (visible.length < MAX_VISIBLE_TEXT_LENGTH) {
+  const variantOptions = captureVariantOptions(doc);
+  let out = chunks.join("\n");
+  if (variantOptions) {
+    out += "\n[Variant options:]\n" + variantOptions;
+  }
+  if (out.length < MAX_VISIBLE_TEXT_LENGTH) {
     const collapsed = captureCollapsedContent(doc);
     if (collapsed) {
-      return (visible + "\n[Collapsed sections:]\n" + collapsed).slice(0, MAX_VISIBLE_TEXT_LENGTH);
+      out += "\n[Collapsed sections:]\n" + collapsed;
     }
   }
-  return visible.slice(0, MAX_VISIBLE_TEXT_LENGTH);
+  return out.slice(0, MAX_VISIBLE_TEXT_LENGTH);
+}
+
+// captureVariantOptions extracts finish/color/size names from product
+// variant selectors that render as image-only swatches. The labels live in
+// alt/aria-label/value attributes — text-node walkers miss them entirely,
+// which is why pages like Home Depot and Ferguson only had the
+// currently-selected finish in the prompt.
+function captureVariantOptions(doc: Document): string {
+  const containers = findVariantContainers(doc);
+  if (containers.length === 0) return "";
+
+  const seen = new Set<string>();
+  const lines: string[] = [];
+
+  for (const container of containers) {
+    const label = inferContainerLabel(container);
+    const values = new Set<string>();
+    for (const el of container.querySelectorAll<HTMLElement>("[alt], [aria-label], [value]")) {
+      for (const attr of ["aria-label", "alt", "value"]) {
+        const raw = el.getAttribute(attr);
+        if (!raw) continue;
+        const v = raw.trim();
+        if (!v || v.length > 80) continue;
+        values.add(v);
+      }
+    }
+    if (values.size === 0) continue;
+    const joined = Array.from(values).join(", ");
+    const key = (label || "") + "|" + joined;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    lines.push(label ? `${label}: ${joined}` : joined);
+    if (lines.length >= 12) break;
+  }
+
+  return lines.join("\n").slice(0, 2000);
+}
+
+const VARIANT_LABEL_RE = /\b(color\s*\/?\s*finish|finish|color|variant|option|swatch)\b/i;
+
+function findVariantContainers(doc: Document): Element[] {
+  const seen = new Set<Element>();
+  const out: Element[] = [];
+
+  // (a) Explicit signals: known component tags, ARIA radiogroups.
+  const explicit = doc.querySelectorAll(
+    '[data-component*="super-sku" i], [data-component*="variant" i], ' +
+    '[data-component*="swatch" i], [data-fusion-component*="super-sku" i], ' +
+    '[role="radiogroup"], [aria-label*="finish" i], [aria-label*="color" i]'
+  );
+  for (const el of explicit) {
+    if (!seen.has(el)) { seen.add(el); out.push(el); }
+  }
+
+  // (b) Heuristic: any element whose own text contains "Color/Finish",
+  //     "Finish:", etc. AND that contains <img alt> or <button aria-label>
+  //     children — the swatch label sibling pattern.
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT, {
+    acceptNode(node) {
+      const el = node as Element;
+      if (seen.has(el)) return NodeFilter.FILTER_REJECT;
+      const own = (el as HTMLElement).innerText?.slice(0, 200) ?? "";
+      if (!VARIANT_LABEL_RE.test(own)) return NodeFilter.FILTER_SKIP;
+      // Need at least 2 attribute-labeled descendants to count as a swatch row
+      const labeled = el.querySelectorAll("[alt], [aria-label]").length;
+      if (labeled < 2) return NodeFilter.FILTER_SKIP;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  while (walker.nextNode()) {
+    const el = walker.currentNode as Element;
+    // Walk up to a reasonable container parent (sibling group) to avoid
+    // grabbing only the label paragraph.
+    const container = el.closest('[role="radiogroup"], [data-component], ul, fieldset, section, div') || el;
+    if (!seen.has(container)) { seen.add(container); out.push(container); }
+    if (out.length >= 8) break;
+  }
+
+  return out;
+}
+
+function inferContainerLabel(container: Element): string {
+  // Look for the label text inside (e.g., "Color/Finish") in the first
+  // few text-bearing children. Falls back to aria-label on the container.
+  const aria = container.getAttribute("aria-label");
+  if (aria && VARIANT_LABEL_RE.test(aria)) return aria.trim();
+  const text = (container as HTMLElement).innerText?.slice(0, 200) ?? "";
+  const m = text.match(/(Color\s*\/?\s*Finish|Finish|Color|Variant|Option)\s*:?/i);
+  return m ? m[1].trim() : "";
 }
 
 function captureCollapsedContent(doc: Document): string {

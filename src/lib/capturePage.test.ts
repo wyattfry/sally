@@ -49,6 +49,35 @@ describe("capturePage", () => {
     expect(captured.mainImageUrl).toBe("https://example.com/og-faucet.jpg");
   });
 
+  it("captures finish/color variant names from attribute-only swatch pickers", () => {
+    // Mirrors the structure of Home Depot's super-sku picker: the active
+    // swatch's name is in <p> text, but the inactive ones live only in
+    // alt/aria-label/value attributes.
+    document.documentElement.innerHTML = `
+      <body>
+        <div data-fusion-component="@thd-olt-component-react/super-sku">
+          <p>Color/Finish</p><span>:</span>
+          <p>Spot Resist Stainless</p>
+          <div>
+            <button aria-pressed="true" value="Spot Resist Stainless" aria-label="Spot Resist Stainless">
+              <img alt="Spot Resist Stainless" src="https://example.com/srs.jpg" />
+            </button>
+            <button aria-pressed="false" value="Matte Black" aria-label="Matte Black">
+              <img alt="Matte Black" src="https://example.com/mb.jpg" />
+            </button>
+          </div>
+        </div>
+      </body>
+    `;
+
+    const captured = capturePage(document, new URL("https://example.com/p"));
+
+    expect(captured.visibleText).toContain("[Variant options:]");
+    expect(captured.visibleText).toContain("Spot Resist Stainless");
+    // The critical assertion: the attribute-only swatch is now visible to the LLM.
+    expect(captured.visibleText).toContain("Matte Black");
+  });
+
   it("falls back to the largest visible image when no open graph image exists", () => {
     document.documentElement.innerHTML = `
       <head><title>Toilet</title></head>
