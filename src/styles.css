@@ -610,41 +610,6 @@
   padding: 10px 20px;
   text-decoration: none;
 }
-.added-explanation {
-  color: var(--c-text);
-  font-size: 14px;
-  line-height: 1.45;
-  margin: 0;
-  max-width: 28em;
-}
-.added-close-now {
-  width: 100%;
-  max-width: 28em;
-}
-.added-countdown {
-  color: var(--c-text-dim);
-  font-size: 12px;
-  font-style: italic;
-  margin: -8px 0 0;
-  min-height: 1.4em;
-}
-.added-divider {
-  background: var(--c-border-light);
-  height: 1px;
-  margin: 8px 0;
-  width: 60%;
-}
-.added-instructions {
-  color: var(--c-text-dim);
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0;
-  max-width: 28em;
-}
-.added-instructions strong {
-  color: var(--c-text);
-  font-weight: 600;
-}
 
 .restore-draft-button {
   background: var(--c-surface-hover);

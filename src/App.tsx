@@ -30,7 +30,7 @@ type PanelState =
   | { kind: "thinking"; tokenCount: number }
   | { kind: "review"; draft: ScheduleItem; suggestedNewScheduleName?: string; availableFinishes?: string[]; finishModelMappings?: FinishModelMapping[] }
   | { kind: "minimized"; draft: ScheduleItem; availableFinishes?: string[]; finishModelMappings?: FinishModelMapping[] }
-  | { kind: "added"; projectId: string; scheduleId: string; scheduleName: string }
+  | { kind: "added"; projectId: string; scheduleId: string; scheduleName: string; projectName: string }
   | { kind: "error"; message: string };
 
 const SUGGESTED_SCHEDULE_NAMES = [
@@ -258,7 +258,8 @@ export default function App() {
     try {
       await saveMothershipScheduleItem(activeContext.scheduleId, item);
       const scheduleName = schedules.find((s) => s.id === activeContext.scheduleId)?.name ?? "schedule";
-      setPanel({ kind: "added", projectId: activeContext.projectId, scheduleId: activeContext.scheduleId, scheduleName });
+      const projectName = projects.find((p) => p.id === activeContext.projectId)?.name ?? "project";
+      setPanel({ kind: "added", projectId: activeContext.projectId, scheduleId: activeContext.scheduleId, scheduleName, projectName });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not save item.";
       setPanel({ kind: "error", message });
@@ -427,6 +428,7 @@ export default function App() {
       ) : panel.kind === "added" ? (
         <AddedConfirmation
           scheduleName={panel.scheduleName}
+          projectName={panel.projectName}
           projectUrl={getMothershipScheduleUrl(panel.projectId, panel.scheduleId)}
           onDismiss={() => setPanel({ kind: "closed" })}
         />
@@ -525,32 +527,24 @@ function NeedsProjectPanel({ onCancel, onCreate }: {
   );
 }
 
-// 6 seconds is long enough for a user to glance at the success state and
-// notice the "Close panel now" button without feeling pressured to act.
+// Auto-close fires after this many ms of NOT hovering. Hovering pauses
+// silently — no visible countdown, which would otherwise read as a
+// deadline and create unnecessary anxiety in a success state.
 const ADDED_AUTO_DISMISS_MS = 6000;
 
-function AddedConfirmation({ scheduleName, projectUrl, onDismiss }: {
+function AddedConfirmation({ scheduleName, projectName, projectUrl, onDismiss }: {
   scheduleName: string;
+  projectName: string;
   projectUrl: string;
   onDismiss: () => void;
 }) {
-  const [remainingMs, setRemainingMs] = useState(ADDED_AUTO_DISMISS_MS);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     if (paused) return;
-    if (remainingMs <= 0) {
-      onDismiss();
-      return;
-    }
-    // 200ms tick gives a smooth visible countdown without burning cycles.
-    const id = window.setInterval(() => {
-      setRemainingMs((ms) => Math.max(0, ms - 200));
-    }, 200);
-    return () => window.clearInterval(id);
-  }, [paused, remainingMs, onDismiss]);
-
-  const secondsLeft = Math.ceil(remainingMs / 1000);
+    const id = window.setTimeout(onDismiss, ADDED_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(id);
+  }, [paused, onDismiss]);
 
   return (
     <aside
@@ -562,27 +556,12 @@ function AddedConfirmation({ scheduleName, projectUrl, onDismiss }: {
       <button className="added-dismiss" type="button" onClick={onDismiss} aria-label="Dismiss">×</button>
       <div className="added-body">
         <div className="added-check">✓</div>
-        <p className="added-message">Added to <strong>{scheduleName}</strong></p>
-        <p className="added-explanation">
-          Your item has been saved. You can close this panel now,
-          or it will close on its own in a few seconds.
+        <p className="added-message">
+          Added to <strong>{scheduleName}</strong> in <strong>{projectName}</strong>
         </p>
         <a className="added-link action-button primary" href={projectUrl} target="_blank" rel="noopener noreferrer">
           View project →
         </a>
-        <button className="action-button secondary added-close-now" type="button" onClick={onDismiss}>
-          Close panel now
-        </button>
-        <p className="added-countdown">
-          {paused
-            ? "Auto-close paused while you're hovering this panel."
-            : `Closing panel in ${secondsLeft} second${secondsLeft === 1 ? "" : "s"}…`}
-        </p>
-        <div className="added-divider" />
-        <p className="added-instructions">
-          To open your project from any web page later, right-click the
-          page and choose <strong>Sally → View Sally schedule</strong>.
-        </p>
       </div>
     </aside>
   );
