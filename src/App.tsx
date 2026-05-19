@@ -525,6 +525,8 @@ function NeedsProjectPanel({ onCancel, onCreate }: {
   );
 }
 
+// 6 seconds is long enough for a user to glance at the success state and
+// notice the "Close panel now" button without feeling pressured to act.
 const ADDED_AUTO_DISMISS_MS = 6000;
 
 function AddedConfirmation({ scheduleName, projectUrl, onDismiss }: {
@@ -532,23 +534,55 @@ function AddedConfirmation({ scheduleName, projectUrl, onDismiss }: {
   projectUrl: string;
   onDismiss: () => void;
 }) {
+  const [remainingMs, setRemainingMs] = useState(ADDED_AUTO_DISMISS_MS);
+  const [paused, setPaused] = useState(false);
+
   useEffect(() => {
-    const id = window.setTimeout(onDismiss, ADDED_AUTO_DISMISS_MS);
-    return () => window.clearTimeout(id);
-  }, [onDismiss]);
+    if (paused) return;
+    if (remainingMs <= 0) {
+      onDismiss();
+      return;
+    }
+    // 200ms tick gives a smooth visible countdown without burning cycles.
+    const id = window.setInterval(() => {
+      setRemainingMs((ms) => Math.max(0, ms - 200));
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [paused, remainingMs, onDismiss]);
+
+  const secondsLeft = Math.ceil(remainingMs / 1000);
 
   return (
-    <aside className="sally-panel added-confirmation" aria-label="Sally">
+    <aside
+      className="sally-panel added-confirmation"
+      aria-label="Sally"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       <button className="added-dismiss" type="button" onClick={onDismiss} aria-label="Dismiss">×</button>
       <div className="added-body">
         <div className="added-check">✓</div>
         <p className="added-message">Added to <strong>{scheduleName}</strong></p>
+        <p className="added-explanation">
+          Your item has been saved. You can close this panel now,
+          or it will close on its own in a few seconds.
+        </p>
         <a className="added-link action-button primary" href={projectUrl} target="_blank" rel="noopener noreferrer">
           View project →
         </a>
-      </div>
-      <div className="added-progress">
-        <div className="added-progress-bar" style={{ animationDuration: `${ADDED_AUTO_DISMISS_MS}ms` }} />
+        <button className="action-button secondary added-close-now" type="button" onClick={onDismiss}>
+          Close panel now
+        </button>
+        <p className="added-countdown">
+          {paused
+            ? "Auto-close paused while you're hovering this panel."
+            : `Closing panel in ${secondsLeft} second${secondsLeft === 1 ? "" : "s"}…`}
+        </p>
+        <div className="added-divider" />
+        <p className="added-instructions">
+          To open your project from any web page later, right-click the
+          page and choose <strong>Sally → View Sally schedule</strong>.
+        </p>
       </div>
     </aside>
   );
