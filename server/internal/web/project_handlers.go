@@ -255,7 +255,7 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 
 	activeLink, err := a.queries.GetActiveProjectShareLinkByProject(r.Context(), project.ID)
 	if errors.Is(err, sql.ErrNoRows) && isOwner {
-		if token, tokenErr := share.NewToken(); tokenErr == nil {
+		if token, tokenErr := a.newShareSlugAvoidingConflicts(r.Context()); tokenErr == nil {
 			if newLink, createErr := a.queries.CreateProjectShareLink(r.Context(), queries.CreateProjectShareLinkParams{
 				ProjectID: project.ID,
 				TokenHash: share.HashToken(token),

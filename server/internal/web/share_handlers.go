@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -35,6 +36,23 @@ func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// newShareSlugAvoidingConflicts generates a fresh three-word slug,
+// retrying up to a few times if the slug collides with an already-active
+// share link in the DB. With 256³ ≈ 16M combos and typical share-link
+// counts, retries should be effectively never; the safety net catches
+// the long tail.
+func (a app) newShareSlugAvoidingConflicts(ctx context.Context) (string, error) {
+	return share.TryNewShareSlug(5, func(slug string) (bool, error) {
+		if _, err := a.queries.GetActiveProjectShareLinkByHash(ctx, share.HashToken(slug)); err == nil {
+			return true, nil // an active link already uses this slug
+		} else if errors.Is(err, sql.ErrNoRows) {
+			return false, nil // slug is free
+		} else {
+			return false, err // real DB error — surface it
+		}
+	})
+}
+
 func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
 	if !ok {
@@ -46,7 +64,7 @@ func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := share.NewToken()
+	token, err := a.newShareSlugAvoidingConflicts(r.Context())
 	if err != nil {
 		http.Error(w, "could not create share token", http.StatusInternalServerError)
 		return
