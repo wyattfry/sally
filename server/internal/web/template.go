@@ -38,6 +38,70 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 		}
 		return template.HTML("<pre class=\"admin-json\">" + template.HTMLEscapeString(string(b)) + "</pre>")
 	},
+	// extractPromptMessages unwraps a saved provider request JSON to show
+	// just the human-readable prompt content: the `system` string and each
+	// message's content[].text. Returns the original string if it doesn't
+	// parse as an object so callers still see something useful.
+	"extractPromptMessages": func(s string) template.HTML {
+		var req struct {
+			System   any `json:"system"`
+			Messages []struct {
+				Role    string `json:"role"`
+				Content any    `json:"content"`
+			} `json:"messages"`
+		}
+		if err := json.Unmarshal([]byte(s), &req); err != nil {
+			return template.HTML(template.HTMLEscapeString(s))
+		}
+		var b strings.Builder
+		writeBlock := func(label, body string) {
+			body = strings.TrimSpace(body)
+			if body == "" {
+				return
+			}
+			b.WriteString("<div class=\"admin-prompt-block\"><h4>")
+			b.WriteString(template.HTMLEscapeString(label))
+			b.WriteString("</h4><pre class=\"admin-prompt-text\">")
+			b.WriteString(template.HTMLEscapeString(body))
+			b.WriteString("</pre></div>")
+		}
+		// System can be a string or array of blocks.
+		switch sys := req.System.(type) {
+		case string:
+			writeBlock("System", sys)
+		case []any:
+			var parts []string
+			for _, blk := range sys {
+				if m, ok := blk.(map[string]any); ok {
+					if t, _ := m["text"].(string); t != "" {
+						parts = append(parts, t)
+					}
+				}
+			}
+			writeBlock("System", strings.Join(parts, "\n"))
+		}
+		for _, msg := range req.Messages {
+			label := strings.Title(msg.Role)
+			if label == "" {
+				label = "Message"
+			}
+			var parts []string
+			switch c := msg.Content.(type) {
+			case string:
+				parts = append(parts, c)
+			case []any:
+				for _, blk := range c {
+					if m, ok := blk.(map[string]any); ok {
+						if t, _ := m["text"].(string); t != "" {
+							parts = append(parts, t)
+						}
+					}
+				}
+			}
+			writeBlock(label, strings.Join(parts, "\n"))
+		}
+		return template.HTML(b.String())
+	},
 	"isoTime": func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
 	"humanTime": func(t time.Time) string {
 		now := time.Now()

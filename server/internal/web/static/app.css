@@ -1748,6 +1748,29 @@ details.schedule-section table {
 .admin-payload[open] summary { margin-bottom: 10px; }
 .admin-payload .admin-json { max-height: 500px; overflow-y: auto; }
 
+.admin-prompt-block { margin: 0 0 12px; }
+.admin-prompt-block h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-muted);
+  margin: 0 0 4px;
+}
+.admin-prompt-text {
+  background: var(--c-surface-raised);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
 .admin-stat-card-link {
   text-decoration: none;
   color: inherit;

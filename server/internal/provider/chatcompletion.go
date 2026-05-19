@@ -177,6 +177,12 @@ FINISH VARIANTS — when a product page lists multiple finishes/colors with dist
 - Set "finish" to the currently-selected finish on the page (or the first listed if none is selected).
 - Set "finishModelNumber" to the SKU matching that selected finish.
 
+FINISH VOCABULARY — words that typically signal a finish value (use this as a recognition aid, not a closed list):
+- Metal/surface finishes (faucets, hardware, lighting, plumbing): Chrome, Polished Chrome, Brushed Nickel, Polished Nickel, Stainless, Brushed Stainless, Spot Resist Stainless, Brass, Polished Brass, Antique Brass, Brushed Brass, Bronze, Oil-Rubbed Bronze, Matte Black, Black, Gold, Polished Gold, Brushed Gold, Silver, White, Almond.
+- Sheen finishes (paint, coatings): Flat, Matte, Eggshell, Satin, Semi-Gloss, Gloss, Hi-Gloss.
+- Branded composites are common ("Vibrant Brushed Moderne Brass", "Spot Resist Stainless", "MasterShield Bronze") — capture the full branded string as it appears.
+- A product variant selector labeled "Color/Finish", "Finish", "Color", "Variant", or a swatch row is a strong signal that multiple finishes exist on the page even if only one is described in detail.
+
 EXAMPLE 3 — product with multiple finishes:
 Product page title: KOHLER Cardale Single Handle Pull-Down Kitchen Faucet
 Visible text excerpt: KOHLER K-35908-4 Cardale Pull-Down Kitchen Faucet. Finish: Vibrant Brushed Nickel. Available finishes: Polished Chrome (K-35908-4-CP), Vibrant Polished Nickel (K-35908-4-SN), Vibrant Brushed Moderne Brass (K-35908-4-2MB), Vibrant Brushed Nickel (K-35908-4-BN).

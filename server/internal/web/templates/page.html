@@ -1119,8 +1119,14 @@
 </section>
 {{if .Log.PromptText}}
 <section class="admin-section">
+  <details class="admin-payload" open>
+    <summary>Prompt text (system + messages)</summary>
+    {{extractPromptMessages .Log.PromptText}}
+  </details>
+</section>
+<section class="admin-section">
   <details class="admin-payload">
-    <summary>Prompt sent to model</summary>
+    <summary>Prompt sent to model (raw)</summary>
     {{prettyJSON .Log.PromptText}}
   </details>
 </section>
