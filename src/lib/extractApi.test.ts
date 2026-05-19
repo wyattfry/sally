@@ -125,6 +125,49 @@ describe("extractScheduleItem", () => {
     expect(item.id).toBeTruthy();
   });
 
+  it("synthesizes a mapping for the initial finish when the LLM didn't provide one", async () => {
+    // When the LLM enumerates available finishes but only knows the
+    // current SKU (no per-finish mappings), the initial finish/model
+    // pair must still be in finishModelMappings so the panel can
+    // restore the Model on a round-trip back to the original finish.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          sseDone(successResponse({
+            proposal: {
+              ...successResponse().proposal!,
+              finish: "Matte Black / Weathered Oak Wood",
+              modelNumber: "700GRC30BW-LED930",
+              finishModelNumber: "700GRC30BW-LED930",
+              availableFinishes: [
+                "Hand Rubbed Antique Brass / Natural Oak",
+                "Matte Black / Weathered Oak Wood",
+                "Natural Brass / Weathered Oak"
+              ],
+              finishModelMappings: []
+            }
+          })),
+          { status: 200, headers: { "Content-Type": "text/event-stream" } }
+        )
+      )
+    );
+
+    const result = await extractScheduleItem({
+      capturedPage: capturedPage(),
+      knownCategories: [],
+      now: FIXED_NOW
+    });
+
+    expect(result.item.data.model_number).toBe("700GRC30BW-LED930");
+    expect(result.availableFinishes).toHaveLength(3);
+    // Synthesized: the initial finish gets a mapping even though the LLM
+    // returned finishModelMappings:[].
+    expect(result.finishModelMappings).toEqual([
+      { finish: "Matte Black / Weathered Oak Wood", modelNumber: "700GRC30BW-LED930" }
+    ]);
+  });
+
   it("prefers the finish-specific SKU and surfaces finish mappings for the panel", async () => {
     vi.stubGlobal(
       "fetch",

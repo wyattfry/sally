@@ -21,37 +21,45 @@ var Schedules = map[string][]ColumnDef{
 		{Key: "finish", Label: "Finish", Position: 5},
 		{Key: "notes", Label: "Notes", Position: 6},
 	},
+	// Column keys must align with the canonical fields the LLM produces
+	// (manufacturer, model_number, finish, notes) so extraction data flows
+	// into new schedules without remapping. Domain-specific keys live
+	// alongside (rough_opening, swing, r_value, etc.).
 	"appliance": {
 		{Key: "code", Label: "Code", Position: 1},
-		{Key: "description", Label: "Description", Position: 2},
-		{Key: "product_info", Label: "Product Information", Position: 3},
-		{Key: "notes", Label: "Notes", Position: 4},
+		{Key: "manufacturer", Label: "Manufacturer", Position: 2},
+		{Key: "model_number", Label: "Model", Position: 3},
+		{Key: "finish", Label: "Finish", Position: 4},
+		{Key: "notes", Label: "Notes", Position: 5},
 	},
 	"window": {
 		{Key: "code", Label: "Code", Position: 1},
-		{Key: "description", Label: "Description", Position: 2},
-		{Key: "model_number", Label: "Model Number", Position: 3},
+		{Key: "manufacturer", Label: "Manufacturer", Position: 2},
+		{Key: "model_number", Label: "Model", Position: 3},
 		{Key: "rough_opening", Label: "Rough Opening", Position: 4},
 		{Key: "overall_jamb", Label: "Overall Jamb", Position: 5},
 		{Key: "swing", Label: "Swing", Position: 6},
+		{Key: "notes", Label: "Notes", Position: 7},
 	},
 	"door": {
 		{Key: "code", Label: "Code", Position: 1},
-		{Key: "description", Label: "Description", Position: 2},
-		{Key: "model_number", Label: "Model Number", Position: 3},
+		{Key: "manufacturer", Label: "Manufacturer", Position: 2},
+		{Key: "model_number", Label: "Model", Position: 3},
 		{Key: "notes", Label: "Notes", Position: 4},
 	},
 	"door_hardware": {
-		{Key: "type", Label: "Type", Position: 1},
-		{Key: "description", Label: "Description", Position: 2},
-		{Key: "mfg_number", Label: "MFG #", Position: 3},
+		{Key: "code", Label: "Code", Position: 1},
+		{Key: "manufacturer", Label: "Manufacturer", Position: 2},
+		{Key: "model_number", Label: "Model", Position: 3},
 		{Key: "finish", Label: "Finish", Position: 4},
+		{Key: "notes", Label: "Notes", Position: 5},
 	},
 	"electrical_fixture": {
 		{Key: "code", Label: "Code", Position: 1},
-		{Key: "description", Label: "Description", Position: 2},
-		{Key: "manf_info", Label: "Manufacturer Info", Position: 3},
-		{Key: "finish_notes", Label: "Finish / Notes", Position: 4},
+		{Key: "manufacturer", Label: "Manufacturer", Position: 2},
+		{Key: "model_number", Label: "Model", Position: 3},
+		{Key: "finish", Label: "Finish", Position: 4},
+		{Key: "notes", Label: "Notes", Position: 5},
 	},
 	"paint": {
 		{Key: "code", Label: "Code", Position: 1},

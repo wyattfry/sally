@@ -147,6 +147,43 @@ describe("capturePage", () => {
     expect(variantSection).not.toContain("Widespread Bathroom Faucet with Drain Assembly");
   });
 
+  it("detects active finish via class~='active' / 'selected' markers (Lightology pattern)", () => {
+    // Lightology uses class="po-active" on the selected <li>, not aria-*.
+    // The alts here are long enough to need prefix-stripping, so the
+    // active-finish anchor matters for getting the right cut.
+    const titlePrefix = "Visual Comfort Modern Grace Chandelier";
+    const finishes = [
+      "Hand Rubbed Antique Brass / Natural Oak",
+      "Matte Black / Weathered Oak Wood",
+      "Natural Brass / Weathered Oak"
+    ];
+    const activeIdx = 1; // Matte Black is selected
+    document.documentElement.innerHTML = `
+      <body>
+        <div class="product-option-wrapper attr finish">
+          <h2>Finish: <span>${finishes[activeIdx]}</span></h2>
+          <ul>
+            ${finishes.map((f, i) => `
+              <li class="po-thumb po-thumb-finish${i === activeIdx ? " po-active" : ""}"
+                  data-attrib-val="${f}">
+                <img alt="${titlePrefix} ${f}" />
+              </li>
+            `).join("")}
+          </ul>
+        </div>
+      </body>
+    `;
+
+    const captured = capturePage(document, new URL("https://example.com/p"));
+    const variantSection = captured.visibleText.split("[Variant options:]")[1] ?? "";
+
+    for (const f of finishes) {
+      expect(variantSection).toContain(f);
+    }
+    // Title prefix should be stripped — confirms active-finish anchor fired.
+    expect(variantSection).not.toContain(titlePrefix);
+  });
+
   it("preserves shared qualifier words like 'Vibrant' when stripping the prefix", () => {
     // Pathological case: all four finishes start with "Vibrant". A naive
     // common-prefix strip would lump "Vibrant " into the prefix and we'd

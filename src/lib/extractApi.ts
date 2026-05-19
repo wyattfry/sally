@@ -324,6 +324,16 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
   const matchedMapping = finish ? mappings.find(m => m.finish === finish) : undefined;
   const initialModel = matchedMapping?.modelNumber || finishModelNumber || baseModel;
   if (initialModel) data.model_number = initialModel;
+
+  // Ensure the initial finish has a mapping so the panel can restore the
+  // Model field when the user switches finishes and then picks the
+  // original one back. Without this, finishModelMappings being empty
+  // (as it commonly is when only the current variant's SKU is on the
+  // page) makes every pick clear the Model — including a pick back to
+  // the original finish.
+  const effectiveMappings = (finish && initialModel && !matchedMapping)
+    ? [{ finish, modelNumber: initialModel }, ...mappings]
+    : mappings;
   const description = clean(proposal.description); if (description) data.description = description;
   if (finish) data.finish = finish;
   if (finishModelNumber) data.finish_model_number = finishModelNumber;
@@ -352,7 +362,7 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
     suggestedScheduleName: proposal.suggestedScheduleName || undefined,
     knownRooms: response.knownRooms ?? [],
     availableFinishes: (proposal.availableFinishes ?? []).filter(Boolean),
-    finishModelMappings: mappings
+    finishModelMappings: effectiveMappings
   };
 }
 

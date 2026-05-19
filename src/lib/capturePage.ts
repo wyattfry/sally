@@ -150,8 +150,8 @@ function captureVariantOptions(doc: Document): string {
   for (const container of containers) {
     const label = inferContainerLabel(container);
     const raw: string[] = [];
-    for (const el of container.querySelectorAll<HTMLElement>("[alt], [aria-label], [value]")) {
-      for (const attr of ["aria-label", "alt", "value"]) {
+    for (const el of container.querySelectorAll<HTMLElement>("[alt], [aria-label], [value], [data-attrib-val]")) {
+      for (const attr of ["aria-label", "alt", "value", "data-attrib-val"]) {
         const v = el.getAttribute(attr)?.trim();
         if (v) raw.push(v);
       }
@@ -175,7 +175,7 @@ const VARIANT_LABEL_RE = /\b(color\s*\/?\s*finish|finish|color|variant|option|sw
 
 // collapseSwatchLabels reduces a list of attribute values into the actual
 // variant names. Three paths, tried in order:
-// - Short-enough labels (<= 80 chars): used as-is. Covers e.g. Home Depot
+// - Short-enough labels (<= 60 chars): used as-is. Covers e.g. Home Depot
 //   where aria-label = "Matte Black".
 // - Active-finish anchored strip: if we know the currently-selected
 //   finish ("Matte Black"), find the sibling alt that ends with it,
@@ -188,14 +188,14 @@ const VARIANT_LABEL_RE = /\b(color\s*\/?\s*finish|finish|color|variant|option|sw
 //   active finish.
 function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> {
   const out = new Set<string>();
-  const short = raw.filter((s) => s.length <= 80);
+  const short = raw.filter((s) => s.length <= 60);
   if (short.length >= 2 || (short.length === 1 && raw.length === 1)) {
     for (const s of short) out.add(s);
     return out;
   }
   if (raw.length < 2) return out;
 
-  if (activeFinish && activeFinish.length <= 80) {
+  if (activeFinish && activeFinish.length <= 60) {
     const tail = " " + activeFinish;
     const anchor = raw.find((s) => s.endsWith(tail) || s === activeFinish);
     if (anchor) {
@@ -203,12 +203,12 @@ function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> 
       const prefix = anchor.slice(0, cut).replace(/\s+$/, "");
       if (prefix.length === 0) {
         // No prefix to strip — labels start with the finish itself.
-        for (const s of raw) if (s.length <= 80) out.add(s);
+        for (const s of raw) if (s.length <= 60) out.add(s);
       } else {
         for (const s of raw) {
           if (!s.startsWith(prefix)) continue;
           const t = s.slice(prefix.length).trim();
-          if (t && t.length <= 80) out.add(t);
+          if (t && t.length <= 60) out.add(t);
         }
       }
       if (out.size >= 2) return out;
@@ -229,7 +229,7 @@ function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> 
   if (cut === 0) return out;
   for (const s of raw) {
     const tail = s.slice(cut).trim();
-    if (tail && tail.length <= 80) out.add(tail);
+    if (tail && tail.length <= 60) out.add(tail);
   }
   return out;
 }
@@ -238,19 +238,34 @@ function findActiveFinish(container: Element): string {
   // (a) data-automation hooks: Ferguson uses [data-automation="finish-name"]
   for (const el of container.querySelectorAll<HTMLElement>('[data-automation*="name" i]')) {
     const t = el.textContent?.replace(/\s+/g, " ").trim();
-    if (t && t.length > 0 && t.length < 80 && !/^finish$/i.test(t)) return t;
+    if (t && t.length > 0 && t.length < 60 && !/^finish$/i.test(t)) return t;
   }
   // (b) aria-pressed / aria-checked = true on a swatch button
-  const active = container.querySelector('[aria-pressed="true"], [aria-checked="true"]');
-  if (active) {
-    for (const attr of ["aria-label", "value"]) {
-      const v = active.getAttribute(attr)?.trim();
-      if (v && v.length < 80) return v;
-    }
-    const img = active.querySelector<HTMLElement>("[alt]");
-    const alt = img?.getAttribute("alt")?.trim();
-    if (alt && alt.length < 80) return alt;
+  const ariaActive = container.querySelector('[aria-pressed="true"], [aria-checked="true"]');
+  const result = readSwatchLabel(ariaActive);
+  if (result) return result;
+  // (c) class-based active marker (po-active, is-active, selected, current).
+  // Substring-match in the selector for performance, then verify the
+  // class name with a word-boundary regex so we don't false-positive
+  // on "inactive" / "interactive".
+  const ACTIVE_CLASS_RE = /(?:^|[-_\s])(active|selected|current)(?:[-_\s]|$)/i;
+  for (const el of container.querySelectorAll<HTMLElement>('[class*="active"], [class*="selected"], [class*="current"]')) {
+    if (!ACTIVE_CLASS_RE.test(el.className)) continue;
+    const v = readSwatchLabel(el);
+    if (v) return v;
   }
+  return "";
+}
+
+function readSwatchLabel(el: Element | null): string {
+  if (!el) return "";
+  for (const attr of ["aria-label", "value", "data-attrib-val"]) {
+    const v = el.getAttribute(attr)?.trim();
+    if (v && v.length < 60) return v;
+  }
+  const img = el.querySelector<HTMLElement>("[alt]") || (el.tagName === "IMG" ? (el as HTMLElement) : null);
+  const alt = img?.getAttribute("alt")?.trim();
+  if (alt && alt.length < 60) return alt;
   return "";
 }
 
