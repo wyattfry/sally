@@ -1,5 +1,7 @@
 import type { CapturedPage } from "./types";
 
+// Roughly the prompt-text budget the LLM can productively chew on before
+// noisy page chrome (nav, "customers also viewed") starts crowding signal.
 const MAX_VISIBLE_TEXT_LENGTH = 12000;
 
 export function capturePage(doc: Document, location: Location | URL): CapturedPage {
@@ -58,6 +60,8 @@ function captureVisibleText(doc: Document): string {
 }
 
 const PRODUCT_TYPENAME_RE = /^(BaseProduct|Product|SuperSku|Sku|Variant|Identifiers|Specification|SpecificationGroup|Attribute|Info|Details|MediaItem|Media|FinishVariant)$/i;
+// 3KB fits the identifiers block of a typical Apollo BaseProduct (brand,
+// model, isSuperSku) before image-URL bloat. 6KB total caps multi-blob pages.
 const MAX_STATE_PER_BLOB = 3000;
 const MAX_STATE_TOTAL = 6000;
 
@@ -73,6 +77,7 @@ function capturePageState(doc: Document): string {
     if (budget <= 0) break;
     const type = (script.getAttribute("type") || "").toLowerCase();
     const text = script.textContent || "";
+    // Below ~50 chars is empty / analytics shim, not a state blob.
     if (!text || text.length < 50) continue;
 
     let raw: string | null = null;
@@ -81,6 +86,8 @@ function capturePageState(doc: Document): string {
       // Skip JSON-LD (we already capture that as structuredData) and
       // anything tiny enough to be a config.
       if (text.includes("@context") && text.includes("schema.org")) continue;
+      // 500 chars filters out small JSON config tags (feature flags,
+      // pixel IDs) while keeping anything that could plausibly hold product data.
       if (script.id === "__NEXT_DATA__" || text.length > 500) raw = text;
     } else if (!type || type === "text/javascript" || type === "application/javascript") {
       // Common JS-assignment globals: __APOLLO_STATE__, __PRELOADED_STATE__,
@@ -165,17 +172,29 @@ function captureVariantOptions(doc: Document): string {
     if (seen.has(key)) continue;
     seen.add(key);
     lines.push(label ? `${label}: ${joined}` : joined);
+    // 12 variant groups is plenty for any single product (finish, color,
+    // size, mount) — beyond that we're probably scraping noise.
     if (lines.length >= 12) break;
   }
 
+  // 2KB cap on the whole [Variant options:] block. Defensive ceiling so
+  // a page with thousands of swatches can't blow up the prompt budget.
   return lines.join("\n").slice(0, 2000);
 }
 
 const VARIANT_LABEL_RE = /\b(color\s*\/?\s*finish|finish|color|variant|option|swatch)\b/i;
 
+// Real finish names cap around 40 chars ("Hand Rubbed Antique Brass / Natural
+// Oak"). Anything past 60 is almost always a product-title-plus-finish alt.
+const MAX_FINISH_LABEL_LENGTH = 60;
+
+// Below ~20 chars a "common prefix" across siblings is rarely a product
+// title — could be a coincidence (matching first letters). Skip the strip.
+const MIN_COMMON_PREFIX_LENGTH = 20;
+
 // collapseSwatchLabels reduces a list of attribute values into the actual
 // variant names. Three paths, tried in order:
-// - Short-enough labels (<= 60 chars): used as-is. Covers e.g. Home Depot
+// - Short-enough labels (<= MAX_FINISH_LABEL_LENGTH chars): used as-is. Covers e.g. Home Depot
 //   where aria-label = "Matte Black".
 // - Active-finish anchored strip: if we know the currently-selected
 //   finish ("Matte Black"), find the sibling alt that ends with it,
@@ -188,14 +207,14 @@ const VARIANT_LABEL_RE = /\b(color\s*\/?\s*finish|finish|color|variant|option|sw
 //   active finish.
 function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> {
   const out = new Set<string>();
-  const short = raw.filter((s) => s.length <= 60);
+  const short = raw.filter((s) => s.length <= MAX_FINISH_LABEL_LENGTH);
   if (short.length >= 2 || (short.length === 1 && raw.length === 1)) {
     for (const s of short) out.add(s);
     return out;
   }
   if (raw.length < 2) return out;
 
-  if (activeFinish && activeFinish.length <= 60) {
+  if (activeFinish && activeFinish.length <= MAX_FINISH_LABEL_LENGTH) {
     const tail = " " + activeFinish;
     const anchor = raw.find((s) => s.endsWith(tail) || s === activeFinish);
     if (anchor) {
@@ -203,12 +222,12 @@ function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> 
       const prefix = anchor.slice(0, cut).replace(/\s+$/, "");
       if (prefix.length === 0) {
         // No prefix to strip — labels start with the finish itself.
-        for (const s of raw) if (s.length <= 60) out.add(s);
+        for (const s of raw) if (s.length <= MAX_FINISH_LABEL_LENGTH) out.add(s);
       } else {
         for (const s of raw) {
           if (!s.startsWith(prefix)) continue;
           const t = s.slice(prefix.length).trim();
-          if (t && t.length <= 60) out.add(t);
+          if (t && t.length <= MAX_FINISH_LABEL_LENGTH) out.add(t);
         }
       }
       if (out.size >= 2) return out;
@@ -217,7 +236,7 @@ function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> 
   }
 
   const prefix = longestCommonPrefix(raw);
-  if (prefix.length < 20) return out;
+  if (prefix.length < MIN_COMMON_PREFIX_LENGTH) return out;
   // Back up the trailing partial word; if the trim removed nothing
   // (prefix already ended at whitespace), back up one full word so we
   // don't accidentally cut into a finish qualifier shared by every
@@ -229,7 +248,7 @@ function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> 
   if (cut === 0) return out;
   for (const s of raw) {
     const tail = s.slice(cut).trim();
-    if (tail && tail.length <= 60) out.add(tail);
+    if (tail && tail.length <= MAX_FINISH_LABEL_LENGTH) out.add(tail);
   }
   return out;
 }
@@ -238,7 +257,7 @@ function findActiveFinish(container: Element): string {
   // (a) data-automation hooks: Ferguson uses [data-automation="finish-name"]
   for (const el of container.querySelectorAll<HTMLElement>('[data-automation*="name" i]')) {
     const t = el.textContent?.replace(/\s+/g, " ").trim();
-    if (t && t.length > 0 && t.length < 60 && !/^finish$/i.test(t)) return t;
+    if (t && t.length > 0 && t.length < MAX_FINISH_LABEL_LENGTH && !/^finish$/i.test(t)) return t;
   }
   // (b) aria-pressed / aria-checked = true on a swatch button
   const ariaActive = container.querySelector('[aria-pressed="true"], [aria-checked="true"]');
@@ -261,11 +280,11 @@ function readSwatchLabel(el: Element | null): string {
   if (!el) return "";
   for (const attr of ["aria-label", "value", "data-attrib-val"]) {
     const v = el.getAttribute(attr)?.trim();
-    if (v && v.length < 60) return v;
+    if (v && v.length < MAX_FINISH_LABEL_LENGTH) return v;
   }
   const img = el.querySelector<HTMLElement>("[alt]") || (el.tagName === "IMG" ? (el as HTMLElement) : null);
   const alt = img?.getAttribute("alt")?.trim();
-  if (alt && alt.length < 60) return alt;
+  if (alt && alt.length < MAX_FINISH_LABEL_LENGTH) return alt;
   return "";
 }
 
@@ -307,6 +326,8 @@ function findVariantContainers(doc: Document): Element[] {
     acceptNode(node) {
       const el = node as Element;
       if (seen.has(el)) return NodeFilter.FILTER_REJECT;
+      // Only need the start of textContent to test for "Finish:" labels;
+      // the slice keeps the regex test cheap on huge pages.
       const own = (el as HTMLElement).textContent?.replace(/\s+/g, " ").trim().slice(0, 200) ?? "";
       if (!VARIANT_LABEL_RE.test(own)) return NodeFilter.FILTER_SKIP;
       // Need at least 2 attribute-labeled descendants to count as a swatch row
@@ -321,6 +342,8 @@ function findVariantContainers(doc: Document): Element[] {
     // grabbing only the label paragraph.
     const container = el.closest('[role="radiogroup"], [data-component], ul, fieldset, section, div') || el;
     if (!seen.has(container)) { seen.add(container); out.push(container); }
+    // 8 variant-selector containers per page is a safety ceiling — real
+    // products have 1–3 (finish, size, mount). More means we're matching noise.
     if (out.length >= 8) break;
   }
 
@@ -422,6 +445,8 @@ function findPdfLinks(doc: Document, baseUrl: string): string[] {
     }
   }
 
+  // 8 PDF links is a generous ceiling — real product pages link install
+  // guides + spec sheets + maybe a warranty. More is sidebar noise.
   return links.slice(0, 8);
 }
 
@@ -440,6 +465,8 @@ function findAllImageUrls(doc: Document, baseUrl: string): string[] {
 
   const images = Array.from(doc.images)
     .filter((img) => isVisible(img) && Boolean(img.currentSrc || img.src))
+    // 40000 px² ≈ 200×200 — filters out site logos, icons, and tracking
+    // pixels while keeping any plausible product photo.
     .filter((img) => imageArea(img) >= 40000)
     .sort((a, b) => imageArea(b) - imageArea(a));
 
@@ -452,6 +479,8 @@ function findAllImageUrls(doc: Document, baseUrl: string): string[] {
     } catch { /* ignore invalid URLs */ }
   }
 
+  // 10 images is enough for the in-app picker and keeps the request light;
+  // beyond that we'd be sending the gallery / "you may also like" tail.
   return urls.slice(0, 10);
 }
 
