@@ -57,6 +57,8 @@ func webDeps(cfg config.Config, database *sql.DB) web.Deps {
 	}
 	deps.UploadsDir = cfg.UploadsDir
 	deps.AdminEmail = cfg.AdminEmail
+	deps.ContractorStaleAmberDays = cfg.ContractorViewStaleAmberDays
+	deps.ContractorStaleRedDays = cfg.ContractorViewStaleRedDays
 	if database != nil {
 		deps.DB = database
 	}

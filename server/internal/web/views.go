@@ -33,6 +33,13 @@ type projectDetailPage struct {
 	IsOwner          bool
 	MemberError      string
 	OwnerDisplayName string
+	// ViewMode controls per-view affordances; "architect" (default,
+	// authenticated owner/editor) or "contractor" (anonymous share-link
+	// visitor). Contractor mode renders price/lead/stock columns + totals.
+	ViewMode string
+	// ShareToken is non-empty in contractor view; used to build the
+	// schedule-page links so the share-token survives the click-through.
+	ShareToken string
 }
 
 type scheduleDetailPage struct {
@@ -42,12 +49,34 @@ type scheduleDetailPage struct {
 	Schedule         scheduleWithItems
 	IsOwner          bool
 	OwnerDisplayName string
+	// Contractor-view affordances. See projectDetailPage for the contract.
+	ViewMode             string
+	ShareToken           string
+	StaleAmberDays       int
+	StaleRedDays         int
 }
 
 type scheduleSummary struct {
 	Schedule    queries.Schedule
 	ItemCount   int
 	LastUpdated time.Time
+	// Populated in contractor view: per-schedule subtotal + counts of items
+	// excluded for various reasons (no price, price range, stale snapshot).
+	ContractorTotals *contractorTotals
+}
+
+// contractorTotals carries the price aggregation for a schedule, with the
+// exclusions called out explicitly. The contractor view never sums silently —
+// every reason a row didn't contribute to the subtotal is named alongside the
+// number.
+type contractorTotals struct {
+	SubtotalCents   int64    // Σ of items whose price parses as a single dollar amount
+	SubtotalDisplay string   // formatted "$4,213.00"
+	TotalItems      int      // total item count in the schedule
+	PricedCount     int      // items contributing to subtotal
+	MissingPrice    []string // codes of items with no price
+	RangePrice      []string // codes of items with price ranges (excluded from sum)
+	StalePrice      []string // codes whose snapshot is past the red threshold
 }
 
 type projectEditPage struct {
@@ -88,12 +117,6 @@ type notFoundPage struct {
 	Title string
 }
 
-type publicSharePage struct {
-	Kind      string
-	Title     string
-	Project   queries.Project
-	Schedules []scheduleWithItems
-}
 
 type adminPage struct {
 	Kind              string

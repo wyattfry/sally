@@ -127,6 +127,10 @@ func (c ChatCompletionExtractor) Extract(ctx context.Context, req extract.Extrac
 			OptionalCompanions:    coalesceStrings(output.OptionalCompanions),
 			Room:                  output.Room,
 			SuggestedScheduleName: output.SuggestedScheduleName,
+			Price:                 output.Price,
+			LeadTime:              output.LeadTime,
+			StockStatus:           output.StockStatus,
+			StockCount:            output.StockCount,
 			SourceURL:             req.Page.URL,
 			SourceTitle:           req.Page.Title,
 			SourceImageURL:        req.Page.MainImageURL,
@@ -177,18 +181,25 @@ FINISH VARIANTS — when a product page lists multiple finishes/colors with dist
 - Set "finish" to the currently-selected finish on the page (or the first listed if none is selected).
 - Set "finishModelNumber" to the SKU matching that selected finish.
 
+CONTRACTOR FIELDS — extract verbatim when present, empty string when not.
+- "price": current price displayed on the page (e.g. "$135.38", "$1,519.20 - $1,799.20", "Was $189.00 Now $169.00"). Preserve currency and ranges as written. Never invent — empty if absent.
+- "leadTime": delivery / shipping language verbatim (e.g. "Free Delivery Thu, May 21", "Ships May 27 - Jun 1", "Leaves the Warehouse Today, May 18th").
+- "stockStatus": one of "in_stock" / "low_stock" (page says "only N left" or similar) / "backordered" / "out_of_stock" / "unknown". Use "unknown" if no signal is visible.
+- "stockCount": stock-count phrase verbatim (e.g. "47 ready to ship", "Only 2 left", "332 In Stock").
+These flow into a contractor view that totals prices and surfaces lead times; accuracy and verbatim capture matter more than parsing.
+
 FINISH VOCABULARY — words that typically signal a finish value (use this as a recognition aid, not a closed list):
 - Metal/surface finishes (faucets, hardware, lighting, plumbing): Chrome, Polished Chrome, Brushed Nickel, Polished Nickel, Stainless, Brushed Stainless, Spot Resist Stainless, Brass, Polished Brass, Antique Brass, Brushed Brass, Bronze, Oil-Rubbed Bronze, Matte Black, Black, Gold, Polished Gold, Brushed Gold, Silver, White, Almond.
 - Sheen finishes (paint, coatings): Flat, Matte, Eggshell, Satin, Semi-Gloss, Gloss, Hi-Gloss.
 - Branded composites are common ("Vibrant Brushed Moderne Brass", "Spot Resist Stainless", "MasterShield Bronze") — capture the full branded string as it appears.
 - A product variant selector labeled "Color/Finish", "Finish", "Color", "Variant", or a swatch row is a strong signal that multiple finishes exist on the page even if only one is described in detail.
 
-EXAMPLE 3 — product with multiple finishes:
+EXAMPLE 3 — product with multiple finishes + contractor fields:
 Product page title: KOHLER Cardale Single Handle Pull-Down Kitchen Faucet
-Visible text excerpt: KOHLER K-35908-4 Cardale Pull-Down Kitchen Faucet. Finish: Vibrant Brushed Nickel. Available finishes: Polished Chrome (K-35908-4-CP), Vibrant Polished Nickel (K-35908-4-SN), Vibrant Brushed Moderne Brass (K-35908-4-2MB), Vibrant Brushed Nickel (K-35908-4-BN).
+Visible text excerpt: KOHLER K-35908-4 Cardale Pull-Down Kitchen Faucet. Finish: Vibrant Brushed Nickel. Available finishes: Polished Chrome (K-35908-4-CP), Vibrant Polished Nickel (K-35908-4-SN), Vibrant Brushed Moderne Brass (K-35908-4-2MB), Vibrant Brushed Nickel (K-35908-4-BN). $787.08. Free Delivery Thu, May 21. 332 In Stock.
 
-Expected output (mappings populated):
-{"title":"Cardale Pull-Down Kitchen Faucet","manufacturer":"Kohler","modelNumber":"K-35908-4","category":"Faucet","description":"Pull-down kitchen faucet with single-handle control.","finish":"Vibrant Brushed Nickel","finishModelNumber":"K-35908-4-BN","availableFinishes":["Polished Chrome","Vibrant Polished Nickel","Vibrant Brushed Moderne Brass","Vibrant Brushed Nickel"],"finishModelMappings":[{"finish":"Polished Chrome","modelNumber":"K-35908-4-CP"},{"finish":"Vibrant Polished Nickel","modelNumber":"K-35908-4-SN"},{"finish":"Vibrant Brushed Moderne Brass","modelNumber":"K-35908-4-2MB"},{"finish":"Vibrant Brushed Nickel","modelNumber":"K-35908-4-BN"}],"requiredAddOns":[],"optionalCompanions":[],"room":"","suggestedScheduleName":"Plumbing","analysis":{"missingFields":[],"warnings":[],"confidence":{"overall":0.95,"title":0.95,"manufacturer":0.99,"modelNumber":0.95,"category":0.99,"description":0.9,"finish":0.95,"requiredAddOns":0.9}},"customFields":{}}
+Expected output (mappings + contractor fields populated):
+{"title":"Cardale Pull-Down Kitchen Faucet","manufacturer":"Kohler","modelNumber":"K-35908-4","category":"Faucet","description":"Pull-down kitchen faucet with single-handle control.","finish":"Vibrant Brushed Nickel","finishModelNumber":"K-35908-4-BN","availableFinishes":["Polished Chrome","Vibrant Polished Nickel","Vibrant Brushed Moderne Brass","Vibrant Brushed Nickel"],"finishModelMappings":[{"finish":"Polished Chrome","modelNumber":"K-35908-4-CP"},{"finish":"Vibrant Polished Nickel","modelNumber":"K-35908-4-SN"},{"finish":"Vibrant Brushed Moderne Brass","modelNumber":"K-35908-4-2MB"},{"finish":"Vibrant Brushed Nickel","modelNumber":"K-35908-4-BN"}],"requiredAddOns":[],"optionalCompanions":[],"room":"","suggestedScheduleName":"Plumbing","price":"$787.08","leadTime":"Free Delivery Thu, May 21","stockStatus":"in_stock","stockCount":"332 In Stock","analysis":{"missingFields":[],"warnings":[],"confidence":{"overall":0.95,"title":0.95,"manufacturer":0.99,"modelNumber":0.95,"category":0.99,"description":0.9,"finish":0.95,"requiredAddOns":0.9}},"customFields":{}}
 END EXAMPLE 3`
 
 func buildChatCompletionRequest(req extract.ExtractSpecRequest, model, responseFormat string) chatCompletionRequest {

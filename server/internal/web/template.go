@@ -103,6 +103,51 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 		return template.HTML(b.String())
 	},
 	"isoTime": func(t time.Time) string { return t.UTC().Format(time.RFC3339) },
+	// freshnessClass: green / amber / red CSS modifier based on how long ago
+	// a price snapshot was captured. Drives the small chip under the price.
+	"freshnessClass": func(pricedAt string, amberDays, redDays int) string {
+		t, err := time.Parse(time.RFC3339, pricedAt)
+		if err != nil {
+			return "freshness--unknown"
+		}
+		age := time.Since(t)
+		if redDays > 0 && age > time.Duration(redDays)*24*time.Hour {
+			return "freshness--red"
+		}
+		if amberDays > 0 && age > time.Duration(amberDays)*24*time.Hour {
+			return "freshness--amber"
+		}
+		return "freshness--fresh"
+	},
+	"freshnessLabel": func(pricedAt string) string {
+		t, err := time.Parse(time.RFC3339, pricedAt)
+		if err != nil {
+			return ""
+		}
+		days := int(time.Since(t).Hours() / 24)
+		switch {
+		case days <= 0:
+			return "priced today"
+		case days == 1:
+			return "priced 1d ago"
+		default:
+			return fmt.Sprintf("priced %dd ago", days)
+		}
+	},
+	"stockLabel": func(status string) string {
+		switch status {
+		case "in_stock":
+			return "In stock"
+		case "low_stock":
+			return "Low stock"
+		case "backordered":
+			return "Backordered"
+		case "out_of_stock":
+			return "Out of stock"
+		default:
+			return "Unknown"
+		}
+	},
 	"humanTime": func(t time.Time) string {
 		now := time.Now()
 		todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())

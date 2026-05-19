@@ -85,6 +85,16 @@ type Proposal struct {
 	OptionalCompanions  []string             `json:"optionalCompanions"`
 	Room                  string               `json:"room"`
 	SuggestedScheduleName string               `json:"suggestedScheduleName"`
+	// Contractor-relevant fields. Captured verbatim from the product page
+	// at SPEC time — strings, not parsed numerics, because product pages
+	// express price ranges ("$135.38 - $1,519.20"), shipping windows
+	// ("Free Delivery Thu, May 21"), and stock counts ("47 ready to
+	// ship") in ways that resist clean parsing. The contractor view
+	// surfaces these and rolls Price up to a per-schedule subtotal.
+	Price       string `json:"price"`
+	LeadTime    string `json:"leadTime"`
+	StockStatus string `json:"stockStatus"` // in_stock | low_stock | backordered | out_of_stock | unknown
+	StockCount  string `json:"stockCount"`
 	SourceURL             string               `json:"sourceUrl"`
 	SourceTitle           string               `json:"sourceTitle"`
 	SourceImageURL        string               `json:"sourceImageUrl,omitempty"`

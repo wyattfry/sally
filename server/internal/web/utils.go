@@ -26,6 +26,13 @@ func firstNonEmpty(value string, fallback string) string {
 	return value
 }
 
+func firstPositive(value int, fallback int) int {
+	if value > 0 {
+		return value
+	}
+	return fallback
+}
+
 func requestBaseURL(r *http.Request) string {
 	scheme := "https"
 	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {

@@ -340,6 +340,19 @@ function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractSched
   const notes = [...(proposal.requiredAddOns ?? []), ...(proposal.optionalCompanions ?? [])]
     .map(clean).filter(Boolean).join("; ");
   if (notes) data.notes = notes;
+
+  // Contractor-relevant snapshot captured at SPEC time. Surfaced on the
+  // contractor share view; ignored by the architect view unless the
+  // schedule explicitly has columns for them.
+  const price = clean(proposal.price); if (price) data.price = price;
+  const leadTime = clean(proposal.leadTime); if (leadTime) data.lead_time = leadTime;
+  const stockStatus = clean(proposal.stockStatus); if (stockStatus) data.stock_status = stockStatus;
+  const stockCount = clean(proposal.stockCount); if (stockCount) data.stock_count = stockCount;
+  // Timestamp of when the price/lead/stock snapshot was captured. Drives
+  // the freshness chip in the contractor view.
+  if (price || leadTime || stockStatus || stockCount) {
+    data.priced_at = now.toISOString();
+  }
   if (proposal.customFields) {
     for (const [key, value] of Object.entries(proposal.customFields)) {
       const v = clean(value); if (v) data[key] = v;

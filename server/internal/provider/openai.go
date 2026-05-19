@@ -15,7 +15,7 @@ import (
 	"sally/server/internal/extract"
 )
 
-const PromptVersion = "extract-spec-v5"
+const PromptVersion = "extract-spec-v6"
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -123,6 +123,10 @@ func (o OpenAIExtractor) Extract(ctx context.Context, req extract.ExtractSpecReq
 			OptionalCompanions:    output.OptionalCompanions,
 			Room:                  sanitizeRoom(output.Room),
 			SuggestedScheduleName: output.SuggestedScheduleName,
+			Price:                 output.Price,
+			LeadTime:              output.LeadTime,
+			StockStatus:           output.StockStatus,
+			StockCount:            output.StockCount,
 			SourceURL:             req.Page.URL,
 			SourceTitle:           req.Page.Title,
 			SourceImageURL:        req.Page.MainImageURL,
@@ -208,6 +212,10 @@ type openAIExtractionOutput struct {
 	OptionalCompanions    []string                     `json:"optionalCompanions"`
 	Room                  string                       `json:"room"`
 	SuggestedScheduleName string                       `json:"suggestedScheduleName"`
+	Price                 string                       `json:"price"`
+	LeadTime              string                       `json:"leadTime"`
+	StockStatus           string                       `json:"stockStatus"`
+	StockCount            string                       `json:"stockCount"`
 	Analysis              *extract.Analysis            `json:"analysis"`
 	CustomFields          map[string]string            `json:"customFields,omitempty"`
 }
@@ -336,6 +344,25 @@ func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
 				"description": "A plain room or area name (e.g. 'Kitchen', 'Master Bath', 'Living Room'). Use an existing room from the schedule context if provided, or leave empty. Plain text only — no XML, no markup, no JSON.",
 			},
 		"suggestedScheduleName": map[string]any{"type": "string"},
+		// Contractor-relevant fields. Strings verbatim from the page; LLM
+		// must not invent values. Empty string when not present.
+		"price": map[string]any{
+			"type":        "string",
+			"description": "Current price as shown on the product page, verbatim (e.g. '$135.38', '$1,519.20 - $1,799.20', 'Was $189.00 Now $169.00'). Empty string if no price is visible.",
+		},
+		"leadTime": map[string]any{
+			"type":        "string",
+			"description": "Delivery / ship-by language verbatim (e.g. 'Free Delivery Thu, May 21', 'Ships May 27 - Jun 1', 'Leaves the Warehouse Today, May 18th'). Empty if no shipping info is visible.",
+		},
+		"stockStatus": map[string]any{
+			"type":        "string",
+			"description": "Inventory status. Use 'in_stock' when ready to ship, 'low_stock' when the page says 'only N left' or similar, 'backordered' or 'out_of_stock' when the page says so. 'unknown' if no signal is visible.",
+			"enum":        []string{"in_stock", "low_stock", "backordered", "out_of_stock", "unknown"},
+		},
+		"stockCount": map[string]any{
+			"type":        "string",
+			"description": "Stock count language verbatim (e.g. '47 ready to ship', 'Only 2 left', '332 In Stock'). Empty if no count is visible.",
+		},
 		"analysis": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -391,6 +418,10 @@ func extractionSchema(customColumns []extract.ColumnDefinition) map[string]any {
 		"optionalCompanions",
 		"room",
 		"suggestedScheduleName",
+		"price",
+		"leadTime",
+		"stockStatus",
+		"stockCount",
 		"analysis",
 	}
 

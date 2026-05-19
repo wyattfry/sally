@@ -79,44 +79,94 @@ func (a app) deactivateProjectShareLinks(w http.ResponseWriter, r *http.Request)
 	http.Redirect(w, r, "/projects/"+project.ID+"/share", http.StatusSeeOther)
 }
 
-func (a app) showPublicShare(w http.ResponseWriter, r *http.Request) {
+// loadShareLinkProject resolves a share token to the underlying project and
+// records the view. Returns (project, ok). On ok=false the response has
+// already been written.
+func (a app) loadShareLinkProject(w http.ResponseWriter, r *http.Request) (queries.Project, string, bool) {
 	token := strings.TrimSpace(r.PathValue("token"))
 	if token == "" {
 		renderNotFound(w)
-		return
+		return queries.Project{}, "", false
 	}
-
 	link, err := a.queries.GetActiveProjectShareLinkByHash(r.Context(), share.HashToken(token))
 	if errors.Is(err, sql.ErrNoRows) {
 		renderNotFound(w)
-		return
+		return queries.Project{}, "", false
 	}
 	if err != nil {
 		http.Error(w, "could not load share link", http.StatusInternalServerError)
-		return
+		return queries.Project{}, "", false
 	}
 	_ = a.queries.MarkProjectShareLinkViewed(r.Context(), link.ID)
 
 	project, err := a.queries.GetProject(r.Context(), link.ProjectID)
 	if errors.Is(err, sql.ErrNoRows) {
 		renderNotFound(w)
-		return
+		return queries.Project{}, "", false
 	}
 	if err != nil {
 		http.Error(w, "could not load project", http.StatusInternalServerError)
+		return queries.Project{}, "", false
+	}
+	return project, token, true
+}
+
+// showPublicShareProject renders the contractor-mode project page —
+// schedule list with per-schedule subtotals.
+func (a app) showPublicShareProject(w http.ResponseWriter, r *http.Request) {
+	project, token, ok := a.loadShareLinkProject(w, r)
+	if !ok {
 		return
 	}
-
-	schedules, err := a.schedulesWithItems(r.Context(), project.ID)
+	schedules, err := a.scheduleSummariesWithContractorTotals(r.Context(), project.ID, a.contractorStaleAmberDays, a.contractorStaleRedDays)
 	if err != nil {
 		http.Error(w, "could not load schedules", http.StatusInternalServerError)
 		return
 	}
 
-	render(w, publicSharePage{
-		Kind:      "public-share",
-		Title:     project.Name,
-		Project:   project,
-		Schedules: schedules,
+	render(w, projectDetailPage{
+		Kind:       "project",
+		Title:      project.Name,
+		Project:    project,
+		Schedules:  schedules,
+		IsOwner:    false,
+		ViewMode:   "contractor",
+		ShareToken: token,
+	})
+}
+
+// showPublicShareSchedule renders the contractor-mode schedule page —
+// items + price/lead/stock columns + subtotal block.
+func (a app) showPublicShareSchedule(w http.ResponseWriter, r *http.Request) {
+	project, token, ok := a.loadShareLinkProject(w, r)
+	if !ok {
+		return
+	}
+	schedule, err := a.queries.GetSchedule(r.Context(), r.PathValue("scheduleID"))
+	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
+		renderNotFound(w)
+		return
+	}
+	if err != nil {
+		http.Error(w, "could not load schedule", http.StatusInternalServerError)
+		return
+	}
+	sw, err := a.scheduleWithItemsByID(r.Context(), schedule)
+	if err != nil {
+		http.Error(w, "could not load schedule", http.StatusInternalServerError)
+		return
+	}
+	sw.ContractorTotals = computeContractorTotals(sw, a.contractorStaleRedDays)
+
+	render(w, scheduleDetailPage{
+		Kind:           "schedule",
+		Title:          schedule.Name + " — " + project.Name,
+		Project:        project,
+		Schedule:       sw,
+		IsOwner:        false,
+		ViewMode:       "contractor",
+		ShareToken:     token,
+		StaleAmberDays: a.contractorStaleAmberDays,
+		StaleRedDays:   a.contractorStaleRedDays,
 	})
 }

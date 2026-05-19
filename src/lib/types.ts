@@ -110,6 +110,10 @@ export type ExtractedProposal = {
   optionalCompanions: string[];
   room?: string;
   suggestedScheduleName?: string;
+  price?: string;
+  leadTime?: string;
+  stockStatus?: string;
+  stockCount?: string;
   sourceUrl: string;
   sourceTitle: string;
   sourceImageUrl?: string;

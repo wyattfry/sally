@@ -3,6 +3,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -55,6 +56,18 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 		return extract.ExtractSpecResponse{}, fmt.Errorf("%w: marshal request: %v", ErrFailure, err)
 	}
 	promptText := capLog(string(body))
+
+	// Hash the cached prefix (tools + system) so we can see whether two
+	// requests actually present the same bytes. If the hash differs between
+	// two extractions of the same product, something in the schedule's custom
+	// columns or the system text shifted — that's the real cause of "cache
+	// write but no cache read".
+	cacheKey, _ := json.Marshal(struct {
+		System any `json:"system"`
+		Tools  any `json:"tools"`
+	}{builtReq.System, builtReq.Tools})
+	cacheHash := sha256.Sum256(cacheKey)
+	log.Printf("[anthropic] %s: cache_prefix_hash=%x", req.RequestID, cacheHash[:8])
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/messages", bytes.NewReader(body))
 	if err != nil {
@@ -146,6 +159,10 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 			OptionalCompanions:    coalesceStrings(output.OptionalCompanions),
 			Room:                  sanitizeRoom(output.Room),
 			SuggestedScheduleName: output.SuggestedScheduleName,
+			Price:                 output.Price,
+			LeadTime:              output.LeadTime,
+			StockStatus:           output.StockStatus,
+			StockCount:            output.StockCount,
 			SourceURL:             req.Page.URL,
 			SourceTitle:           req.Page.Title,
 			SourceImageURL:        req.Page.MainImageURL,

@@ -27,6 +27,10 @@ type Deps struct {
 	SessionSecret []byte
 	UploadsDir    string
 	AdminEmail    string
+	// ContractorStaleAmberDays / ContractorStaleRedDays drive the freshness
+	// chip in the contractor view. See internal/config.
+	ContractorStaleAmberDays int
+	ContractorStaleRedDays   int
 }
 
 type app struct {
@@ -38,6 +42,9 @@ type app struct {
 	sessionSecret []byte
 	uploadsDir    string
 	adminEmail    string
+
+	contractorStaleAmberDays int
+	contractorStaleRedDays   int
 }
 
 func RegisterRoutes(mux *http.ServeMux, deps Deps) {
@@ -55,6 +62,8 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 		sessionSecret: deps.SessionSecret,
 		uploadsDir:    uploadsDir,
 		adminEmail:    deps.AdminEmail,
+		contractorStaleAmberDays: firstPositive(deps.ContractorStaleAmberDays, 30),
+		contractorStaleRedDays:   firstPositive(deps.ContractorStaleRedDays, 90),
 	}
 
 	staticFS, _ := fs.Sub(staticFiles, "static")
@@ -118,7 +127,8 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/share-links/deactivate", a.deactivateProjectShareLinks)
 	mux.HandleFunc("POST /projects/{projectID}/members", a.addProjectMember)
 	mux.HandleFunc("POST /projects/{projectID}/members/{memberUserID}/remove", a.removeProjectMember)
-	mux.HandleFunc("GET /share/{token}", a.showPublicShare)
+	mux.HandleFunc("GET /share/{token}", a.showPublicShareProject)
+	mux.HandleFunc("GET /share/{token}/schedules/{scheduleID}", a.showPublicShareSchedule)
 }
 
 func (a app) redirectHome(w http.ResponseWriter, r *http.Request) {
@@ -291,6 +301,7 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 		IsOwner:          isOwner,
 		MemberError:      memberError,
 		OwnerDisplayName: ownerDisplayName,
+		ViewMode:         "architect",
 	})
 }
 

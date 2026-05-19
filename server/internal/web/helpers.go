@@ -5,10 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	queries "sally/server/internal/db/generated"
 	"sally/server/internal/presets"
@@ -256,6 +259,8 @@ type scheduleWithItems struct {
 	Schedule queries.Schedule
 	Columns  []queries.ScheduleColumn
 	Groups   []roomGroup
+	// Populated by computeContractorTotals when rendering in contractor view.
+	ContractorTotals *contractorTotals
 }
 
 func groupByRoom(items []scheduleItemView) []roomGroup {
@@ -363,4 +368,139 @@ func (a app) schedulesWithItems(ctx context.Context, projectID string) ([]schedu
 		})
 	}
 	return result, nil
+}
+
+// scheduleSummariesWithContractorTotals enriches each summary with a
+// per-schedule contractor subtotal block. Used by the contractor share
+// view's project page; the architect path uses scheduleSummaries.
+func (a app) scheduleSummariesWithContractorTotals(ctx context.Context, projectID string, _ int, staleRedDays int) ([]scheduleSummary, error) {
+	schedules, err := a.queries.ListSchedulesByProject(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]scheduleSummary, 0, len(schedules))
+	for _, s := range schedules {
+		cols, _ := a.queries.ListScheduleColumns(ctx, s.ID)
+		rawItems, _ := a.queries.ListScheduleItems(ctx, s.ID)
+		views := make([]scheduleItemView, len(rawItems))
+		for i, it := range rawItems {
+			views[i] = toItemView(it)
+		}
+		last := s.UpdatedAt
+		for _, it := range rawItems {
+			if it.UpdatedAt.After(last) {
+				last = it.UpdatedAt
+			}
+		}
+		totals := computeContractorTotals(scheduleWithItems{
+			Schedule: s,
+			Columns:  cols,
+			Groups:   groupByRoom(views),
+		}, staleRedDays)
+		out = append(out, scheduleSummary{
+			Schedule:         s,
+			ItemCount:        len(rawItems),
+			LastUpdated:      last,
+			ContractorTotals: totals,
+		})
+	}
+	return out, nil
+}
+
+// priceParseRE matches a single dollar amount like "$135.38", "$1,519.20",
+// "$199", optionally preceded by "Was " or similar. Anything ambiguous (a
+// range "$X - $Y", "starting at", multi-currency) deliberately does NOT
+// match — those items are excluded from the subtotal and flagged in the
+// totals warning so the contractor sees what wasn't counted.
+var priceParseRE = regexp.MustCompile(`^[\s$]*\$?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*$`)
+var priceRangeRE = regexp.MustCompile(`[-–—]|\bto\b|starting`)
+
+// computeContractorTotals walks a schedule and produces the price aggregate
+// plus the named exclusions. Never excludes silently — every reason a row
+// doesn't contribute to the subtotal lands in one of MissingPrice /
+// RangePrice / StalePrice so the contractor can chase it down.
+func computeContractorTotals(sw scheduleWithItems, staleRedDays int) *contractorTotals {
+	t := &contractorTotals{}
+	staleCutoff := time.Time{}
+	if staleRedDays > 0 {
+		staleCutoff = time.Now().AddDate(0, 0, -staleRedDays)
+	}
+	for _, g := range sw.Groups {
+		for _, it := range g.Items {
+			t.TotalItems++
+			code := strings.TrimSpace(it.DataMap["code"])
+			if code == "" {
+				code = "—"
+			}
+			raw := strings.TrimSpace(it.DataMap["price"])
+			if raw == "" {
+				t.MissingPrice = append(t.MissingPrice, code)
+				continue
+			}
+			if priceRangeRE.MatchString(strings.ToLower(raw)) {
+				t.RangePrice = append(t.RangePrice, code)
+				continue
+			}
+			cents, ok := parsePriceCents(raw)
+			if !ok {
+				t.MissingPrice = append(t.MissingPrice, code)
+				continue
+			}
+			// Stale snapshot: still counts toward the subtotal (we have a
+			// price), but flagged so the contractor knows it might be wrong.
+			if pricedAt, err := time.Parse(time.RFC3339, it.DataMap["priced_at"]); err == nil {
+				if !staleCutoff.IsZero() && pricedAt.Before(staleCutoff) {
+					t.StalePrice = append(t.StalePrice, code)
+				}
+			}
+			t.SubtotalCents += cents
+			t.PricedCount++
+		}
+	}
+	t.SubtotalDisplay = formatCents(t.SubtotalCents)
+	return t
+}
+
+func parsePriceCents(raw string) (int64, bool) {
+	m := priceParseRE.FindStringSubmatch(raw)
+	if m == nil {
+		return 0, false
+	}
+	cleaned := strings.ReplaceAll(m[1], ",", "")
+	parts := strings.SplitN(cleaned, ".", 2)
+	dollars, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	var cents int64
+	if len(parts) == 2 {
+		// Pad to 2 digits (handles "$3.5" → 350 cents).
+		p := parts[1]
+		if len(p) == 1 {
+			p += "0"
+		} else if len(p) > 2 {
+			p = p[:2]
+		}
+		c, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		cents = c
+	}
+	return dollars*100 + cents, true
+}
+
+func formatCents(c int64) string {
+	dollars := c / 100
+	cents := c % 100
+	// Thousand separators.
+	in := strconv.FormatInt(dollars, 10)
+	var b strings.Builder
+	for i, r := range in {
+		if i > 0 && (len(in)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(r)
+	}
+	return fmt.Sprintf("$%s.%02d", b.String(), cents)
 }

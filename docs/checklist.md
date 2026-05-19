@@ -18,7 +18,8 @@
 - [x] ensure extension can auth
 - [x] going to /login when already logged in should redirect to / or /projects
 - [x] after clicking 'Sign in wiht google' in extension, instead of opening a new tab, could it open a pop up window? and when logged in, the extension self-refreshes? right now, it opens a tab insteda, and then goes to the mothership web app. I have to go back to the ecommerce site tab, where the extension still says 'login with google', and i have to refresh the page.
-- [x] the CODE field should default to some auto-incrementing value, multiple items may have the same code, use ./docs/example schedule.pdf -- it seems to follow the pattern
+- [x] the CODE field should default to some auto-incrementing value, multiple items may have the same code, use ./docs/example schedule.pdf -- it seems to follow the patternANTHROPIC_MODEL=claude-haiku-4-5
+
     1. capital first letter of schedule name, and sometimes an additional letter from the name, e.g. Paint -> PT
     2. a dash
     3. an incrementing number, can start at 0, 1, or higher
@@ -50,12 +51,12 @@ Bugs
 - [x] item detail modal does not scroll
 - [x] it should prompt to make a project if none exist before extraction
 
-- [ ] some sites hide the SPEC button and panel
+- [x] some sites hide the SPEC button and panel
     - https://www.aspectled.com/products/9-led-large-in-ground-in-wall-led-light-rgb-white-36w
     - https://simplygoodcoffee.com/products/the-brewer-plastic-free
-- [ ] "[current selected]": this is still happening! investigate again. i had a project with a Windows Schedule with items. I went to a product page for a window, spec'd it, sallypanel wanted to make a new schedule called "Window Schedule [current selected]". 
-- [ ] "stale code prefix": project with a schedule with insulation items. spec'd a product page for a window, and it wanted to add it to the insulation schedule (the llm extraction should have decided that the item did not logically fit with the items in the insulation schedule). i opted to add it to a new schedule named 'Window Schedule', the fields in sallypanel correctly updated back to the default fields (no R-Value), but the CODE kept the "I-" prefix from the previous table, when it should have determined a new Code prefix and number. Investigate.
-- [ ] "empty custom fields": project with windows schedule with items, i added custom columns: rough opening, overall jamb, swing. i spec'd a window product page, the custom fields were empty. the product page has a Specifications collapsable section with the desired data for the custom fields, check whether the specs were sent to the LLM, if so, investigate why the custom fields came back empty. product page: https://www.homedepot.com/p/Hy-Lite-47-5-in-x-11-5-in-Manchester-Silkscreened-Decorative-Glass-White-New-Construction-Frame-Window-DF4711MCSSWHV1500/331463170
+- [x] "[current selected]": this is still happening! investigate again. i had a project with a Windows Schedule with items. I went to a product page for a window, spec'd it, sallypanel wanted to make a new schedule called "Window Schedule [current selected]". 
+- [x] "stale code prefix": project with a schedule with insulation items. spec'd a product page for a window, and it wanted to add it to the insulation schedule (the llm extraction should have decided that the item did not logically fit with the items in the insulation schedule). i opted to add it to a new schedule named 'Window Schedule', the fields in sallypanel correctly updated back to the default fields (no R-Value), but the CODE kept the "I-" prefix from the previous table, when it should have determined a new Code prefix and number. Investigate.
+- [x] "empty custom fields": project with windows schedule with items, i added custom columns: rough opening, overall jamb, swing. i spec'd a window product page, the custom fields were empty. the product page has a Specifications collapsable section with the desired data for the custom fields, check whether the specs were sent to the LLM, if so, investigate why the custom fields came back empty. product page: https://www.homedepot.com/p/Hy-Lite-47-5-in-x-11-5-in-Manchester-Silkscreened-Decorative-Glass-White-New-Construction-Frame-Window-DF4711MCSSWHV1500/331463170
 - [ ] "HTTPS only error": got raw error in extension: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Only HTTPS URLs are supported."},"request_id":"req_011CamiCiV7uMRZHD25TAN8j"}`
 - [ ] "Download failure error": `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Unable to download the file. Please verify the URL and try again."},"request_id":"req_011Camj7gwaZSXvzqSjAht7C"}`
 - [ ] "robots.txt error": extension error: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"This URL is disallowed by the website's robots.txt file."},"request_id":"req_011CamkYhD1i1sJRXQ5rp8zt"}`
@@ -71,14 +72,26 @@ Critical Path
 - [x] add an About page that epxlains what problem this app solves, how to use it, how to install it, FAQs, etc
 - [x] re-order schedules option in the Actions menu, modal that looks similar to the Edit Columns modal (up / down buttons, but no rename or delete. ideally don't need a page reload to see updates)
 - [x] sallypanel: if new schedule, give user a way to add/remove/edit the columns, if not every time
+- [x] what about LLM cacheing? the responses from anthropic mention it:
+    ```json
+    "usage": {
+        "cache_creation": {
+            "ephemeral_1h_input_tokens": 0,
+            "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+    }
+    ```
+- [x] sally panel: replace progress bar countdown to close the panel after adding an item. the bar is vague as to what it represents. Instead, let's reomve the bar, and instead add another button under 'View Project' that says 'Close Panel Now', with maybe a little label under it that says 'Closing panel in [x] seconds...'? But what if they user wanted to keep the panel open? Consider the non-tech savvy user that needs more explicit prompting, less familiar with UX paradigms. Maybe something like 'Item has been added to your project / schedule, you may now close this panel. To view your project after this panel closes, [instructions]' whatever those steps may be, e.g. right click > sally > view schedule
+- [ ] ALWAYS capture procurement information for contractor: price, lead time, shipping speed, shipping cost, out of stock, back ordered. A contractor might pay more overall for a shorter lead time, but they also want to stay within budget
 - [ ] notes to support images, png / svg / copy-paste from CAD?
 - [ ] add link to mothership in chrome extension description
-- [ ] notes to support multiple "rows" or inner-sections?
 - [ ] a feature to delete all of a users data / opt-out
 - [ ] user account page, dummy billing, stripe?
-- [ ] add by URL in mothership instead of via chrome extension
 - [ ] defend against out of control infra costs / abuse
 - [ ] research cloudflare json extractor: https://developers.cloudflare.com/browser-run/quick-actions/json-endpoint/
+- [ ] notes to support multiple "rows" or inner-sections?
 
 Nice To Have
 - [x] LLM: scrape PDF content

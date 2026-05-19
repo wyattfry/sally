@@ -125,6 +125,7 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 		Schedule:         sw,
 		IsOwner:          isOwner,
 		OwnerDisplayName: ownerDisplayName,
+		ViewMode:         "architect",
 	})
 }
 
