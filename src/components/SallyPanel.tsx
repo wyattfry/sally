@@ -396,33 +396,38 @@ export function SallyPanel({
             </div>
 
             {columns.filter((col) => col.key !== "room").map((col) => {
-              const showFinishCombobox =
-                col.key === "finish" &&
-                availableFinishes && availableFinishes.length > 1;
+              const currentFinish = (draft?.data[col.key] ?? "").trim();
+              const finishOptions = (() => {
+                if (col.key !== "finish") return null;
+                const list = (availableFinishes ?? []).filter(Boolean);
+                if (list.length <= 1) return null;
+                // Ensure the current value is selectable even if the LLM
+                // didn't include it in availableFinishes.
+                if (currentFinish && !list.includes(currentFinish)) {
+                  return [currentFinish, ...list];
+                }
+                return list;
+              })();
               return (
               <div className="field" key={col.key}>
                 <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
-                {showFinishCombobox ? (
-                  <>
-                    <input
-                      id={`sally-col-${col.key}`}
-                      list="sally-finish-list"
-                      value={draft?.data[col.key] ?? ""}
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        if (!draft) return;
-                        const mapping = (finishModelMappings ?? []).find((m) => m.finish === next);
-                        const nextData = { ...draft.data, [col.key]: next };
-                        if (mapping) nextData.model_number = mapping.modelNumber;
-                        onChange({ ...draft, data: nextData });
-                      }}
-                    />
-                    <datalist id="sally-finish-list">
-                      {availableFinishes!.map((f) => (
-                        <option key={f} value={f} />
-                      ))}
-                    </datalist>
-                  </>
+                {finishOptions ? (
+                  <select
+                    id={`sally-col-${col.key}`}
+                    value={currentFinish}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      if (!draft) return;
+                      const mapping = (finishModelMappings ?? []).find((m) => m.finish === next);
+                      const nextData = { ...draft.data, [col.key]: next };
+                      if (mapping) nextData.model_number = mapping.modelNumber;
+                      onChange({ ...draft, data: nextData });
+                    }}
+                  >
+                    {finishOptions.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
                 ) : (
                   <input
                     id={`sally-col-${col.key}`}
