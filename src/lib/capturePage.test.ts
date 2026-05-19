@@ -49,6 +49,40 @@ describe("capturePage", () => {
     expect(captured.mainImageUrl).toBe("https://example.com/og-faucet.jpg");
   });
 
+  it("extracts product entries from an embedded Apollo state script", () => {
+    const apollo = {
+      "BaseProduct:itemId/326882450": {
+        __typename: "BaseProduct",
+        identifiers: {
+          __typename: "Identifiers",
+          modelNumber: "87260SRS",
+          brandName: "MOEN",
+          isSuperSku: true,
+          parentId: "328375714"
+        }
+      },
+      // Unrelated entry — should be filtered out.
+      "PlccPromotion:abc": { __typename: "PlccPromotion", code: "PLCC10" }
+    };
+    document.documentElement.innerHTML = `
+      <head>
+        <title>Doherty Faucet</title>
+        <script>
+          window.__APOLLO_STATE__ = ${JSON.stringify(apollo)};
+        </script>
+      </head>
+      <body><h1>Doherty</h1></body>
+    `;
+
+    const captured = capturePage(document, new URL("https://www.homedepot.com/pep/MOEN-Doherty-87260SRS/326882450"));
+
+    expect(captured.visibleText).toContain("[Embedded product state JSON:]");
+    expect(captured.visibleText).toContain("BaseProduct");
+    expect(captured.visibleText).toContain("87260SRS");
+    expect(captured.visibleText).toContain("isSuperSku");
+    expect(captured.visibleText).not.toContain("PlccPromotion");
+  });
+
   it("captures finish/color variant names from attribute-only swatch pickers", () => {
     // Mirrors the structure of Home Depot's super-sku picker: the active
     // swatch's name is in <p> text, but the inactive ones live only in

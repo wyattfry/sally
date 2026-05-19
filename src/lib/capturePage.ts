@@ -44,6 +44,10 @@ function captureVisibleText(doc: Document): string {
   if (variantOptions) {
     out += "\n[Variant options:]\n" + variantOptions;
   }
+  const pageState = capturePageState(doc);
+  if (pageState) {
+    out += "\n[Embedded product state JSON:]\n" + pageState;
+  }
   if (out.length < MAX_VISIBLE_TEXT_LENGTH) {
     const collapsed = captureCollapsedContent(doc);
     if (collapsed) {
@@ -51,6 +55,84 @@ function captureVisibleText(doc: Document): string {
     }
   }
   return out.slice(0, MAX_VISIBLE_TEXT_LENGTH);
+}
+
+const PRODUCT_TYPENAME_RE = /^(BaseProduct|Product|SuperSku|Sku|Variant|Identifiers|Specification|SpecificationGroup|Attribute|Info|Details|MediaItem|Media|FinishVariant)$/i;
+const MAX_STATE_PER_BLOB = 3000;
+const MAX_STATE_TOTAL = 6000;
+
+// capturePageState pulls product-relevant entries out of the page's
+// embedded JS state (Apollo cache, __NEXT_DATA__, __PRELOADED_STATE__,
+// etc.). Carries structured data the visible-text walk can't surface
+// — brand, model, SKU, isSuperSku flags, parent IDs, etc.
+function capturePageState(doc: Document): string {
+  const blobs: string[] = [];
+  let budget = MAX_STATE_TOTAL;
+
+  for (const script of doc.querySelectorAll<HTMLScriptElement>("script")) {
+    if (budget <= 0) break;
+    const type = (script.getAttribute("type") || "").toLowerCase();
+    const text = script.textContent || "";
+    if (!text || text.length < 50) continue;
+
+    let raw: string | null = null;
+
+    if (type === "application/json") {
+      // Skip JSON-LD (we already capture that as structuredData) and
+      // anything tiny enough to be a config.
+      if (text.includes("@context") && text.includes("schema.org")) continue;
+      if (script.id === "__NEXT_DATA__" || text.length > 500) raw = text;
+    } else if (!type || type === "text/javascript" || type === "application/javascript") {
+      // Common JS-assignment globals: __APOLLO_STATE__, __PRELOADED_STATE__,
+      // __INITIAL_STATE__, __NUXT__. Extract just the object literal.
+      const m =
+        text.match(/__(?:APOLLO_STATE|PRELOADED_STATE|INITIAL_STATE|NUXT)__\s*=\s*(\{[\s\S]*?\})\s*;?\s*$/m) ||
+        text.match(/window\.__(?:APOLLO_STATE|PRELOADED_STATE|INITIAL_STATE)__\s*=\s*(\{[\s\S]*?\})/);
+      if (m) raw = m[1];
+    }
+
+    if (!raw) continue;
+    const trimmed = trimProductState(raw);
+    if (!trimmed) continue;
+    const slice = trimmed.slice(0, Math.min(MAX_STATE_PER_BLOB, budget));
+    blobs.push(slice);
+    budget -= slice.length;
+  }
+
+  return blobs.join("\n\n");
+}
+
+function trimProductState(raw: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return "";
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "";
+
+  // Apollo cache style: flat map of normalized entries with __typename.
+  const obj = parsed as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  let hits = 0;
+  for (const [k, v] of Object.entries(obj)) {
+    if (!v || typeof v !== "object") continue;
+    const typename = (v as { __typename?: unknown }).__typename;
+    if (typeof typename === "string" && PRODUCT_TYPENAME_RE.test(typename)) {
+      out[k] = v;
+      hits++;
+    }
+  }
+  if (hits > 0) {
+    try { return JSON.stringify(out); } catch { return ""; }
+  }
+  // Fallback for non-Apollo shapes (Next.js __NEXT_DATA__ etc.): if the
+  // raw blob mentions product-specific signals, return it as-is so the
+  // LLM can mine it. Otherwise drop it.
+  if (/"(?:sku|modelNumber|brand(?:Name)?|isSuperSku|variants?)"\s*:/i.test(raw)) {
+    return raw;
+  }
+  return "";
 }
 
 // captureVariantOptions extracts finish/color/size names from product
