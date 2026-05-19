@@ -112,6 +112,78 @@ describe("capturePage", () => {
     expect(captured.visibleText).toContain("Matte Black");
   });
 
+  it("extracts finish names from common-prefix swatch alts (Ferguson pattern)", () => {
+    // Real DOM shape from fergusonhome.com: 5 swatch <div>s, each with one
+    // <img> whose alt is the full product title plus the finish at the end.
+    // My old per-label length cap rejected these as too long; common-prefix
+    // collapse should recover the finish suffixes.
+    const titlePrefix = "Kohler Castia by Studio McGee 1.2 GPM Widespread Bathroom Faucet with Drain Assembly";
+    const finishes = ["Matte Black", "Polished Chrome", "Vibrant Brushed Moderne Brass", "Vibrant Brushed Nickel", "Vibrant Polished Nickel"];
+    document.documentElement.innerHTML = `
+      <body>
+        <div>
+          <strong>Finish: </strong><span data-automation="finish-name">Matte Black</span>
+          <span>- 81 In Stock</span>
+          <div class="list flex flex-row flex-wrap">
+            ${finishes.map((f, i) => `
+              <div data-automation="finish-swatch" role="checkbox" aria-checked="${i===0}">
+                <img alt="${titlePrefix} ${f}" src="https://example.com/${i}.jpg" />
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </body>
+    `;
+
+    const captured = capturePage(document, new URL("https://www.fergusonhome.com/kohler-k-35908-4/s1939306"));
+
+    expect(captured.visibleText).toContain("[Variant options:]");
+    for (const f of finishes) {
+      expect(captured.visibleText).toContain(f);
+    }
+    // The product title should NOT appear in the Variant options section —
+    // common-prefix stripping should have removed it.
+    const variantSection = captured.visibleText.split("[Variant options:]")[1] ?? "";
+    expect(variantSection).not.toContain("Widespread Bathroom Faucet with Drain Assembly");
+  });
+
+  it("preserves shared qualifier words like 'Vibrant' when stripping the prefix", () => {
+    // Pathological case: all four finishes start with "Vibrant". A naive
+    // common-prefix strip would lump "Vibrant " into the prefix and we'd
+    // lose the qualifier. The active-finish anchor (via aria-checked=true)
+    // tells us where the finish actually begins.
+    const titlePrefix = "Kohler Castia by Studio McGee 1.2 GPM Widespread Bathroom Faucet";
+    const finishes = [
+      "Vibrant Brushed Nickel",
+      "Vibrant Polished Nickel",
+      "Vibrant Brushed Moderne Brass",
+      "Vibrant Polished Brass"
+    ];
+    document.documentElement.innerHTML = `
+      <body>
+        <div>
+          <strong>Finish: </strong><span data-automation="finish-name">Vibrant Brushed Nickel</span>
+          <div>
+            ${finishes.map((f, i) => `
+              <div data-automation="finish-swatch" aria-checked="${i===0}">
+                <img alt="${titlePrefix} ${f}" />
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </body>
+    `;
+
+    const captured = capturePage(document, new URL("https://example.com/p"));
+    const variantSection = captured.visibleText.split("[Variant options:]")[1] ?? "";
+
+    for (const f of finishes) {
+      expect(variantSection).toContain(f);
+    }
+    // Specifically: "Vibrant" must be preserved, not stripped into the prefix.
+    expect(variantSection).toMatch(/Vibrant\s+Brushed\s+Nickel/);
+  });
+
   it("falls back to the largest visible image when no open graph image exists", () => {
     document.documentElement.innerHTML = `
       <head><title>Toilet</title></head>

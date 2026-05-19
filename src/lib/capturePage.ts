@@ -149,16 +149,16 @@ function captureVariantOptions(doc: Document): string {
 
   for (const container of containers) {
     const label = inferContainerLabel(container);
-    const values = new Set<string>();
+    const raw: string[] = [];
     for (const el of container.querySelectorAll<HTMLElement>("[alt], [aria-label], [value]")) {
       for (const attr of ["aria-label", "alt", "value"]) {
-        const raw = el.getAttribute(attr);
-        if (!raw) continue;
-        const v = raw.trim();
-        if (!v || v.length > 80) continue;
-        values.add(v);
+        const v = el.getAttribute(attr)?.trim();
+        if (v) raw.push(v);
       }
     }
+    if (raw.length === 0) continue;
+    const activeFinish = findActiveFinish(container);
+    const values = collapseSwatchLabels(raw, activeFinish);
     if (values.size === 0) continue;
     const joined = Array.from(values).join(", ");
     const key = (label || "") + "|" + joined;
@@ -173,17 +173,115 @@ function captureVariantOptions(doc: Document): string {
 
 const VARIANT_LABEL_RE = /\b(color\s*\/?\s*finish|finish|color|variant|option|swatch)\b/i;
 
+// collapseSwatchLabels reduces a list of attribute values into the actual
+// variant names. Three paths, tried in order:
+// - Short-enough labels (<= 80 chars): used as-is. Covers e.g. Home Depot
+//   where aria-label = "Matte Black".
+// - Active-finish anchored strip: if we know the currently-selected
+//   finish ("Matte Black"), find the sibling alt that ends with it,
+//   take everything before it as the prefix, and strip that prefix from
+//   every sibling. Robust against the case where all siblings share a
+//   qualifier word like "Vibrant" (Kohler) — that qualifier stays on
+//   the finish, not in the stripped prefix.
+// - Common-prefix fallback: longest-common-prefix across siblings,
+//   backed up to a word boundary. Used when there's no detectable
+//   active finish.
+function collapseSwatchLabels(raw: string[], activeFinish: string): Set<string> {
+  const out = new Set<string>();
+  const short = raw.filter((s) => s.length <= 80);
+  if (short.length >= 2 || (short.length === 1 && raw.length === 1)) {
+    for (const s of short) out.add(s);
+    return out;
+  }
+  if (raw.length < 2) return out;
+
+  if (activeFinish && activeFinish.length <= 80) {
+    const tail = " " + activeFinish;
+    const anchor = raw.find((s) => s.endsWith(tail) || s === activeFinish);
+    if (anchor) {
+      const cut = anchor.length - activeFinish.length;
+      const prefix = anchor.slice(0, cut).replace(/\s+$/, "");
+      if (prefix.length === 0) {
+        // No prefix to strip — labels start with the finish itself.
+        for (const s of raw) if (s.length <= 80) out.add(s);
+      } else {
+        for (const s of raw) {
+          if (!s.startsWith(prefix)) continue;
+          const t = s.slice(prefix.length).trim();
+          if (t && t.length <= 80) out.add(t);
+        }
+      }
+      if (out.size >= 2) return out;
+      out.clear();
+    }
+  }
+
+  const prefix = longestCommonPrefix(raw);
+  if (prefix.length < 20) return out;
+  // Back up the trailing partial word; if the trim removed nothing
+  // (prefix already ended at whitespace), back up one full word so we
+  // don't accidentally cut into a finish qualifier shared by every
+  // sibling (e.g. "Vibrant Polished Nickel" / "Vibrant Brushed Nickel").
+  let cut = prefix.replace(/\S*$/, "").trimEnd().length;
+  if (cut === prefix.length) {
+    cut = prefix.replace(/\s+\S+\s*$/, "").length;
+  }
+  if (cut === 0) return out;
+  for (const s of raw) {
+    const tail = s.slice(cut).trim();
+    if (tail && tail.length <= 80) out.add(tail);
+  }
+  return out;
+}
+
+function findActiveFinish(container: Element): string {
+  // (a) data-automation hooks: Ferguson uses [data-automation="finish-name"]
+  for (const el of container.querySelectorAll<HTMLElement>('[data-automation*="name" i]')) {
+    const t = el.textContent?.replace(/\s+/g, " ").trim();
+    if (t && t.length > 0 && t.length < 80 && !/^finish$/i.test(t)) return t;
+  }
+  // (b) aria-pressed / aria-checked = true on a swatch button
+  const active = container.querySelector('[aria-pressed="true"], [aria-checked="true"]');
+  if (active) {
+    for (const attr of ["aria-label", "value"]) {
+      const v = active.getAttribute(attr)?.trim();
+      if (v && v.length < 80) return v;
+    }
+    const img = active.querySelector<HTMLElement>("[alt]");
+    const alt = img?.getAttribute("alt")?.trim();
+    if (alt && alt.length < 80) return alt;
+  }
+  return "";
+}
+
+function longestCommonPrefix(strs: string[]): string {
+  if (strs.length === 0) return "";
+  let prefix = strs[0];
+  for (let i = 1; i < strs.length && prefix; i++) {
+    let j = 0;
+    while (j < prefix.length && j < strs[i].length && prefix[j] === strs[i][j]) j++;
+    prefix = prefix.slice(0, j);
+  }
+  return prefix;
+}
+
 function findVariantContainers(doc: Document): Element[] {
   const seen = new Set<Element>();
   const out: Element[] = [];
 
-  // (a) Explicit signals: known component tags, ARIA radiogroups.
+  // (a) Explicit signals: known component tags, automation hooks, ARIA radiogroups.
   const explicit = doc.querySelectorAll(
     '[data-component*="super-sku" i], [data-component*="variant" i], ' +
     '[data-component*="swatch" i], [data-fusion-component*="super-sku" i], ' +
+    '[data-automation*="swatch" i], [data-automation*="finish" i], ' +
+    '[data-automation*="variant" i], [data-automation*="color" i], ' +
     '[role="radiogroup"], [aria-label*="finish" i], [aria-label*="color" i]'
   );
   for (const el of explicit) {
+    // Require multiple labeled descendants so individual swatches (e.g.
+    // each <div data-automation="finish-swatch"> wrapping one <img>)
+    // don't burn container slots — the parent group catches them.
+    if (el.querySelectorAll("[alt], [aria-label], [value]").length < 2) continue;
     if (!seen.has(el)) { seen.add(el); out.push(el); }
   }
 
@@ -194,7 +292,7 @@ function findVariantContainers(doc: Document): Element[] {
     acceptNode(node) {
       const el = node as Element;
       if (seen.has(el)) return NodeFilter.FILTER_REJECT;
-      const own = (el as HTMLElement).innerText?.slice(0, 200) ?? "";
+      const own = (el as HTMLElement).textContent?.replace(/\s+/g, " ").trim().slice(0, 200) ?? "";
       if (!VARIANT_LABEL_RE.test(own)) return NodeFilter.FILTER_SKIP;
       // Need at least 2 attribute-labeled descendants to count as a swatch row
       const labeled = el.querySelectorAll("[alt], [aria-label]").length;
@@ -219,7 +317,7 @@ function inferContainerLabel(container: Element): string {
   // few text-bearing children. Falls back to aria-label on the container.
   const aria = container.getAttribute("aria-label");
   if (aria && VARIANT_LABEL_RE.test(aria)) return aria.trim();
-  const text = (container as HTMLElement).innerText?.slice(0, 200) ?? "";
+  const text = (container as HTMLElement).textContent?.replace(/\s+/g, " ").trim().slice(0, 200) ?? "";
   const m = text.match(/(Color\s*\/?\s*Finish|Finish|Color|Variant|Option)\s*:?/i);
   return m ? m[1].trim() : "";
 }
