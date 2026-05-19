@@ -274,6 +274,17 @@
   color: var(--c-warning);
 }
 
+.finish-respec-warning {
+  background: rgba(179, 92, 0, 0.08);
+  border-left: 3px solid var(--c-warning);
+  color: var(--c-warning);
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  border-radius: 3px;
+}
+
 .field {
   display: grid;
   gap: 5px;

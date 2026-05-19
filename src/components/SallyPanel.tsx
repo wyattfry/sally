@@ -395,49 +395,70 @@ export function SallyPanel({
               </select>
             </div>
 
-            {columns.filter((col) => col.key !== "room").map((col) => {
-              const currentFinish = (draft?.data[col.key] ?? "").trim();
-              const finishOptions = (() => {
-                if (col.key !== "finish") return null;
-                const list = (availableFinishes ?? []).filter(Boolean);
-                if (list.length <= 1) return null;
-                // Ensure the current value is selectable even if the LLM
-                // didn't include it in availableFinishes.
-                if (currentFinish && !list.includes(currentFinish)) {
-                  return [currentFinish, ...list];
-                }
-                return list;
-              })();
-              return (
-              <div className="field" key={col.key}>
-                <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
-                {finishOptions ? (
-                  <select
-                    id={`sally-col-${col.key}`}
-                    value={currentFinish}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      if (!draft) return;
-                      const mapping = (finishModelMappings ?? []).find((m) => m.finish === next);
-                      const nextData = { ...draft.data, [col.key]: next };
-                      if (mapping) nextData.model_number = mapping.modelNumber;
-                      onChange({ ...draft, data: nextData });
-                    }}
-                  >
-                    {finishOptions.map((f) => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id={`sally-col-${col.key}`}
-                    value={draft?.data[col.key] ?? ""}
-                    onChange={(event) => updateData(col.key, event.target.value)}
-                  />
-                )}
-              </div>
-              );
-            })}
+            {(() => {
+              // Computed once: warn under Model when the currently-selected
+              // finish is a known variant but we don't have its SKU mapping
+              // and Model is empty. Cleared automatically when the user
+              // picks a finish with a mapping (Model auto-populates) or
+              // types a Model manually.
+              const currentFinishGlobal = (draft?.data.finish ?? "").trim();
+              const list = (availableFinishes ?? []).filter(Boolean);
+              const isVariantFinish = list.length > 1 && list.includes(currentFinishGlobal);
+              const hasMapping = (finishModelMappings ?? []).some((m) => m.finish === currentFinishGlobal);
+              const currentModel = (draft?.data.model_number ?? "").trim();
+              const showRespecWarning = isVariantFinish && !hasMapping && !currentModel;
+
+              return columns.filter((col) => col.key !== "room").map((col) => {
+                const currentFinish = (draft?.data[col.key] ?? "").trim();
+                const finishOptions = (() => {
+                  if (col.key !== "finish") return null;
+                  const opts = list;
+                  if (opts.length <= 1) return null;
+                  if (currentFinish && !opts.includes(currentFinish)) {
+                    return [currentFinish, ...opts];
+                  }
+                  return opts;
+                })();
+                return (
+                <div className="field" key={col.key}>
+                  <label htmlFor={`sally-col-${col.key}`}>{col.label}</label>
+                  {finishOptions ? (
+                    <select
+                      id={`sally-col-${col.key}`}
+                      value={currentFinish}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        if (!draft) return;
+                        const mapping = (finishModelMappings ?? []).find((m) => m.finish === next);
+                        const nextData = { ...draft.data, [col.key]: next };
+                        // Auto-update Model when we know the SKU for the
+                        // picked finish; otherwise clear it so the user
+                        // doesn't end up with a stale SKU from the prior
+                        // finish (and so the respec warning shows).
+                        nextData.model_number = mapping ? mapping.modelNumber : "";
+                        onChange({ ...draft, data: nextData });
+                      }}
+                    >
+                      {finishOptions.map((f) => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`sally-col-${col.key}`}
+                      value={draft?.data[col.key] ?? ""}
+                      onChange={(event) => updateData(col.key, event.target.value)}
+                    />
+                  )}
+                  {col.key === "model_number" && showRespecWarning ? (
+                    <p className="finish-respec-warning">
+                      Model unknown for &ldquo;{currentFinishGlobal}&rdquo; — re-spec from that variant&rsquo;s product page to populate the SKU.
+                    </p>
+                  ) : null}
+                </div>
+                );
+              });
+            })()}
 
             {draft?.sourcePdfLinks?.length ? (
               <div className="source-links">
