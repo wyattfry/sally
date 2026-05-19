@@ -46,10 +46,22 @@ func TestAnthropicExtractorRequestShape(t *testing.T) {
 		t.Fatalf("expected model in request, got %#v", capturedBody["model"])
 	}
 
-	// System prompt must include the prompt version
-	system, _ := capturedBody["system"].(string)
-	if !strings.Contains(system, PromptVersion) {
-		t.Fatalf("expected prompt version in system prompt, got %q", system)
+	// System is now an array of text blocks (so we can attach cache_control).
+	// The single block must contain the prompt version and carry an ephemeral
+	// cache_control marker — that's what enables prompt caching across requests
+	// with the same tool schema.
+	systemBlocks, _ := capturedBody["system"].([]any)
+	if len(systemBlocks) != 1 {
+		t.Fatalf("expected 1 system block, got %d", len(systemBlocks))
+	}
+	sys, _ := systemBlocks[0].(map[string]any)
+	systemText, _ := sys["text"].(string)
+	if !strings.Contains(systemText, PromptVersion) {
+		t.Fatalf("expected prompt version in system prompt, got %q", systemText)
+	}
+	cacheControl, _ := sys["cache_control"].(map[string]any)
+	if cacheControl["type"] != "ephemeral" {
+		t.Fatalf("expected cache_control type=ephemeral on system block, got %#v", sys["cache_control"])
 	}
 
 	// Messages: single user turn

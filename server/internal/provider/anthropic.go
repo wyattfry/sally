@@ -120,6 +120,15 @@ func (a AnthropicExtractor) Extract(ctx context.Context, req extract.ExtractSpec
 	meta.PromptTokens = upstream.Usage.InputTokens
 	meta.CompletionTokens = upstream.Usage.OutputTokens
 
+	// Surface cache activity so we can verify prompt caching is working.
+	// `input_tokens` here is the uncached remainder only — total prompt size is
+	// input + cache_creation + cache_read. If cache_read stays at 0 across
+	// repeat extractions with the same custom-columns schema, the system+tools
+	// prefix is below the model's minimum cacheable size (4096 for Haiku 4.5).
+	log.Printf("[anthropic] %s: usage input=%d output=%d cache_create=%d cache_read=%d",
+		req.RequestID, upstream.Usage.InputTokens, upstream.Usage.OutputTokens,
+		upstream.Usage.CacheCreationInputTokens, upstream.Usage.CacheReadInputTokens)
+
 	return extract.ExtractSpecResponse{
 		RequestID: req.RequestID,
 		Status:    "ok",
@@ -155,11 +164,22 @@ func buildAnthropicRequest(req extract.ExtractSpecRequest, model string) anthrop
 		{Type: "text", Text: buildUserPrompt(req)},
 	}
 
+	// Single cache_control marker on the system block caches `tools + system`
+	// as a unit (render order: tools → system → messages). Hits when the same
+	// schedule's custom columns drive the tool schema across requests — i.e.
+	// spec'ing multiple items into the same schedule. Heads up: Haiku 4.5
+	// requires a 4096-token minimum cacheable prefix; below that the cache
+	// silently won't activate (no error). The few-shot example + tool schema
+	// is borderline; the marker is a no-op until the prompt grows past 4K.
 	return anthropicRequest{
 		Model:     model,
 		MaxTokens: anthropicMaxTokens,
-		System:    "You are Sally. Extract one architectural schedule proposal as strict JSON. Prompt version: " + PromptVersion + fewShotExample,
-		Messages:  []anthropicMessage{{Role: "user", Content: userContent}},
+		System: []anthropicSystemBlock{{
+			Type:         "text",
+			Text:         "You are Sally. Extract one architectural schedule proposal as strict JSON. Prompt version: " + PromptVersion + fewShotExample,
+			CacheControl: &anthropicCacheControl{Type: "ephemeral"},
+		}},
+		Messages: []anthropicMessage{{Role: "user", Content: userContent}},
 		Tools: []anthropicTool{{
 			Name:        "extract_spec",
 			Description: "Extract one architectural schedule item from the product page content",
@@ -170,12 +190,22 @@ func buildAnthropicRequest(req extract.ExtractSpecRequest, model string) anthrop
 }
 
 type anthropicRequest struct {
-	Model      string               `json:"model"`
-	MaxTokens  int                  `json:"max_tokens"`
-	System     string               `json:"system"`
-	Messages   []anthropicMessage   `json:"messages"`
-	Tools      []anthropicTool      `json:"tools"`
-	ToolChoice anthropicToolChoice  `json:"tool_choice"`
+	Model      string                 `json:"model"`
+	MaxTokens  int                    `json:"max_tokens"`
+	System     []anthropicSystemBlock `json:"system"`
+	Messages   []anthropicMessage     `json:"messages"`
+	Tools      []anthropicTool        `json:"tools"`
+	ToolChoice anthropicToolChoice    `json:"tool_choice"`
+}
+
+type anthropicSystemBlock struct {
+	Type         string                 `json:"type"`
+	Text         string                 `json:"text"`
+	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
+}
+
+type anthropicCacheControl struct {
+	Type string `json:"type"` // "ephemeral" — default 5-minute TTL
 }
 
 type anthropicMessage struct {
@@ -200,8 +230,10 @@ type anthropicToolChoice struct {
 }
 
 type anthropicUsage struct {
-	InputTokens  int `json:"input_tokens"`
-	OutputTokens int `json:"output_tokens"`
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
 }
 
 type anthropicResponse struct {
