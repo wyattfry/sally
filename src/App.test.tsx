@@ -160,7 +160,8 @@ describe("App", () => {
     await waitFor(() => expect(screen.queryByLabelText("Sally capture panel")).not.toBeInTheDocument());
     expect(saveMothershipScheduleItem).toHaveBeenCalledWith(
       "schedule-1",
-      expect.objectContaining({ data: expect.objectContaining({ title: "Wall faucet revised" }) })
+      expect.objectContaining({ data: expect.objectContaining({ title: "Wall faucet revised" }) }),
+      expect.anything()
     );
     expect(screen.getByText(/Added to/)).toBeInTheDocument();
   });
@@ -188,7 +189,8 @@ describe("App", () => {
 
     expect(saveMothershipScheduleItem).toHaveBeenCalledWith(
       "schedule-2",
-      expect.objectContaining({ data: expect.objectContaining({ title: "Wall Faucet" }) })
+      expect.objectContaining({ data: expect.objectContaining({ title: "Wall Faucet" }) }),
+      expect.anything()
     );
   });
 

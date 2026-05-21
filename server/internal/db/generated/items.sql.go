@@ -106,6 +106,48 @@ func (q *Queries) GetScheduleItem(ctx context.Context, id string) (ScheduleItem,
 	return i, err
 }
 
+const listProjectItemsWithSchedule = `-- name: ListProjectItemsWithSchedule :many
+select i.id, i.schedule_id, i.data, s.name as schedule_name
+from schedule_items i
+join schedules s on s.id = i.schedule_id
+where s.project_id = $1
+`
+
+type ListProjectItemsWithScheduleRow struct {
+	ID           string          `json:"id"`
+	ScheduleID   string          `json:"schedule_id"`
+	Data         json.RawMessage `json:"data"`
+	ScheduleName string          `json:"schedule_name"`
+}
+
+func (q *Queries) ListProjectItemsWithSchedule(ctx context.Context, projectID string) ([]ListProjectItemsWithScheduleRow, error) {
+	rows, err := q.db.QueryContext(ctx, listProjectItemsWithSchedule, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProjectItemsWithScheduleRow
+	for rows.Next() {
+		var i ListProjectItemsWithScheduleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ScheduleID,
+			&i.Data,
+			&i.ScheduleName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listScheduleItems = `-- name: ListScheduleItems :many
 select id, schedule_id, source_url, source_title, source_image_url, source_pdf_links, position, created_at, updated_at, room, data, source_image_urls
 from schedule_items

@@ -39,6 +39,7 @@ func registerMothershipAPI(mux *http.ServeMux, deps web.Deps) {
 	mux.HandleFunc("POST /api/v1/projects", api.createProject)
 	mux.HandleFunc("GET /api/v1/projects/{projectID}/schedules", api.listSchedules)
 	mux.HandleFunc("POST /api/v1/projects/{projectID}/schedules", api.createSchedule)
+	mux.HandleFunc("GET /api/v1/projects/{projectID}/duplicate-check", api.checkDuplicate)
 	mux.HandleFunc("GET /api/v1/schedules/{scheduleID}/columns", api.listScheduleColumns)
 	mux.HandleFunc("GET /api/v1/schedules/{scheduleID}/next-code", api.getScheduleNextCode)
 	mux.HandleFunc("POST /api/v1/schedules/{scheduleID}/items", api.createScheduleItem)
@@ -272,13 +273,89 @@ func (api mothershipAPI) getScheduleNextCode(w http.ResponseWriter, r *http.Requ
 }
 
 type createScheduleItemRequest struct {
-	Data            map[string]string `json:"data"`
-	Room            string            `json:"room"`
-	SourceURL       string            `json:"sourceUrl"`
-	SourceTitle     string            `json:"sourceTitle"`
-	SourceImageURL  string            `json:"sourceImageUrl"`
-	SourceImageURLs []string          `json:"sourceImageUrls"`
-	SourcePDFLinks  []string          `json:"sourcePdfLinks"`
+	Data             map[string]string `json:"data"`
+	Room             string            `json:"room"`
+	SourceURL        string            `json:"sourceUrl"`
+	SourceTitle      string            `json:"sourceTitle"`
+	SourceImageURL   string            `json:"sourceImageUrl"`
+	SourceImageURLs  []string          `json:"sourceImageUrls"`
+	SourcePDFLinks   []string          `json:"sourcePdfLinks"`
+	ConfirmDuplicate bool              `json:"confirmDuplicate"`
+}
+
+type duplicateItemResponse struct {
+	Error        string `json:"error"`
+	Duplicate    bool   `json:"duplicate"`
+	ScheduleID   string `json:"scheduleId"`
+	ScheduleName string `json:"scheduleName"`
+	ItemCode     string `json:"itemCode"`
+}
+
+// normalizeMatchKey lowercases, trims, and strips non-alphanumerics. Used to
+// compare manufacturer + model_number when looking for already-spec'd items —
+// e.g. "K-3589" and "k3589" should collide.
+func normalizeMatchKey(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range strings.ToLower(strings.TrimSpace(s)) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+func (api mothershipAPI) checkDuplicate(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("projectID")
+	if _, err := api.queries.GetProject(r.Context(), projectID); errors.Is(err, sql.ErrNoRows) {
+		writeJSONError(w, http.StatusNotFound, "project not found")
+		return
+	} else if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "could not load project")
+		return
+	}
+	incoming := map[string]string{
+		"manufacturer": r.URL.Query().Get("manufacturer"),
+		"model_number": r.URL.Query().Get("model_number"),
+	}
+	dup, found := api.findDuplicateItem(r.Context(), projectID, incoming)
+	if !found {
+		writeJSON(w, http.StatusOK, duplicateItemResponse{Duplicate: false})
+		return
+	}
+	var dupData map[string]string
+	_ = json.Unmarshal(dup.Data, &dupData)
+	writeJSON(w, http.StatusOK, duplicateItemResponse{
+		Duplicate:    true,
+		ScheduleID:   dup.ScheduleID,
+		ScheduleName: dup.ScheduleName,
+		ItemCode:     dupData["code"],
+	})
+}
+
+// findDuplicateItem scans every item in the project for one whose
+// manufacturer+model_number matches the incoming data. Returns an empty row
+// when either key is missing or no match is found.
+func (api mothershipAPI) findDuplicateItem(ctx context.Context, projectID string, incoming map[string]string) (queries.ListProjectItemsWithScheduleRow, bool) {
+	mfg := normalizeMatchKey(incoming["manufacturer"])
+	model := normalizeMatchKey(incoming["model_number"])
+	if mfg == "" || model == "" {
+		return queries.ListProjectItemsWithScheduleRow{}, false
+	}
+	items, err := api.queries.ListProjectItemsWithSchedule(ctx, projectID)
+	if err != nil {
+		return queries.ListProjectItemsWithScheduleRow{}, false
+	}
+	for _, it := range items {
+		var d map[string]string
+		if err := json.Unmarshal(it.Data, &d); err != nil {
+			continue
+		}
+		if normalizeMatchKey(d["manufacturer"]) == mfg && normalizeMatchKey(d["model_number"]) == model {
+			return it, true
+		}
+	}
+	return queries.ListProjectItemsWithScheduleRow{}, false
 }
 
 func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Request) {
@@ -311,6 +388,21 @@ func (api mothershipAPI) createScheduleItem(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "could not load items")
 		return
+	}
+
+	if !req.ConfirmDuplicate {
+		if dup, found := api.findDuplicateItem(r.Context(), schedule.ProjectID, req.Data); found {
+			var dupData map[string]string
+			_ = json.Unmarshal(dup.Data, &dupData)
+			writeJSON(w, http.StatusConflict, duplicateItemResponse{
+				Error:        "duplicate item",
+				Duplicate:    true,
+				ScheduleID:   dup.ScheduleID,
+				ScheduleName: dup.ScheduleName,
+				ItemCode:     dupData["code"],
+			})
+			return
+		}
 	}
 
 	if req.Data["code"] == "" {

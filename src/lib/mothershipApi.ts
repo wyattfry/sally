@@ -71,9 +71,28 @@ export async function getMothershipScheduleNextCode(scheduleId: string): Promise
   return res.nextCode;
 }
 
+export type DuplicateItemInfo = {
+  scheduleId: string;
+  scheduleName: string;
+  itemCode: string;
+};
+
+// Thrown by saveMothershipScheduleItem when the server reports a same-project
+// duplicate (same manufacturer + model_number). Callers should prompt the user
+// and retry with confirmDuplicate=true to override.
+export class DuplicateItemError extends Error {
+  duplicate: DuplicateItemInfo;
+  constructor(duplicate: DuplicateItemInfo) {
+    super("duplicate item");
+    this.name = "DuplicateItemError";
+    this.duplicate = duplicate;
+  }
+}
+
 export async function saveMothershipScheduleItem(
   scheduleId: string,
-  item: ScheduleItem
+  item: ScheduleItem,
+  options: { confirmDuplicate?: boolean } = {}
 ): Promise<void> {
   await fetchJSON(`/api/v1/schedules/${encodeURIComponent(scheduleId)}/items`, {
     method: "POST",
@@ -85,9 +104,30 @@ export async function saveMothershipScheduleItem(
       sourceTitle: item.sourceTitle,
       sourceImageUrl: item.sourceImageUrl ?? "",
       sourceImageUrls: item.sourceImageUrls ?? [],
-      sourcePdfLinks: item.sourcePdfLinks
+      sourcePdfLinks: item.sourcePdfLinks,
+      confirmDuplicate: options.confirmDuplicate ?? false
     })
   });
+}
+
+export async function checkDuplicateItem(
+  projectId: string,
+  manufacturer: string,
+  modelNumber: string
+): Promise<DuplicateItemInfo | null> {
+  const qs = new URLSearchParams({ manufacturer, model_number: modelNumber }).toString();
+  const res = await fetchJSON<{
+    duplicate: boolean;
+    scheduleId?: string;
+    scheduleName?: string;
+    itemCode?: string;
+  }>(`/api/v1/projects/${encodeURIComponent(projectId)}/duplicate-check?${qs}`);
+  if (!res.duplicate) return null;
+  return {
+    scheduleId: String(res.scheduleId ?? ""),
+    scheduleName: String(res.scheduleName ?? ""),
+    itemCode: String(res.itemCode ?? "")
+  };
 }
 
 export function getMothershipScheduleUrl(projectId: string, scheduleId: string): string {
@@ -113,6 +153,21 @@ function extractErrorMessage(text: string): string {
     if (typeof parsed.error === "string") return parsed.error;
   } catch { /* use raw text */ }
   return text;
+}
+
+function maybeDuplicateError(status: number, text: string): DuplicateItemError | null {
+  if (status !== 409) return null;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.duplicate) {
+      return new DuplicateItemError({
+        scheduleId: String(parsed.scheduleId ?? ""),
+        scheduleName: String(parsed.scheduleName ?? ""),
+        itemCode: String(parsed.itemCode ?? "")
+      });
+    }
+  } catch { /* fall through */ }
+  return null;
 }
 
 async function fetchForm(path: string, body: URLSearchParams): Promise<void> {
@@ -182,6 +237,8 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
 
     if (!response.ok) {
       const text = response.text?.trim() || "";
+      const dup = maybeDuplicateError(response.status, text);
+      if (dup) throw dup;
       throw new Error(extractErrorMessage(text) || "Mother Ship request failed.");
     }
     return JSON.parse(response.text) as T;
@@ -191,6 +248,8 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) {
     const text = (await response.text()).trim();
+    const dup = maybeDuplicateError(response.status, text);
+    if (dup) throw dup;
     throw new Error(extractErrorMessage(text) || "Mother Ship request failed.");
   }
   return response.json() as Promise<T>;

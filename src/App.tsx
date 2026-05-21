@@ -14,6 +14,9 @@ import {
   listMothershipScheduleColumns,
   getMothershipScheduleNextCode,
   saveMothershipScheduleItem,
+  DuplicateItemError,
+  checkDuplicateItem,
+  type DuplicateItemInfo,
 } from "./lib/mothershipApi";
 import { mockExtractScheduleItem } from "./lib/mockExtraction";
 import {
@@ -54,6 +57,7 @@ export default function App() {
   const [columns, setColumns] = useState<ScheduleColumn[]>([]);
   const [rooms, setRooms] = useState<string[]>([]);
   const [activeContext, setActiveContext] = useState<ActiveContext | null>(null);
+  const [duplicate, setDuplicate] = useState<DuplicateItemInfo | null>(null);
 
   useEffect(() => {
     refreshContext();
@@ -86,6 +90,30 @@ export default function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [panel]);
+
+  // Re-run the duplicate check whenever the project, manufacturer, or
+  // model_number changes in the review draft. Result is rendered inline by
+  // SallyPanel — purely a UX warning; the server enforces the final 409.
+  const reviewDraft = panel.kind === "review" ? panel.draft : null;
+  const projectId = activeContext?.projectId ?? "";
+  const draftMfg = reviewDraft?.data.manufacturer ?? "";
+  const draftModel = reviewDraft?.data.model_number ?? "";
+  useEffect(() => {
+    if (!reviewDraft || !projectId || !draftMfg.trim() || !draftModel.trim()) {
+      setDuplicate(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const dup = await checkDuplicateItem(projectId, draftMfg, draftModel);
+        if (!cancelled) setDuplicate(dup);
+      } catch {
+        if (!cancelled) setDuplicate(null);
+      }
+    }, 250);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [reviewDraft, projectId, draftMfg, draftModel]);
 
   async function refreshContext(): Promise<{ schedules: Schedule[]; activeContext: ActiveContext | null; columns: ScheduleColumn[] }> {
     try {
@@ -256,14 +284,22 @@ export default function App() {
     }
 
     try {
-      await saveMothershipScheduleItem(activeContext.scheduleId, item);
-      const scheduleName = schedules.find((s) => s.id === activeContext.scheduleId)?.name ?? "schedule";
-      const projectName = projects.find((p) => p.id === activeContext.projectId)?.name ?? "project";
-      setPanel({ kind: "added", projectId: activeContext.projectId, scheduleId: activeContext.scheduleId, scheduleName, projectName });
+      await saveMothershipScheduleItem(activeContext.scheduleId, item, { confirmDuplicate: duplicate !== null });
     } catch (error) {
+      // The inline warning is the primary defense. If the server still 409s
+      // (e.g. another tab added the same item after our check), surface a
+      // visible duplicate notice and let the user re-click to confirm.
+      if (error instanceof DuplicateItemError) {
+        setDuplicate(error.duplicate);
+        return;
+      }
       const message = error instanceof Error ? error.message : "Could not save item.";
       setPanel({ kind: "error", message });
+      return;
     }
+    const scheduleName = schedules.find((s) => s.id === activeContext.scheduleId)?.name ?? "schedule";
+    const projectName = projects.find((p) => p.id === activeContext.projectId)?.name ?? "project";
+    setPanel({ kind: "added", projectId: activeContext.projectId, scheduleId: activeContext.scheduleId, scheduleName, projectName });
   }
 
   async function handleSelectProject(projectId: string) {
@@ -443,6 +479,7 @@ export default function App() {
           suggestedNewScheduleName={panel.kind === "review" ? panel.suggestedNewScheduleName : undefined}
           availableFinishes={panel.kind === "review" ? panel.availableFinishes : undefined}
           finishModelMappings={panel.kind === "review" ? panel.finishModelMappings : undefined}
+          duplicate={duplicate}
           onCancel={() => setPanel({ kind: "closed" })}
           onChange={(draft) =>
             panel.kind === "review" ? setPanel({ ...panel, draft }) : undefined

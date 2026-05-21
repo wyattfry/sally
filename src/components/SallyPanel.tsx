@@ -5,6 +5,7 @@ import {
   renameMothershipScheduleColumn,
   deleteMothershipScheduleColumn,
   reorderMothershipScheduleColumns,
+  type DuplicateItemInfo,
 } from "../lib/mothershipApi";
 
 type PanelState =
@@ -22,6 +23,7 @@ type SallyPanelProps = {
   suggestedNewScheduleName?: string;
   availableFinishes?: string[];
   finishModelMappings?: FinishModelMapping[];
+  duplicate?: DuplicateItemInfo | null;
   onChange: (draft: ScheduleItem) => void;
   onSelectProject: (projectId: string) => void;
   onSelectSchedule: (scheduleId: string) => void;
@@ -45,6 +47,7 @@ export function SallyPanel({
   suggestedNewScheduleName,
   availableFinishes,
   finishModelMappings,
+  duplicate,
   onChange,
   onSelectProject,
   onSelectSchedule,
@@ -473,6 +476,13 @@ export function SallyPanel({
         )}
       </div>
 
+      <div className="panel-footer">
+      {panel.kind === "review" && duplicate ? (
+        <p className="duplicate-warning">
+          Already added to this project{duplicate.itemCode ? ` as ${duplicate.itemCode}` : ""}
+          {duplicate.scheduleName ? ` in ${duplicate.scheduleName}` : ""}
+        </p>
+      ) : null}
       <div className="panel-actions">
         {panel.kind === "review" && activeContext?.scheduleId ? (
           <button
@@ -498,8 +508,9 @@ export function SallyPanel({
           type="button"
           onClick={() => draft && onAccept(draft)}
         >
-          OK
+          {duplicate ? "Add anyway" : "OK"}
         </button>
+      </div>
       </div>
     </aside>
   );

@@ -119,6 +119,101 @@ func TestMothershipAPISavesScheduleItem(t *testing.T) {
 	}
 }
 
+func TestNormalizeMatchKey(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"K-3589", "k3589"},
+		{"k3589", "k3589"},
+		{"  Kohler ", "kohler"},
+		{"Example Co.", "exampleco"},
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := normalizeMatchKey(c.in); got != c.want {
+			t.Errorf("normalizeMatchKey(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestMothershipAPIDuplicateItemBlockedWithoutConfirm(t *testing.T) {
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("DATABASE_URL is not set")
+	}
+
+	conn, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+
+	if err := appdb.RunMigrations(context.Background(), conn, "../../migrations"); err != nil {
+		t.Fatalf("run migrations: %v", err)
+	}
+
+	q := queries.New(conn)
+	ctx := context.Background()
+	user, err := q.CreateUser(ctx, queries.CreateUserParams{Email: "dup-test@example.com", Name: "Dup Test"})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	project, err := q.CreateProject(ctx, queries.CreateProjectParams{OwnerUserID: user.ID, Name: "Dup Project"})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	schedA, err := q.CreateSchedule(ctx, queries.CreateScheduleParams{ProjectID: project.ID, Name: "Plumbing", Kind: "items", Position: 1})
+	if err != nil {
+		t.Fatalf("create sched A: %v", err)
+	}
+	schedB, err := q.CreateSchedule(ctx, queries.CreateScheduleParams{ProjectID: project.ID, Name: "Lighting", Kind: "items", Position: 2})
+	if err != nil {
+		t.Fatalf("create sched B: %v", err)
+	}
+
+	router := NewRouterWithDeps(config.Config{}, provider.NewStubExtractor(), web.Deps{
+		Queries: q, DevUserEmail: "dup-test@example.com", DevUserName: "Dup Test",
+	})
+
+	// First item lands in schedule A.
+	first := bytes.NewBufferString(`{"data":{"title":"Faucet","manufacturer":"Kohler","model_number":"K-3589"}}`)
+	r1 := httptest.NewRecorder()
+	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/schedules/"+schedA.ID+"/items", first)
+	req1.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(r1, req1)
+	if r1.Code != http.StatusCreated {
+		t.Fatalf("first insert: expected 201, got %d body=%s", r1.Code, r1.Body.String())
+	}
+
+	// Second attempt — same model, different casing/punctuation, into a different schedule
+	// in the same project — must be flagged as a duplicate.
+	second := bytes.NewBufferString(`{"data":{"title":"Same Faucet","manufacturer":"kohler","model_number":"k3589"}}`)
+	r2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/schedules/"+schedB.ID+"/items", second)
+	req2.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(r2, req2)
+	if r2.Code != http.StatusConflict {
+		t.Fatalf("dup attempt: expected 409, got %d body=%s", r2.Code, r2.Body.String())
+	}
+	var dup duplicateItemResponse
+	if err := json.Unmarshal(r2.Body.Bytes(), &dup); err != nil {
+		t.Fatalf("decode conflict body: %v", err)
+	}
+	if !dup.Duplicate || dup.ScheduleID != schedA.ID || dup.ScheduleName != "Plumbing" {
+		t.Fatalf("unexpected conflict body: %#v", dup)
+	}
+
+	// With confirmDuplicate=true the insert should go through.
+	third := bytes.NewBufferString(`{"data":{"title":"Same Faucet","manufacturer":"kohler","model_number":"k3589"},"confirmDuplicate":true}`)
+	r3 := httptest.NewRecorder()
+	req3 := httptest.NewRequest(http.MethodPost, "/api/v1/schedules/"+schedB.ID+"/items", third)
+	req3.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(r3, req3)
+	if r3.Code != http.StatusCreated {
+		t.Fatalf("confirmed dup: expected 201, got %d body=%s", r3.Code, r3.Body.String())
+	}
+}
+
 func TestMothershipAPIRoomRoundTrips(t *testing.T) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {

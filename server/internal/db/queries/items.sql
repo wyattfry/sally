@@ -24,6 +24,12 @@ from schedule_items
 where schedule_id = $1
 order by room asc, position asc, created_at asc;
 
+-- name: ListProjectItemsWithSchedule :many
+select i.id, i.schedule_id, i.data, s.name as schedule_name
+from schedule_items i
+join schedules s on s.id = i.schedule_id
+where s.project_id = $1;
+
 -- name: UpdateScheduleItem :one
 update schedule_items
 set data              = $2,
