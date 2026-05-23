@@ -17,6 +17,20 @@ var templatesFS embed.FS
 
 var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 	"add":         func(a, b int) int { return a + b },
+	"grandTotalDisplay": func(schedules []scheduleSummary) string {
+		var cents int64
+		var hasAny bool
+		for _, s := range schedules {
+			if s.ContractorTotals != nil && s.ContractorTotals.SubtotalCents > 0 {
+				cents += s.ContractorTotals.SubtotalCents
+				hasAny = true
+			}
+		}
+		if !hasAny {
+			return ""
+		}
+		return formatCents(cents)
+	},
 	"formatBytes": FormatBytes,
 	"pct": func(num, den int64) string {
 		if den == 0 {

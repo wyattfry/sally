@@ -69,6 +69,9 @@ type scheduleSummary struct {
 	Schedule    queries.Schedule
 	ItemCount   int
 	LastUpdated time.Time
+	// Up to 3 item thumbnail URLs shown as preview chips on the schedule
+	// list row (contractor view entices clicking; architect gets context).
+	PreviewImages []string
 	// Populated in contractor view: per-schedule subtotal + counts of items
 	// excluded for various reasons (no price, price range, stale snapshot).
 	ContractorTotals *contractorTotals
@@ -113,11 +116,15 @@ type aboutPage struct {
 	Title string
 }
 
-type notFoundPage struct {
+type staticPage struct {
 	Kind  string
 	Title string
 }
 
+type notFoundPage struct {
+	Kind  string
+	Title string
+}
 
 type adminPage struct {
 	Kind              string

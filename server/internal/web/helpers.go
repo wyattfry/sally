@@ -295,9 +295,10 @@ func (a app) scheduleSummaries(ctx context.Context, projectID string) ([]schedul
 			}
 		}
 		out = append(out, scheduleSummary{
-			Schedule:    s,
-			ItemCount:   len(items),
-			LastUpdated: last,
+			Schedule:      s,
+			ItemCount:     len(items),
+			LastUpdated:   last,
+			PreviewImages: collectPreviewImages(items, 3),
 		})
 	}
 	return out, nil
@@ -401,10 +402,26 @@ func (a app) scheduleSummariesWithContractorTotals(ctx context.Context, projectI
 			Schedule:         s,
 			ItemCount:        len(rawItems),
 			LastUpdated:      last,
+			PreviewImages:    collectPreviewImages(rawItems, 3),
 			ContractorTotals: totals,
 		})
 	}
 	return out, nil
+}
+
+// collectPreviewImages returns up to n non-empty SourceImageUrl values from
+// a slice of items, for use as thumbnail previews on the schedule list row.
+func collectPreviewImages(items []queries.ScheduleItem, n int) []string {
+	var out []string
+	for _, it := range items {
+		if it.SourceImageUrl != "" {
+			out = append(out, it.SourceImageUrl)
+			if len(out) >= n {
+				break
+			}
+		}
+	}
+	return out
 }
 
 // priceParseRE matches a single dollar amount like "$135.38", "$1,519.20",

@@ -31,9 +31,9 @@
     <div class="footer-inner">
       <ul class="footer-links">
         <li><a href="/about">About</a></li>
-        <li><a href="#">Press</a></li>
-        <li><a href="#">Privacy Policy</a></li>
-        <li><a href="#">Contact</a></li>
+        <li><a href="/press">Press</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/contact">Contact</a></li>
         <li><a href="https://chromewebstore.google.com/detail/sally-spec-poc/cpjlofdhdfpmbcmjbpipdfjjhhiohcac"
             target="_blank" rel="noopener">Chrome Extension</a></li>
       </ul>
@@ -167,6 +167,9 @@
      a branch here when introducing a new page. */}}
 {{define "content"}}
 {{if eq .Kind "about"}}{{template "page-about" .}}
+{{else if eq .Kind "press"}}{{template "page-press" .}}
+{{else if eq .Kind "privacy"}}{{template "page-privacy" .}}
+{{else if eq .Kind "contact"}}{{template "page-contact" .}}
 {{else if eq .Kind "home"}}{{template "page-home" .}}
 {{else if eq .Kind "project"}}{{template "page-project" .}}
 {{else if eq .Kind "schedule"}}{{template "page-schedule" .}}

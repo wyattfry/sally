@@ -54,14 +54,14 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	}
 
 	a := app{
-		queries:       deps.Queries,
-		db:            deps.DB,
-		devUserEmail:  firstNonEmpty(deps.DevUserEmail, "dev@spexxtool.local"),
-		devUserName:   firstNonEmpty(deps.DevUserName, "Development User"),
-		oauthConfig:   deps.OAuthConfig,
-		sessionSecret: deps.SessionSecret,
-		uploadsDir:    uploadsDir,
-		adminEmail:    deps.AdminEmail,
+		queries:                  deps.Queries,
+		db:                       deps.DB,
+		devUserEmail:             firstNonEmpty(deps.DevUserEmail, "dev@spexxtool.local"),
+		devUserName:              firstNonEmpty(deps.DevUserName, "Development User"),
+		oauthConfig:              deps.OAuthConfig,
+		sessionSecret:            deps.SessionSecret,
+		uploadsDir:               uploadsDir,
+		adminEmail:               deps.AdminEmail,
 		contractorStaleAmberDays: firstPositive(deps.ContractorStaleAmberDays, 30),
 		contractorStaleRedDays:   firstPositive(deps.ContractorStaleRedDays, 90),
 	}
@@ -71,6 +71,9 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 	mux.HandleFunc("GET /login", a.loginPage)
 	mux.HandleFunc("GET /about", a.aboutPage)
+	mux.HandleFunc("GET /press", a.pressPage)
+	mux.HandleFunc("GET /privacy", a.privacyPage)
+	mux.HandleFunc("GET /contact", a.contactPage)
 	mux.HandleFunc("GET /auth/google", a.startGoogleOAuth)
 	mux.HandleFunc("GET /auth/callback", a.oauthCallback)
 	mux.HandleFunc("GET /auth/done", a.authDone)

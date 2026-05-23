@@ -74,7 +74,17 @@
         {{end}}
       </div>
     </div>
-    {{if and (not $isContractor) .ActiveLink}}
+    {{if $isContractor}}
+    <div class="project-header-right">
+      <div class="readonly-badge">
+        <span class="readonly-badge-icon">👁</span>
+        <div>
+          <p class="readonly-badge-title">Contractor view</p>
+          <p class="readonly-badge-sub">Read only — you can view but not edit</p>
+        </div>
+      </div>
+    </div>
+    {{else if .ActiveLink}}
     <div class="project-header-right">
       <div class="share-box">
         <p class="share-box-label">Share this project</p>

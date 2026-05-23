@@ -77,7 +77,11 @@
           {{if $isContractor}}
           <td class="item-thumb-cell">
             {{if $item.SourceImageUrl}}
-            <img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">
+            <button type="button" class="item-thumb-btn item-thumb-btn--lightbox"
+              onclick="document.getElementById('lightbox').showModal();document.getElementById('lightbox-img').src=this.dataset.src"
+              data-src="{{$item.SourceImageUrl}}" title="View full image">
+              <img class="item-thumb" src="{{$item.SourceImageUrl}}" alt="">
+            </button>
             {{else}}
             <div class="item-thumb-placeholder">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -244,5 +248,11 @@
   {{end}}{{/* end {{if not $isContractor}} wrapping the architect-only dialogs */}}
   {{end}}{{/* end {{if ne $s.Kind "note"}} */}}
 </div>
+
+{{if $isContractor}}
+<dialog id="lightbox" class="lightbox-dialog" onclick="this.close()">
+  <img id="lightbox-img" class="lightbox-img" src="" alt="Full-size product image">
+</dialog>
+{{end}}
 
 {{end}}

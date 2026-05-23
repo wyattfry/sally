@@ -84,7 +84,7 @@ Critical Path
     }
     ```
 - [x] sally panel: replace progress bar countdown to close the panel after adding an item. the bar is vague as to what it represents. Instead, let's reomve the bar, and instead add another button under 'View Project' that says 'Close Panel Now', with maybe a little label under it that says 'Closing panel in [x] seconds...'? But what if they user wanted to keep the panel open? Consider the non-tech savvy user that needs more explicit prompting, less familiar with UX paradigms. Maybe something like 'Item has been added to your project / schedule, you may now close this panel. To view your project after this panel closes, [instructions]' whatever those steps may be, e.g. right click > sally > view schedule
-- [ ] ALWAYS capture procurement information for contractor: price, lead time, shipping speed, shipping cost, out of stock, back ordered. A contractor might pay more overall for a shorter lead time, but they also want to stay within budget
+- [x] ALWAYS capture procurement information for contractor: price, lead time, shipping speed, shipping cost, out of stock, back ordered. A contractor might pay more overall for a shorter lead time, but they also want to stay within budget
 - [ ] notes to support images, png / svg / copy-paste from CAD?
 - [ ] add link to mothership in chrome extension description
 - [ ] a feature to delete all of a users data / opt-out
@@ -92,6 +92,8 @@ Critical Path
 - [ ] defend against out of control infra costs / abuse
 - [ ] research cloudflare json extractor: https://developers.cloudflare.com/browser-run/quick-actions/json-endpoint/
 - [ ] notes to support multiple "rows" or inner-sections?
+- [ ] provision prod environment ()
+- [ ] contractor view: clicking thumbnails should show a modal with a larger rendering of the image
 
 Nice To Have
 - [x] LLM: scrape PDF content

@@ -138,41 +138,58 @@
   {{end}}{{/* end {{if not $isContractor}} wrapping sched-reorder dialog */}}
 <div class="project-layout">
   <div class="schedule-content">
-    {{if eq .ViewMode "contractor"}}
-    <div class="contractor-banner">
-      <p>You're viewing this project as a contractor. Click into each schedule to see items, prices, and lead times. Prices were captured at spec time — verify at the vendor link before ordering.</p>
-    </div>
-    {{end}}
     {{if .Schedules}}
     <ul class="schedule-list">
-      {{range .Schedules}}
-      <li class="schedule-list-row" id="schedule-{{.Schedule.ID}}">
-        <a class="schedule-list-link" href="{{if eq $.ViewMode "contractor"}}/share/{{$.ShareToken}}/schedules/{{.Schedule.ID}}{{else}}/projects/{{$.Project.ID}}/schedules/{{.Schedule.ID}}{{end}}">
-          <span class="schedule-list-name">{{.Schedule.Name}}{{if eq .Schedule.Kind "note"}} <span class="schedule-list-kind">(note)</span>{{end}}</span>
-          <span class="schedule-list-meta">
-            {{if ne .Schedule.Kind "note"}}<span class="schedule-list-count">{{.ItemCount}} item{{if ne .ItemCount 1}}s{{end}}</span> ·{{end}}
-            {{if and (eq $.ViewMode "contractor") .ContractorTotals (ne .Schedule.Kind "note")}}
-            <span class="schedule-list-subtotal">{{.ContractorTotals.SubtotalDisplay}}</span>
-            {{if or .ContractorTotals.MissingPrice .ContractorTotals.RangePrice}}
-            <span class="schedule-list-warn" title="{{len .ContractorTotals.MissingPrice}} without price, {{len .ContractorTotals.RangePrice}} with price ranges — not included in subtotal">⚠</span>
+      {{range $i, $sched := .Schedules}}
+      <li class="schedule-list-row" id="schedule-{{$sched.Schedule.ID}}">
+        <a class="schedule-list-link" href="{{if eq $.ViewMode "contractor"}}/share/{{$.ShareToken}}/schedules/{{$sched.Schedule.ID}}{{else}}/projects/{{$.Project.ID}}/schedules/{{$sched.Schedule.ID}}{{end}}">
+          <div class="schedule-list-main">
+            <span class="schedule-list-name">{{$sched.Schedule.Name}}{{if eq $sched.Schedule.Kind "note"}} <span class="schedule-list-kind">(note)</span>{{end}}</span>
+            <span class="schedule-list-meta">
+              {{if ne $sched.Schedule.Kind "note"}}<span class="schedule-list-count">{{$sched.ItemCount}} item{{if ne $sched.ItemCount 1}}s{{end}}</span> ·{{end}}
+              {{if and (eq $.ViewMode "contractor") $sched.ContractorTotals (ne $sched.Schedule.Kind "note")}}
+              <span class="schedule-list-subtotal">{{$sched.ContractorTotals.SubtotalDisplay}}</span>
+              {{if or $sched.ContractorTotals.MissingPrice $sched.ContractorTotals.RangePrice}}
+              <span class="schedule-list-warn" title="{{len $sched.ContractorTotals.MissingPrice}} without price, {{len $sched.ContractorTotals.RangePrice}} with price ranges — not included in subtotal">⚠</span>
+              {{end}}
+              ·
+              {{end}}
+              <span class="schedule-list-updated">updated <time class="local-time" datetime="{{isoTime $sched.LastUpdated}}">{{humanTime $sched.LastUpdated}}</time></span>
+            </span>
+            {{if eq $.ViewMode "contractor"}}
+            <span class="schedule-list-hint">Click to view items →</span>
             {{end}}
-            ·
-            {{end}}
-            <span class="schedule-list-updated">updated <time class="local-time" datetime="{{isoTime .LastUpdated}}">{{humanTime .LastUpdated}}</time></span>
-          </span>
+          </div>
+          {{if $sched.PreviewImages}}
+          <div class="schedule-list-thumbs">
+            {{range $sched.PreviewImages}}<img class="schedule-list-thumb" src="{{.}}" alt="">{{end}}
+          </div>
+          {{end}}
         </a>
       </li>
       {{end}}
     </ul>
     {{else}}
-    {{if eq .ViewMode "contractor"}}
-    <p class="muted">No schedules yet.</p>
-    {{else}}
     <div class="empty-state empty-state--centered">
       <div class="empty-state-content">
         <p class="empty-state-headline">No schedules yet.</p>
-        <p class="empty-state-body">Schedules group related items — for example, <em>Lighting</em>, <em>Plumbing</em>, or <em>Door Hardware</em>. The easiest way to start one is to visit a product page in your browser (Home Depot, Ferguson, Lightology, etc.) and click <strong>SPEC</strong>; Sally will suggest a schedule name for you. You can also create one manually below.</p>
+        {{if eq .ViewMode "contractor"}}
+        <p class="empty-state-body">This project has not had any items added to it yet. You may check back later, or reach out to the project owner for updates.</p>
+        {{else}}
+        <p class="empty-state-body">Schedules group related items — for example, <em>Lighting</em>, <em>Plumbing</em>, or <em>Door Hardware</em>.</p><p class="empty-state-body"> The easiest way to start one is to visit a product page in your browser (Home Depot, Ferguson, Lightology, etc.) and click <strong>SPEC</strong>; Sally will suggest a schedule name for you. You can also create one manually below.</p>
       </div>
+    </div>
+    {{end}}
+    {{end}}
+    {{if eq .ViewMode "contractor"}}
+    {{$grand := grandTotalDisplay .Schedules}}
+    {{if $grand}}
+    <div class="contractor-grand-total">
+      <span class="contractor-grand-total-label">Project total</span>
+      <span class="contractor-grand-total-value">{{$grand}}</span>
+    </div>
+    <div class="contractor-grand-total-note">
+      <span class="contractor-grand-total-note">Priced items only — see individual schedules for exclusions</span>
     </div>
     {{end}}
     {{end}}

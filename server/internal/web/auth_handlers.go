@@ -31,6 +31,18 @@ func (a app) aboutPage(w http.ResponseWriter, r *http.Request) {
 	render(w, aboutPage{Kind: "about", Title: "About Sally"})
 }
 
+func (a app) pressPage(w http.ResponseWriter, r *http.Request) {
+	render(w, staticPage{Kind: "press", Title: "Press"})
+}
+
+func (a app) privacyPage(w http.ResponseWriter, r *http.Request) {
+	render(w, staticPage{Kind: "privacy", Title: "Privacy Policy"})
+}
+
+func (a app) contactPage(w http.ResponseWriter, r *http.Request) {
+	render(w, staticPage{Kind: "contact", Title: "Contact"})
+}
+
 func (a app) startGoogleOAuth(w http.ResponseWriter, r *http.Request) {
 	if a.oauthConfig == nil {
 		http.Redirect(w, r, "/projects", http.StatusSeeOther)
