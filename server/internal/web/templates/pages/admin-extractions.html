@@ -4,6 +4,16 @@
   <h1>Extraction calls</h1>
 </div>
 <section class="admin-section">
+  <div class="admin-pagination">
+    <p class="admin-pagination-count">
+      {{if .TotalLogs}}Showing {{.PageStartIndex}}-{{.PageEndIndex}} of {{.TotalLogs}}{{else}}Showing 0 of 0{{end}}
+    </p>
+    <div class="admin-pagination-controls">
+      {{if .PrevPageURL}}<a class="button button--small" href="{{.PrevPageURL}}">Previous</a>{{else}}<span class="button button--small button-disabled">Previous</span>{{end}}
+      <span class="admin-pagination-page">Page {{.Page}} of {{.TotalPages}}</span>
+      {{if .NextPageURL}}<a class="button button--small" href="{{.NextPageURL}}">Next</a>{{else}}<span class="button button--small button-disabled">Next</span>{{end}}
+    </div>
+  </div>
   <div class="admin-table-wrap">
     <table class="admin-table">
       <thead><tr><th>Request ID</th><th>Time (UTC)</th><th>Provider / Model</th><th>ms</th><th>In tok</th><th>Out tok</th><th>Missing fields</th><th>Status</th><th>Page</th></tr></thead>
@@ -23,6 +33,16 @@
         {{end}}
       </tbody>
     </table>
+  </div>
+  <div class="admin-pagination admin-pagination--bottom">
+    <p class="admin-pagination-count">
+      {{if .TotalLogs}}Showing {{.PageStartIndex}}-{{.PageEndIndex}} of {{.TotalLogs}}{{else}}Showing 0 of 0{{end}}
+    </p>
+    <div class="admin-pagination-controls">
+      {{if .PrevPageURL}}<a class="button button--small" href="{{.PrevPageURL}}">Previous</a>{{else}}<span class="button button--small button-disabled">Previous</span>{{end}}
+      <span class="admin-pagination-page">Page {{.Page}} of {{.TotalPages}}</span>
+      {{if .NextPageURL}}<a class="button button--small" href="{{.NextPageURL}}">Next</a>{{else}}<span class="button button--small button-disabled">Next</span>{{end}}
+    </div>
   </div>
 </section>
 

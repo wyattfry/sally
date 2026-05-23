@@ -274,16 +274,65 @@ func (a app) adminExtractions(w http.ResponseWriter, r *http.Request) {
 	if !a.requireAdmin(w, r) {
 		return
 	}
-	logs, err := appdb.QueryRecentExtractionLogs(r.Context(), a.db, 500)
+	const perPage = 50
+	totalLogs, err := appdb.CountExtractionLogs(r.Context(), a.db)
+	if err != nil {
+		http.Error(w, "could not count extractions: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	totalPages := (totalLogs + perPage - 1) / perPage
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	page := parsePositiveInt(r.URL.Query().Get("page"), 1)
+	if page > totalPages {
+		page = totalPages
+	}
+	offset := (page - 1) * perPage
+	logs, err := appdb.QueryExtractionLogsPage(r.Context(), a.db, perPage, offset)
 	if err != nil {
 		http.Error(w, "could not load extractions: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	start, end := 0, 0
+	if totalLogs > 0 && len(logs) > 0 {
+		start = offset + 1
+		end = offset + len(logs)
+	}
+	var prevURL, nextURL string
+	if page > 1 {
+		prevURL = adminExtractionsPageURL(r, page-1)
+	}
+	if page < totalPages {
+		nextURL = adminExtractionsPageURL(r, page+1)
+	}
 	a.render(w, r, adminExtractionsPage{
-		Kind:       "admin-extractions",
-		Title:      "Admin — Extractions",
-		RecentLogs: logs,
+		Kind:           "admin-extractions",
+		Title:          "Admin — Extractions",
+		RecentLogs:     logs,
+		Page:           page,
+		PerPage:        perPage,
+		TotalLogs:      totalLogs,
+		TotalPages:     totalPages,
+		PrevPageURL:    prevURL,
+		NextPageURL:    nextURL,
+		PageStartIndex: start,
+		PageEndIndex:   end,
 	})
+}
+
+func parsePositiveInt(raw string, fallback int) int {
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return fallback
+	}
+	return n
+}
+
+func adminExtractionsPageURL(r *http.Request, page int) string {
+	q := r.URL.Query()
+	q.Set("page", strconv.Itoa(page))
+	return r.URL.Path + "?" + q.Encode()
 }
 
 func (a app) adminExtractionDetail(w http.ResponseWriter, r *http.Request) {

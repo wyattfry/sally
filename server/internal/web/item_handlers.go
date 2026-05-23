@@ -535,10 +535,19 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 		switch tv := v.(type) {
 		case string:
 			if f.key == "priced_at" {
-				// Store is ISO-8601; render as a human date via a <time> element
-				// so the layout JS can localise it the same way timestamps are.
-				fmt.Fprintf(&b, `<dt>%s</dt><dd><time class="local-time" datetime="%s">%s</time></dd>`,
-					html.EscapeString(f.label), html.EscapeString(tv), html.EscapeString(tv))
+				// Parse ISO-8601 (written by the panel as time.toISOString())
+				// and format like the site's other human timestamps. The JS
+				// local-time formatter only runs at page load, so HTMX-injected
+				// fragments must be pre-formatted server-side.
+				display := tv
+				for _, layout := range []string{time.RFC3339Nano, time.RFC3339, "2006-01-02T15:04:05.000Z"} {
+					if t, err := time.Parse(layout, tv); err == nil {
+						display = t.UTC().Format("Jan 2, 2006 at 3:04 PM") + " UTC"
+						break
+					}
+				}
+				fmt.Fprintf(&b, `<dt>%s</dt><dd>%s</dd>`,
+					html.EscapeString(f.label), html.EscapeString(display))
 			} else {
 				writeField(f.label, tv)
 			}

@@ -61,6 +61,41 @@ func TestAdminDashboardRendersChartSeriesAsJavaScriptArrays(t *testing.T) {
 	}
 }
 
+func TestAdminExtractionsPageRendersPagination(t *testing.T) {
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/admin/extractions?page=2", nil)
+	a := app{}
+
+	a.render(resp, req, adminExtractionsPage{
+		Kind:           "admin-extractions",
+		Title:          "Admin — Extractions",
+		RecentLogs:     []appdb.ExtractionLogRow{{RequestID: "req-2", CreatedAt: "2026-05-23T12:00:00Z", Provider: "stub", Model: "test", Success: true}},
+		Page:           2,
+		PerPage:        50,
+		TotalLogs:      125,
+		TotalPages:     3,
+		PrevPageURL:    "/admin/extractions?page=1",
+		NextPageURL:    "/admin/extractions?page=3",
+		PageStartIndex: 51,
+		PageEndIndex:   100,
+	})
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", resp.Code, resp.Body.String())
+	}
+	body := resp.Body.String()
+	for _, want := range []string{
+		"Showing 51-100 of 125",
+		`href="/admin/extractions?page=1"`,
+		`href="/admin/extractions?page=3"`,
+		"Page 2 of 3",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected admin extractions page to contain %q, got:\n%s", want, body)
+		}
+	}
+}
+
 func newAdminTestSetup(t *testing.T) (*queries.Queries, *sql.DB, http.Handler) {
 	t.Helper()
 	databaseURL := os.Getenv("DATABASE_URL")

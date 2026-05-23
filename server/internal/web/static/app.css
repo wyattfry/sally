@@ -2203,6 +2203,35 @@ details.schedule-section table {
 .admin-section {
   margin: 28px 0;
 }
+
+.admin-pagination {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 0 0 12px;
+}
+
+.admin-pagination--bottom {
+  margin: 12px 0 0;
+}
+
+.admin-pagination-count,
+.admin-pagination-page {
+  color: var(--c-text-muted);
+  font-size: 13px;
+}
+
+.admin-pagination-count {
+  margin: 0;
+}
+
+.admin-pagination-controls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .admin-section-title {
   font-size: 14px;
   font-weight: 700;
@@ -2530,6 +2559,12 @@ details.schedule-section table {
 .button--small {
   font-size: 0.82rem;
   padding: 4px 10px;
+}
+
+.button-disabled {
+  cursor: default;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .button--danger {

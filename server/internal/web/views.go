@@ -163,9 +163,17 @@ type adminAPITokensPage struct {
 }
 
 type adminExtractionsPage struct {
-	Kind       string
-	Title      string
-	RecentLogs []appdb.ExtractionLogRow
+	Kind           string
+	Title          string
+	RecentLogs     []appdb.ExtractionLogRow
+	Page           int
+	PerPage        int
+	TotalLogs      int
+	TotalPages     int
+	PrevPageURL    string
+	NextPageURL    string
+	PageStartIndex int
+	PageEndIndex   int
 }
 
 type adminExtractionDetailPage struct {

@@ -114,6 +114,10 @@ func QueryExtractionProviderStats(ctx context.Context, db *sql.DB) ([]Extraction
 }
 
 func QueryRecentExtractionLogs(ctx context.Context, db *sql.DB, limit int) ([]ExtractionLogRow, error) {
+	return QueryExtractionLogsPage(ctx, db, limit, 0)
+}
+
+func QueryExtractionLogsPage(ctx context.Context, db *sql.DB, limit, offset int) ([]ExtractionLogRow, error) {
 	rows, err := db.QueryContext(ctx, `
 		select
 			request_id, provider, model, prompt_version, duration_ms, success,
@@ -123,8 +127,8 @@ func QueryRecentExtractionLogs(ctx context.Context, db *sql.DB, limit int) ([]Ex
 			prompt_tokens, completion_tokens, missing_fields_count
 		from extraction_logs
 		order by created_at desc
-		limit $1
-	`, limit)
+		limit $1 offset $2
+	`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +144,12 @@ func QueryRecentExtractionLogs(ctx context.Context, db *sql.DB, limit int) ([]Ex
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+func CountExtractionLogs(ctx context.Context, db *sql.DB) (int, error) {
+	var count int
+	err := db.QueryRowContext(ctx, `select count(*) from extraction_logs`).Scan(&count)
+	return count, err
 }
 
 func QueryExtractionLogByRequestID(ctx context.Context, db *sql.DB, requestID string) (ExtractionLogRow, error) {
