@@ -568,19 +568,6 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 
 	b.WriteString(`</dl></div>`)
 
-	deleteURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/delete",
-		html.EscapeString(projectID),
-		html.EscapeString(scheduleID),
-		html.EscapeString(item.ID))
-	fmt.Fprintf(&b, `<div class="item-detail-footer">
-  <button class="button-danger"
-    hx-post="%s"
-    hx-target="#item-row-%s"
-    hx-swap="outerHTML"
-    hx-confirm="Delete this item? This cannot be undone."
-    hx-on::after-request="this.closest('dialog').close()">Delete item</button>
-</div>`, deleteURL, html.EscapeString(item.ID))
-
 	fmt.Fprint(w, b.String())
 }
 

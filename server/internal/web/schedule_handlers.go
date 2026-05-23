@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -118,6 +119,8 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	activeLinkPtr := a.activeShareLinkPtr(r.Context(), project.ID)
+
 	render(w, scheduleDetailPage{
 		Kind:             "schedule",
 		Title:            schedule.Name + " — " + project.Name,
@@ -125,8 +128,21 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 		Schedule:         sw,
 		IsOwner:          isOwner,
 		OwnerDisplayName: ownerDisplayName,
+		ActiveLink:       activeLinkPtr,
+		ShareBaseURL:     requestBaseURL(r),
 		ViewMode:         "architect",
 	})
+}
+
+// activeShareLinkPtr returns the project's current share link, or nil if
+// none exists or the lookup failed. Used by pages that surface the share
+// box (project + schedule). Non-owner viewers don't auto-create.
+func (a app) activeShareLinkPtr(ctx context.Context, projectID string) *queries.ProjectShareLink {
+	link, err := a.queries.GetActiveProjectShareLinkByProject(ctx, projectID)
+	if err != nil {
+		return nil
+	}
+	return &link
 }
 
 func (a app) deleteSchedule(w http.ResponseWriter, r *http.Request) {

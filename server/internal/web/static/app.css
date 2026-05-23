@@ -119,32 +119,72 @@ button,
   color: #666;
 }
 
-.share-status {
-  margin: 12px 0;
+.page-subtitle {
+  color: var(--c-text-dim);
+  font-size: 14px;
+  margin: 4px 0 0;
 }
 
-.share-url-row {
+/* Info-style hints: narrow, neutral, with a circled serif "i" badge. Use
+ * for empty-state blocks and modal hints — anything that's guidance about
+ * the UI, not project data. */
+.empty-state,
+.modal-hint {
+  align-items: flex-start;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-left: 3px solid var(--c-primary-mid);
+  border-radius: 6px;
+  color: var(--c-text-muted);
   display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 12px 0;
-}
-
-.share-url-input {
-  flex: 1;
-  font-family: var(--font-mono);
   font-size: 13px;
-  background: #fff;
-  color: var(--c-text);
+  gap: 10px;
+  line-height: 1.5;
+  margin: 16px 0;
+  max-width: 480px;
+  padding: 12px 14px;
 }
 
-.copy-button {
-  white-space: nowrap;
+.empty-state::before,
+.modal-hint::before {
+  align-items: center;
+  background: var(--c-primary-mid);
+  border-radius: 50%;
+  color: #fff;
+  content: "i";
+  display: flex;
   flex-shrink: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 700;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  margin-top: 1px;
+  width: 18px;
 }
 
-.share-action-form {
-  margin-top: 16px;
+.empty-state-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.empty-state-headline {
+  color: var(--c-text);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.empty-state-body {
+  color: var(--c-text-muted);
+  margin: 0;
+}
+
+.empty-state--centered {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .button-danger {
@@ -173,9 +213,184 @@ button,
   color: var(--c-danger-text);
 }
 
-.about-image {
-  filter: drop-shadow(8px 8px 10px gray);
+.about-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  color: #1a1a1a;
 }
+
+.about-hero {
+  text-align: center;
+  padding: 16px 0 24px;
+}
+
+.about-hero h1 {
+  font-size: 2.4rem;
+  margin: 0 0 6px;
+  color: #1a1a1a;
+}
+
+.about-tagline {
+  color: #4a4a4a;
+  font-size: 1.1rem;
+  margin: 0 0 16px;
+}
+
+.about-blurb {
+  max-width: 640px;
+  margin: 0 auto;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+
+.about-carousel {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  margin: 32px 0 24px;
+  padding: 28px 28px 16px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 4%);
+  color: #1a1a1a;
+}
+
+/* Fixed slide height so the carousel stops jumping as users click through
+ * screenshots of varying natural dimensions. The figure column is letter-
+ * boxed via object-fit: contain. */
+.about-slide {
+  display: none;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  align-items: center;
+  min-height: 360px;
+}
+
+@media (min-width: 720px) {
+  .about-slide {
+    grid-template-columns: 5fr 6fr;
+    gap: 32px;
+  }
+}
+
+.about-slide.is-active {
+  display: grid;
+}
+
+.about-slide-text h2 {
+  font-size: 1.4rem;
+  margin: 4px 0 10px;
+  color: #1a1a1a;
+}
+
+.about-slide-text p {
+  line-height: 1.55;
+  margin: 0 0 8px;
+  color: #1a1a1a;
+}
+
+.about-step-kicker {
+  color: #5a5a5a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.about-slide-figure {
+  margin: 0;
+  background: #f4f4f1;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.about-slide-figure img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.about-carousel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e8e8;
+}
+
+.about-nav-btn {
+  background: #ffffff;
+  border: 1px solid #c8c8c8;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: #1a1a1a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.about-nav-btn:hover:not(:disabled) {
+  background: #f4f4f4;
+}
+
+.about-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.about-dots {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.about-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: #cccccc;
+  padding: 0;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.about-dot:hover {
+  background: #888888;
+}
+
+.about-dot.is-active {
+  background: #1a1a1a;
+}
+
+.about-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 40px;
+  font-size: 1.05rem;
+  color: #1a1a1a;
+}
+
+.about-cta .button {
+  padding: 12px 24px;
+  font-size: 1rem;
+}
+
 
 .project-cards {
   display: grid;
@@ -379,6 +594,7 @@ button,
 
 .row-actions {
   padding: 0 4px;
+  text-align: right;
   vertical-align: middle;
   white-space: nowrap;
   width: 1%;
@@ -418,6 +634,7 @@ button,
   height: 28px;
   justify-content: center;
   line-height: 1;
+  margin-left: 28px;
   padding: 0;
   width: 28px;
 }
@@ -428,7 +645,8 @@ button,
 }
 
 .item-row:hover .delete-row-btn {
-  display: flex;
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 .detail-row-btn {
@@ -452,7 +670,8 @@ button,
 }
 
 .item-row:hover .detail-row-btn {
-  display: flex;
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 /* Item detail modal */
@@ -1110,6 +1329,7 @@ details.schedule-section table {
   display: flex;
   gap: 16px;
   margin-bottom: 8px;
+  justify-content: space-between;
 }
 
 .page-header h1 {
@@ -1147,7 +1367,16 @@ details.schedule-section table {
 .project-header-main {
   align-items: flex-start;
   display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.project-header-left {
+  align-items: flex-start;
+  display: flex;
+  flex: 1 1 360px;
   gap: 16px;
+  min-width: 0;
 }
 
 .project-header-text {
@@ -1159,10 +1388,76 @@ details.schedule-section table {
   margin: 0 0 6px;
 }
 
-.project-header-aside {
-  align-self: flex-start;
-  flex-shrink: 0;
+.project-header-right {
+  align-items: flex-start;
+  display: flex;
+  flex: 0 1 340px;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
 }
+
+.share-box {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-left: 3px solid var(--c-primary-mid);
+  border-radius: 6px;
+  padding: 12px 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.share-box-label {
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.share-box-explainer {
+  color: var(--c-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.share-box-url-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.share-box-url-input {
+  background: #fff;
+  border: 1px solid var(--c-border-mid);
+  border-radius: 4px;
+  color: var(--c-text);
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-width: 0;
+  padding: 6px 8px;
+  text-overflow: ellipsis;
+}
+
+.share-box-copy-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.project-actions-menu {
+  align-self: flex-end;
+}
+
+.project-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -12px 0 12px;
+}
+
 
 .actions-menu {
   position: relative;
@@ -2247,7 +2542,7 @@ details.schedule-section table {
   color: #2a5d2a;
   font-size: 14px;
   line-height: 1.4;
-  margin: 0 0 14px;
+  margin: 14px 0;
   padding: 10px 14px;
 }
 .contractor-banner p { margin: 0; }

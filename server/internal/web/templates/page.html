@@ -26,6 +26,7 @@
   <main>
     {{template "content" .}}
   </main>
+  <div id="copy-toast" class="copy-toast" aria-live="polite"></div>
   <footer>
     <div class="footer-inner">
       <ul class="footer-links">
@@ -57,10 +58,11 @@
         });
       });
     })();
-    function copySallyShareLink() {
-      var el = document.querySelector('.actions-menu[data-share-url]');
-      if (!el) return;
-      el.removeAttribute('open');
+    function copySallyShareLink(srcEl) {
+      var el = srcEl || document.querySelector('[data-share-url]');
+      if (!el || !el.dataset.shareUrl) return;
+      var menu = el.closest('details.actions-menu');
+      if (menu) menu.removeAttribute('open');
       navigator.clipboard.writeText(el.dataset.shareUrl).then(showCopyToast).catch(showCopyToast);
     }
     function showCopyToast() {
@@ -138,42 +140,260 @@
 
 </html>
 
+{{/* Shared partial: the project header at the top of the project detail
+     page and (in slightly slimmer form, but byte-identical markup) above
+     every schedule view. Keeping a single source of truth here means
+     navigating between project ↔ schedule doesn't shift the layout, and
+     copy/styling changes only need to be made once.
+
+     Required context fields (architect view):
+       .Project (Name, ID, ThumbnailUrl, Address, Description, CreatedAt)
+       .ViewMode ("architect" | "contractor")
+       .IsOwner            — for "Shared by X" badge
+       .OwnerDisplayName   — name to show in that badge
+       .ActiveLink         — *queries.ProjectShareLink (nil if no share link)
+       .ShareBaseURL       — origin for building the share URL
+       .ShareToken         — used by contractor view for back-link
+     Optional: .FirstItemImage — used as hero fallback when no thumbnail.
+*/}}
+{{define "project-header"}}
+{{$isContractor := eq .ViewMode "contractor"}}
+<div class="project-header">
+  <div class="project-header-main">
+    <div class="project-header-left">
+      {{if $isContractor}}
+      <div class="project-hero-wrap" id="proj-hero-{{.Project.ID}}">
+        {{if .Project.ThumbnailUrl}}
+        <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
+        {{else if .FirstItemImage}}
+        <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
+        {{else}}
+        <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
+        {{end}}
+      </div>
+      {{else}}
+      <div class="project-hero-wrap upload-target" id="proj-hero-{{.Project.ID}}"
+           onclick="this.querySelector('input[type=file]').click()" title="Click to upload a new thumbnail">
+        {{if .Project.ThumbnailUrl}}
+        <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
+        {{else if .FirstItemImage}}
+        <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
+        {{else}}
+        <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
+        {{end}}
+        <div class="upload-overlay"><span>Upload</span></div>
+        <form hx-post="/projects/{{.Project.ID}}/thumbnail" hx-target="#proj-hero-{{.Project.ID}}"
+              hx-swap="outerHTML" hx-encoding="multipart/form-data">
+          <input type="file" name="thumbnail_file" accept="image/*" style="display:none"
+                 onchange="this.closest('form').requestSubmit()">
+        </form>
+      </div>
+      {{end}}
+      <div class="project-header-text">
+        {{if and (not $isContractor) (not .IsOwner)}}<span class="badge-shared">Shared by {{.OwnerDisplayName}}</span>{{end}}
+        {{if $isContractor}}
+        <h1>{{.Project.Name}}</h1>
+        <div class="meta-field"><span class="meta-label">Created</span><span class="meta-value"><time class="local-time" datetime="{{isoTime .Project.CreatedAt}}">{{humanTime .Project.CreatedAt}}</time></span></div>
+        {{if .Project.Address}}<div class="meta-field"><span class="meta-label">Address</span><span class="meta-value">{{.Project.Address}}</span></div>{{end}}
+        {{if .Project.Description}}<div class="meta-field"><span class="meta-label">Description</span><span class="meta-value">{{.Project.Description}}</span></div>{{end}}
+        {{else}}
+        <h1 class="editable-h1" data-field="name" title="Click to rename this project" hx-get="/projects/{{.Project.ID}}/fields/name/edit" hx-trigger="click"
+          hx-target="this" hx-swap="outerHTML">{{.Project.Name}}</h1>
+        <div class="meta-field"><span class="meta-label">Created</span><span class="meta-value"><time class="local-time" datetime="{{isoTime .Project.CreatedAt}}">{{humanTime .Project.CreatedAt}}</time></span></div>
+        <div class="meta-field editable-meta" data-field="address" title="Click to edit the address" hx-get="/projects/{{.Project.ID}}/fields/address/edit"
+          hx-trigger="click" hx-target="this" hx-swap="outerHTML">
+          <span class="meta-label">Address</span>
+          {{if .Project.Address}}<span class="meta-value">{{.Project.Address}}</span>
+          {{else}}<span class="meta-placeholder">Click to add the job-site address</span>{{end}}
+        </div>
+        <div class="meta-field editable-meta" data-field="description" title="Click to edit the description"
+          hx-get="/projects/{{.Project.ID}}/fields/description/edit" hx-trigger="click" hx-target="this"
+          hx-swap="outerHTML">
+          <span class="meta-label">Description</span>
+          {{if .Project.Description}}<span class="meta-value">{{.Project.Description}}</span>
+          {{else}}<span class="meta-placeholder">Click to describe this project, e.g. "Lake house renovation, summer 2026"</span>{{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{if and (not $isContractor) .ActiveLink}}
+    <div class="project-header-right">
+      <div class="share-box">
+        <p class="share-box-label">Share this project</p>
+        <p class="share-box-explainer">Anyone with this link can view (but not edit) your schedules, prices, and lead times. Text it, email it, or print it on a spec sheet.</p>
+        <div class="share-box-url-row">
+          <input class="share-box-url-input" type="text" readonly
+            value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}"
+            onclick="this.select()">
+          <button type="button" class="button share-box-copy-btn"
+            title="Copy link to clipboard"
+            data-share-url="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}"
+            onclick="copySallyShareLink(this)">Copy</button>
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
 {{define "content"}}
 {{if eq .Kind "about"}}
+<div class="about-page">
+  <div class="about-hero">
+    <h1>Meet Sally</h1>
+    <p class="about-tagline">She turns product pages into architectural schedules — no spreadsheets required.</p>
+    <p class="about-blurb">Click <strong>SPEC</strong> on any product page (Home Depot, Ferguson, Lightology, etc.) and Sally reads the page, drafts a schedule item, and files it in the right schedule. When the project is ready, share a single link with your contractor or client.</p>
+  </div>
 
-<div class="page-header">
-  <h1>About</h1>
+  <section class="about-carousel" aria-label="How to use Sally" data-total="7">
+    <div class="about-slide is-active" data-slide="1">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 1 of 7</p>
+        <h2>Install the Chrome extension</h2>
+        <p>Sally lives in your browser as a Chrome extension. <a href="https://chromewebstore.google.com/detail/sally-spec-poc/cpjlofdhdfpmbcmjbpipdfjjhhiohcac" target="_blank" rel="noreferrer">Open the Web Store listing</a> and click <strong>Add to Chrome</strong>.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/chrome-webstore.png" alt="Sally's Chrome Web Store listing">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="2">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 2 of 7</p>
+        <h2>Open a product and click SPEC</h2>
+        <p>Go to a product page on any vendor site. You'll see a <strong>SPEC</strong> button appear in the corner of the page. Click it to start.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/spec-button.png" alt="The SPEC button on a product page">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="3">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 3 of 7</p>
+        <h2>Sign in with Google</h2>
+        <p>The first time you SPEC something, Sally will ask you to sign in. One click and you're done.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/sign-in.png" alt="The Google sign-in prompt">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="4">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 4 of 7</p>
+        <h2>Pick (or name) a schedule</h2>
+        <p>If the item doesn't fit any of your existing schedules — or if it's your first item — Sally suggests a new schedule name (e.g. <em>Lighting</em>, <em>Plumbing</em>). Accept the suggestion or type your own.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/new-schedule.png" alt="The new-schedule prompt">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="5">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 5 of 7</p>
+        <h2>Review &amp; add</h2>
+        <p>Sally reads the product page and drafts the item — manufacturer, model number, finish, price, lead time, notes. Edit anything that's wrong, then click <strong>OK</strong> to file it.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/drafting.png" alt="The review panel after extraction">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="6">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 6 of 7</p>
+        <h2>Open your project</h2>
+        <p>Click <strong>View project</strong> in the confirmation panel, or jump straight to <a href="/projects">your projects page</a> any time. Edit anything inline — cell values, schedule names, even the column layout.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/view-project.png" alt="The view-project link">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="7">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 7 of 7</p>
+        <h2>Send a share link</h2>
+        <p>Every project has a built-in share link. Open the project, click <strong>More ▾</strong> &rarr; <strong>Copy share link</strong>, then text or email it. Anyone who opens the link sees a read-only view with prices, lead times, and stock.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/share-link.png" alt="The copy-share-link action">
+      </figure>
+    </div>
+
+    <nav class="about-carousel-controls" aria-label="Carousel navigation">
+      <button type="button" class="about-nav-btn" data-dir="prev" aria-label="Previous step">‹</button>
+      <div class="about-dots" role="tablist">
+        <button type="button" class="about-dot is-active" data-slide="1" aria-label="Step 1"></button>
+        <button type="button" class="about-dot" data-slide="2" aria-label="Step 2"></button>
+        <button type="button" class="about-dot" data-slide="3" aria-label="Step 3"></button>
+        <button type="button" class="about-dot" data-slide="4" aria-label="Step 4"></button>
+        <button type="button" class="about-dot" data-slide="5" aria-label="Step 5"></button>
+        <button type="button" class="about-dot" data-slide="6" aria-label="Step 6"></button>
+        <button type="button" class="about-dot" data-slide="7" aria-label="Step 7"></button>
+      </div>
+      <button type="button" class="about-nav-btn" data-dir="next" aria-label="Next step">›</button>
+    </nav>
+  </section>
+
+  <div class="about-cta">
+    <span>Ready to try it?</span>
+    <a href="/projects" class="button">Go to your projects</a>
+  </div>
 </div>
-<p class="muted">Hi! I'm Sally. I'm here to help you build architectural schedules.</p>
-<h2>How Does It Work?</h2>
-<p class="muted">Sally helps you create and manage architectural schedules by providing a simple interface to add, edit, and organize schedule items. No more copying the makes and models from ecommerce websites of every single product in your design into a spreadsheet. Just click "SPEC" and Sally does the rest!</p>
-<p class="muted"> Once your schedules are created, you can send a link to anyone who needs to view or edit them, such as team members, contractors, or suppliers.</p>
-<h2>How to Use Sally</h2>
-<ol>
-  <li>Install the Chrome Extension <a href="https://chromewebstore.google.com/detail/sally-spec-poc/cpjlofdhdfpmbcmjbpipdfjjhhiohcac" target="_blank">here</a>. Click "Add to Chrome".</li>
-  <img class="about-image" src="/static/chrome-webstore.png" alt="Screenshot of Sally's Chrome Web Store listing" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-  <li>Navigate to a product page on a website and click the "SPEC" button.
-  <img class="about-image" src="/static/spec-button.png" alt="Screenshot of the SPEC button on a product page" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-  <li>If prompted, click "Sign in with Google".</li>
-  <img class="about-image" src="/static/sign-in.png" alt="Screenshot of the Google sign-in prompt" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-  <li>If this is your first item, or the item does not seem to belong on any existing schedule, Sally will ask you to make a new schedule.</li>
-  <img class="about-image" src="/static/new-schedule.png" alt="Screenshot of the new schedule prompt" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-  <li>Sally will read the website and draft the relevant information. Review and edit the drafted information as needed. When you are ready to add the item to a schedule, click "OK".</li>
-  <img class="about-image" src="/static/drafting.png" alt="Screenshot of the drafting process" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-  <li>To open your project, click the "View Project" link or visit <a href="/projects">your projects page</a>.</li>
-  <img class="about-image" src="/static/view-project.png" alt="Screenshot of the view project link" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-  <li>When you are ready to share your project, click the "Actions" button, then "Copy Share Link" and send the link to anyone, e.g. via SMS or email.</li>
-  <img class="about-image" src="/static/share-link.png" alt="Screenshot of the copy share link button" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-  <img class="about-image" src="/static/email.png" alt="Screenshot of an email with the share link" style="max-width:100%;border:1px solid #ccc;margin:1rem 0">
-</ol>
-</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.about-carousel');
+  if (!root) return;
+  var total = parseInt(root.dataset.total, 10) || 1;
+  var slides = root.querySelectorAll('.about-slide');
+  var dots = root.querySelectorAll('.about-dot');
+  var prevBtn = root.querySelector('.about-nav-btn[data-dir="prev"]');
+  var nextBtn = root.querySelector('.about-nav-btn[data-dir="next"]');
+  var current = 1;
+
+  function show(n) {
+    if (n < 1) n = 1;
+    if (n > total) n = total;
+    current = n;
+    slides.forEach(function (s) {
+      s.classList.toggle('is-active', parseInt(s.dataset.slide, 10) === n);
+    });
+    dots.forEach(function (d) {
+      d.classList.toggle('is-active', parseInt(d.dataset.slide, 10) === n);
+    });
+    prevBtn.disabled = (n === 1);
+    nextBtn.disabled = (n === total);
+  }
+
+  prevBtn.addEventListener('click', function () { show(current - 1); });
+  nextBtn.addEventListener('click', function () { show(current + 1); });
+  dots.forEach(function (d) {
+    d.addEventListener('click', function () { show(parseInt(d.dataset.slide, 10)); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  });
+
+  show(1);
+})();
+</script>
 {{end}}
 
 {{if eq .Kind "projects"}}
 <div class="page-header">
-  <h1>My Projects</h1>
+  <div>
+    <h1 style="margin:0">My Projects</h1>
+    <p class="page-subtitle">Each project is a building or job. Schedules live inside projects.</p>
+  </div>
   <form method="post" action="/projects" style="margin:0">
-    <button type="submit" class="button">New Project</button>
+    <button type="submit" class="button" title="Create a new building or job. You'll add schedules and items inside.">New Project</button>
   </form>
 </div>
 {{if .Projects}}
@@ -204,7 +424,12 @@
   {{end}}
 </div>
 {{else}}
-<p class="muted">No projects yet. For information on how to begin, see the About page: <a href="/about">About Sally</a></p>
+<div class="empty-state empty-state--centered">
+  <div class="empty-state-content">
+    <p class="empty-state-headline">No projects yet.</p>
+    <p class="empty-state-body">Click <strong>New Project</strong> above to start one, or read the <a href="/about">About page</a> for a quick walkthrough of how Sally works.</p>
+  </div>
+</div>
 {{end}}
 {{if .SharedProjects}}
 <div class="page-header" style="margin-top:2rem">
@@ -243,84 +468,28 @@
 {{else if eq .Kind "project"}}
 {{$isContractor := eq .ViewMode "contractor"}}
 <nav class="breadcrumb">{{if $isContractor}}<a href="/share/{{.ShareToken}}">{{.Project.Name}}</a>{{else}}<a href="/projects">Projects</a>{{end}}</nav>
-<div class="project-header">
-  <div class="project-header-main">
-    {{if $isContractor}}
-    <div class="project-hero-wrap" id="proj-hero-{{.Project.ID}}">
-      {{if .Project.ThumbnailUrl}}
-      <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
-      {{else if .FirstItemImage}}
-      <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
-      {{else}}
-      <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
-      {{end}}
-    </div>
-    {{else}}
-    <div class="project-hero-wrap upload-target" id="proj-hero-{{.Project.ID}}"
-         onclick="this.querySelector('input[type=file]').click()" title="Click to upload a new thumbnail">
-      {{if .Project.ThumbnailUrl}}
-      <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
-      {{else if .FirstItemImage}}
-      <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
-      {{else}}
-      <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
-      {{end}}
-      <div class="upload-overlay"><span>Upload</span></div>
-      <form hx-post="/projects/{{.Project.ID}}/thumbnail" hx-target="#proj-hero-{{.Project.ID}}"
-            hx-swap="outerHTML" hx-encoding="multipart/form-data">
-        <input type="file" name="thumbnail_file" accept="image/*" style="display:none"
-               onchange="this.closest('form').requestSubmit()">
+{{template "project-header" .}}
+{{if not $isContractor}}
+<div class="project-actions-row">
+  <details class="actions-menu project-actions-menu">
+    <summary class="actions-menu-btn" title="Other project actions (export, reorder, delete…)">More ▾</summary>
+    <div class="actions-menu-list">
+      <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
+      <button type="button" class="actions-menu-item" onclick="document.getElementById('sched-reorder-modal').showModal();this.closest('details').removeAttribute('open')">Reorder schedules</button>
+      {{if .IsOwner}}
+      <button type="button" class="actions-menu-item" onclick="document.getElementById('collaborators-modal').showModal();this.closest('details').removeAttribute('open')">Manage collaborators</button>
+      <div class="actions-menu-divider"></div>
+      <form method="post" action="/projects/{{.Project.ID}}/delete"
+        onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
+        <button type="submit" class="actions-menu-item actions-menu-item--danger">Delete project</button>
       </form>
-    </div>
-    {{end}}
-    <div class="project-header-text">
-      {{if and (not $isContractor) (not .IsOwner)}}<span class="badge-shared">Shared by {{.OwnerDisplayName}}</span>{{end}}
-      {{if $isContractor}}
-      <h1>{{.Project.Name}}</h1>
-      {{if .Project.Address}}<div class="meta-field"><span class="meta-label">Address</span><span class="meta-value">{{.Project.Address}}</span></div>{{end}}
-      {{if .Project.Description}}<div class="meta-field"><span class="meta-label">Description</span><span class="meta-value">{{.Project.Description}}</span></div>{{end}}
-      {{else}}
-      <h1 class="editable-h1" data-field="name" hx-get="/projects/{{.Project.ID}}/fields/name/edit" hx-trigger="click"
-        hx-target="this" hx-swap="outerHTML">{{.Project.Name}}</h1>
-      <div class="meta-field editable-meta" data-field="address" hx-get="/projects/{{.Project.ID}}/fields/address/edit"
-        hx-trigger="click" hx-target="this" hx-swap="outerHTML">
-        <span class="meta-label">Address</span>
-        {{if .Project.Address}}<span class="meta-value">{{.Project.Address}}</span>
-        {{else}}<span class="meta-placeholder">Click to edit…</span>{{end}}
-      </div>
-      <div class="meta-field editable-meta" data-field="description"
-        hx-get="/projects/{{.Project.ID}}/fields/description/edit" hx-trigger="click" hx-target="this"
-        hx-swap="outerHTML">
-        <span class="meta-label">Description</span>
-        {{if .Project.Description}}<span class="meta-value">{{.Project.Description}}</span>
-        {{else}}<span class="meta-placeholder">Click to edit…</span>{{end}}
-      </div>
       {{end}}
     </div>
-    {{if not $isContractor}}
-    <div class="project-header-aside">
-      <details class="actions-menu" {{if .ActiveLink}}data-share-url="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}"{{end}}>
-        <summary class="actions-menu-btn">Actions ▾</summary>
-        <div class="actions-menu-list">
-          {{if .ActiveLink}}
-          <button type="button" class="actions-menu-item" onclick="copySallyShareLink()">Copy share link</button>
-          {{end}}
-          <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
-          <button type="button" class="actions-menu-item" onclick="document.getElementById('sched-reorder-modal').showModal();this.closest('details').removeAttribute('open')">Reorder schedules</button>
-          {{if .IsOwner}}
-          <button type="button" class="actions-menu-item" onclick="document.getElementById('collaborators-modal').showModal();this.closest('details').removeAttribute('open')">Manage collaborators</button>
-          <div class="actions-menu-divider"></div>
-          <form method="post" action="/projects/{{.Project.ID}}/delete"
-            onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
-            <button type="submit" class="actions-menu-item actions-menu-item--danger">Delete project</button>
-          </form>
-          {{end}}
-        </div>
-      </details>
-    </div>
-  </div>
-  {{if .IsOwner}}
-  <dialog id="collaborators-modal" class="columns-modal">
+  </details>
+</div>
+{{end}}
+{{if and (not $isContractor) .IsOwner}}
+<dialog id="collaborators-modal" class="columns-modal">
     <div class="columns-modal-inner">
       <h3 class="columns-modal-title">Collaborators</h3>
       {{if eq .MemberError "notfound"}}
@@ -362,6 +531,7 @@
     })();
   </script>
   {{end}}
+  {{if not $isContractor}}
   <dialog class="columns-modal" id="sched-reorder-modal">
     <div class="columns-modal-inner">
       <h3 class="columns-modal-title">Reorder Schedules</h3>
@@ -432,9 +602,7 @@
       });
     }
   </script>
-  {{end}}{{/* end {{if not $isContractor}} block opened around the actions / dialogs / scripts */}}
-</div>
-<div id="copy-toast" class="copy-toast" aria-live="polite"></div>
+  {{end}}{{/* end {{if not $isContractor}} wrapping sched-reorder dialog */}}
 <div class="project-layout">
   <div class="schedule-content">
     {{if eq .ViewMode "contractor"}}
@@ -464,15 +632,24 @@
       {{end}}
     </ul>
     {{else}}
-    <p class="muted">No schedules yet{{if ne .ViewMode "contractor"}} — add one below{{end}}.</p>
+    {{if eq .ViewMode "contractor"}}
+    <p class="muted">No schedules yet.</p>
+    {{else}}
+    <div class="empty-state empty-state--centered">
+      <div class="empty-state-content">
+        <p class="empty-state-headline">No schedules yet.</p>
+        <p class="empty-state-body">Schedules group related items — for example, <em>Lighting</em>, <em>Plumbing</em>, or <em>Door Hardware</em>. The easiest way to start one is to visit a product page in your browser (Home Depot, Ferguson, Lightology, etc.) and click <strong>SPEC</strong>; Sally will suggest a schedule name for you. You can also create one manually below.</p>
+      </div>
+    </div>
+    {{end}}
     {{end}}
     {{if ne .ViewMode "contractor"}}
     <div class="add-schedule-row">
       <form method="post" action="/projects/{{.Project.ID}}/schedules">
-        <button type="submit" class="button button-sm">+ New schedule</button>
+        <button type="submit" class="button button-sm" title="A table of items — most schedules are this kind.">+ New schedule</button>
       </form>
       <form method="post" action="/projects/{{.Project.ID}}/notes">
-        <button type="submit" class="button button-sm button-secondary">+ New note</button>
+        <button type="submit" class="button button-sm button-secondary" title="A free-text page with no item table — for project-level reminders, supplier contacts, etc.">+ New note page</button>
       </form>
     </div>
     {{end}}
@@ -492,12 +669,13 @@
   {{end}}
   {{$s.Name}}
 </nav>
+{{template "project-header" .}}
 <div class="schedule-page">
   <div class="schedule-page-header">
     {{if $isContractor}}
     <h1>{{$s.Name}}</h1>
     {{else}}
-    <h1 id="sname-{{$s.ID}}" class="editable-h1" data-field="name"
+    <h1 id="sname-{{$s.ID}}" class="editable-h1" data-field="name" title="Click to rename this schedule"
       hx-get="/projects/{{.Project.ID}}/schedules/{{$s.ID}}/fields/name/edit" hx-trigger="click"
       hx-target="this" hx-swap="outerHTML">{{$s.Name}}</h1>
     <div class="schedule-page-actions">
@@ -510,12 +688,24 @@
   {{if $isContractor}}
   {{if $s.Notes}}<div class="schedule-notes"><span class="schedule-notes-text">{{nl2br $s.Notes}}</span></div>{{end}}
   {{else}}
-  <div class="schedule-notes editable-notes" data-field="notes"
+  <div class="schedule-notes editable-notes" data-field="notes" title="Click to add notes about this schedule"
     hx-get="/projects/{{.Project.ID}}/schedules/{{$s.ID}}/fields/notes/edit" hx-trigger="click"
-    hx-target="this" hx-swap="outerHTML">{{if $s.Notes}}<span class="schedule-notes-text">{{nl2br $s.Notes}}</span>{{else}}<span class="notes-placeholder">Add notes…</span>{{end}}</div>
+    hx-target="this" hx-swap="outerHTML">{{if $s.Notes}}<span class="schedule-notes-text">{{nl2br $s.Notes}}</span>{{else}}<span class="notes-placeholder">Click here to add notes for this schedule, e.g. "Call Anna at Ferguson for trade pricing" or "Confirm rough-in before ordering"</span>{{end}}</div>
   {{end}}
   {{if ne $s.Kind "note"}}
-  <div class="schedule-table-wrap">
+  {{if not $sw.Groups}}
+  {{if $isContractor}}
+  <p class="muted">No items yet.</p>
+  {{else}}
+  <div class="empty-state empty-state--centered">
+    <div class="empty-state-content">
+      <p class="empty-state-headline">No items yet.</p>
+      <p class="empty-state-body">Open a product page in your browser (Home Depot, Ferguson, Lightology, etc.) and click the <strong>SPEC</strong> button — Sally will read the page and can add the item to this or another schedule.</p>
+    </div>
+  </div>
+  {{end}}
+  {{end}}
+  <div class="schedule-table-wrap"{{if not $sw.Groups}} hidden{{end}}>
     <table class="schedule-table">
       <thead>
         <tr>
@@ -529,6 +719,7 @@
           {{else}}
           <th class="col-actions-header">
             <button type="button" class="edit-columns-btn"
+              title="Add, rename, reorder, or remove columns of this table (e.g. add a 'Lead time' column for plumbing)"
               onclick="document.getElementById('col-modal-{{$s.ID}}').showModal()">Edit columns</button>
           </th>
           {{end}}
@@ -621,13 +812,15 @@
               <input type="hidden" name="direction" value="down">
               <button type="submit" class="move-btn" title="Move down">↓</button>
             </form>
+            <button class="delete-row-btn" title="Delete item"
+              hx-post="/projects/{{$.Project.ID}}/schedules/{{$s.ID}}/items/{{$item.ID}}/delete"
+              hx-target="closest tr" hx-swap="outerHTML"
+              hx-confirm="Delete this item? This cannot be undone.">×</button>
           </td>
           {{end}}
         </tr>
         {{end}}
         {{end}}
-        {{else}}
-        <tr class="item-row-empty"><td colspan="{{if $isContractor}}{{add (len $sw.Columns) 5}}{{else}}{{add (len $sw.Columns) 2}}{{end}}" class="schedule-empty muted">No items yet.</td></tr>
         {{end}}
       </tbody>
       {{if and $isContractor $sw.ContractorTotals}}
@@ -664,12 +857,14 @@
         <h3 class="columns-modal-title">Item Detail</h3>
         <button type="button" class="item-detail-close" onclick="this.closest('dialog').close()" aria-label="Close">✕</button>
       </div>
+      <p class="modal-hint">Everything Sally captured for this item. To edit, close this and click the cell you want to change in the row.</p>
       <div id="item-detail-body-{{$s.ID}}" class="item-detail-slot"></div>
     </div>
   </dialog>
   <dialog class="columns-modal" id="col-modal-{{$s.ID}}">
     <div class="columns-modal-inner">
       <h3 class="columns-modal-title">Edit Columns</h3>
+      <p class="modal-hint">Columns control what data Sally captures for each item in this schedule. Rename, reorder, add, or delete them. Deleting a column hides existing data — it isn't lost.</p>
       <ul class="col-modal-list" id="col-modal-list-{{$s.ID}}"
           data-project-id="{{.Project.ID}}" data-schedule-id="{{$s.ID}}">
         {{range $sw.Columns}}
@@ -773,34 +968,6 @@
       <button type="submit" class="button-danger">Delete item</button>
     </form>
   </div>
-</div>
-
-{{else if eq .Kind "share-manage"}}
-<nav class="breadcrumb">
-  <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
-  <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
-  Share
-</nav>
-<div class="form-page">
-  <h1>Share</h1>
-  {{if .ActiveLink}}
-  <p class="share-status">Sharing is <strong>enabled</strong>. Copy the link below and send it to your contractor or
-    client.</p>
-  <div class="share-url-row">
-    <input id="share-url-input" class="share-url-input" type="text" readonly
-      value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}">
-    <button type="button" class="copy-button"
-      onclick="(function(){var i=document.getElementById('share-url-input');i.select();navigator.clipboard.writeText(i.value).catch(function(){document.execCommand('copy')});})()">Copy</button>
-  </div>
-  <form method="post" action="/projects/{{.Project.ID}}/share-links/deactivate" class="share-action-form">
-    <button type="submit" class="button-danger">Disable sharing</button>
-  </form>
-  {{else}}
-  <p class="muted">Share a read-only link with contractors and clients so they can view the schedule.</p>
-  <form method="post" action="/projects/{{.Project.ID}}/share-links" style="margin-top:12px;">
-    <button type="submit">Enable sharing</button>
-  </form>
-  {{end}}
 </div>
 
 {{else if eq .Kind "login"}}

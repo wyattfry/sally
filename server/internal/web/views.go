@@ -49,11 +49,20 @@ type scheduleDetailPage struct {
 	Schedule         scheduleWithItems
 	IsOwner          bool
 	OwnerDisplayName string
+	// Share-box context — surfaced in the project-header strip rendered at
+	// the top of the schedule page (architect view).
+	ActiveLink   *queries.ProjectShareLink
+	ShareBaseURL string
+	// FirstItemImage is unused on the schedule page but required by the
+	// shared project-header template, which uses it as a hero fallback. Left
+	// empty here so the partial's {{else if .FirstItemImage}} branch is
+	// safely skipped.
+	FirstItemImage string
 	// Contractor-view affordances. See projectDetailPage for the contract.
-	ViewMode             string
-	ShareToken           string
-	StaleAmberDays       int
-	StaleRedDays         int
+	ViewMode       string
+	ShareToken     string
+	StaleAmberDays int
+	StaleRedDays   int
 }
 
 type scheduleSummary struct {
@@ -92,14 +101,6 @@ type itemEditPage struct {
 	Schedule queries.Schedule
 	Item     scheduleItemView
 	Columns  []queries.ScheduleColumn
-}
-
-type shareManagePage struct {
-	Kind         string
-	Title        string
-	Project      queries.Project
-	ActiveLink   *queries.ProjectShareLink
-	ShareBaseURL string
 }
 
 type signInPage struct {

@@ -1,16 +1,25 @@
 package web
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
 
 func render(w http.ResponseWriter, data any) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := pageTemplate.Execute(w, data); err != nil {
+	// Render to a buffer first so a template error mid-render doesn't leave
+	// the response in a half-written state ("superfluous WriteHeader" if we
+	// then try to call http.Error). Only flush to the wire on success.
+	var buf bytes.Buffer
+	if err := pageTemplate.Execute(&buf, data); err != nil {
+		log.Printf("render: template execute: %v", err)
 		http.Error(w, "could not render page", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(buf.Bytes())
 }
 
 func renderNotFound(w http.ResponseWriter) {

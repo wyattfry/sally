@@ -11,31 +11,6 @@ import (
 	"sally/server/internal/share"
 )
 
-func (a app) manageProjectShare(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
-	if !ok {
-		return
-	}
-
-	activeLink, err := a.queries.GetActiveProjectShareLinkByProject(r.Context(), project.ID)
-	var activeLinkPtr *queries.ProjectShareLink
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, "could not load share link", http.StatusInternalServerError)
-		return
-	}
-	if err == nil {
-		activeLinkPtr = &activeLink
-	}
-
-	render(w, shareManagePage{
-		Kind:         "share-manage",
-		Title:        "Share " + project.Name,
-		Project:      project,
-		ActiveLink:   activeLinkPtr,
-		ShareBaseURL: requestBaseURL(r),
-	})
-}
-
 // newShareSlugAvoidingConflicts generates a fresh three-word slug,
 // retrying up to a few times if the slug collides with an already-active
 // share link in the DB. With 256³ ≈ 16M combos and typical share-link
@@ -51,50 +26,6 @@ func (a app) newShareSlugAvoidingConflicts(ctx context.Context) (string, error) 
 			return false, err // real DB error — surface it
 		}
 	})
-}
-
-func (a app) createProjectShareLink(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
-	if !ok {
-		return
-	}
-
-	if err := a.queries.DeactivateProjectShareLinks(r.Context(), project.ID); err != nil {
-		http.Error(w, "could not deactivate existing share links", http.StatusInternalServerError)
-		return
-	}
-
-	token, err := a.newShareSlugAvoidingConflicts(r.Context())
-	if err != nil {
-		http.Error(w, "could not create share token", http.StatusInternalServerError)
-		return
-	}
-	_, err = a.queries.CreateProjectShareLink(r.Context(), queries.CreateProjectShareLinkParams{
-		ProjectID: project.ID,
-		TokenHash: share.HashToken(token),
-		Token:     token,
-		Label:     "Project share",
-	})
-	if err != nil {
-		http.Error(w, "could not create share link", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/projects/"+project.ID+"/share", http.StatusSeeOther)
-}
-
-func (a app) deactivateProjectShareLinks(w http.ResponseWriter, r *http.Request) {
-	_, project, ok := a.loadUserProjectAsOwner(w, r, r.PathValue("projectID"))
-	if !ok {
-		return
-	}
-
-	if err := a.queries.DeactivateProjectShareLinks(r.Context(), project.ID); err != nil {
-		http.Error(w, "could not deactivate share links", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/projects/"+project.ID+"/share", http.StatusSeeOther)
 }
 
 // loadShareLinkProject resolves a share token to the underlying project and

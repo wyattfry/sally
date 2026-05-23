@@ -577,7 +577,6 @@ func TestItemDetailFragment(t *testing.T) {
 		"https://example.com/delta.jpg",
 		"item-detail-body",
 		"item-detail-dl",
-		"Delete item",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("expected detail fragment to contain %q", want)

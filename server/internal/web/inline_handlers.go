@@ -483,12 +483,15 @@ func writeItemRow(w io.Writer, projectID, scheduleID string, item queries.Schedu
 		writeCellDisplay(w, cellEditURL, dm[col.Key], col.Key, isCode, sourceURL)
 	}
 
+	detailURL := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/detail", projectID, scheduleID, item.ID)
 	fmt.Fprintf(w,
 		`<td class="row-actions">`+
+			`<button class="detail-row-btn" title="View details" hx-get="%s" hx-target="#item-detail-body-%s" hx-swap="innerHTML" hx-on::after-request="document.getElementById('item-detail-%s').showModal()">Details</button>`+
 			`<form method="post" action="%s" class="move-form"><input type="hidden" name="direction" value="up"><button type="submit" class="move-btn" title="Move up">↑</button></form>`+
 			`<form method="post" action="%s" class="move-form"><input type="hidden" name="direction" value="down"><button type="submit" class="move-btn" title="Move down">↓</button></form>`+
-			`<button class="delete-row-btn" hx-post="%s" hx-target="closest tr" hx-swap="outerHTML" hx-confirm="Remove this item?">×</button>`+
+			`<button class="delete-row-btn" title="Delete item" hx-post="%s" hx-target="closest tr" hx-swap="outerHTML" hx-confirm="Delete this item? This cannot be undone.">×</button>`+
 			`</td>`,
+		e(detailURL), e(scheduleID), e(scheduleID),
 		e(moveURL), e(moveURL), e(deleteURL))
 	fmt.Fprintf(w, `</tr>`)
 }
