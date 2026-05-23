@@ -42,6 +42,17 @@ header {
   font-size: 13px;
 }
 
+.button-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.button-ghost:active {
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 24%);
+  transform: translateY(1px);
+}
+
 main {
   max-width: 1400px;
   margin: 0 auto;
@@ -109,6 +120,21 @@ button,
   font-family: inherit;
   font-size: inherit;
   font-weight: 700;
+  transition: background-color 0.12s, border-color 0.12s, box-shadow 0.12s, color 0.12s, transform 0.05s;
+}
+
+button:hover,
+.button:hover {
+  background: #9ee8b1;
+  border-color: var(--c-primary-dark);
+}
+
+button:active,
+.button:active {
+  background: #83d99b;
+  border-color: var(--c-primary-dark);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 22%);
+  transform: translateY(1px);
 }
 
 .actions {
@@ -199,6 +225,18 @@ button,
   font-family: inherit;
   font-size: inherit;
   font-weight: 700;
+}
+
+.button-danger:hover {
+  background: #fbd2d2;
+  border-color: #7f1d1d;
+}
+
+.button-danger:active {
+  background: #f8bcbc;
+  border-color: #7f1d1d;
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 18%);
+  transform: translateY(1px);
 }
 
 .button-danger-subtle {
@@ -1045,7 +1083,13 @@ details.schedule-section>summary:hover .schedule-summary-actions {
   color: var(--c-danger-text, #dc2626);
   cursor: pointer;
   font-size: 13px;
+  opacity: 0;
   padding: 2px 8px;
+  transition: opacity 0.15s;
+}
+
+.schedule-page:hover .schedule-delete-btn {
+  opacity: 1;
 }
 
 .schedule-delete-btn:hover {
@@ -1242,6 +1286,20 @@ thead:hover .edit-columns-btn {
   background: var(--c-surface);
   border-color: var(--c-border);
   color: var(--c-text-muted);
+}
+
+.button-secondary:hover {
+  background: var(--c-surface-hover);
+  border-color: var(--c-border-strong);
+  color: var(--c-text);
+}
+
+.button-secondary:active {
+  background: var(--c-surface-raised);
+  border-color: var(--c-border-strong);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 16%);
+  color: var(--c-text);
+  transform: translateY(1px);
 }
 
 footer {
@@ -1519,6 +1577,13 @@ details.schedule-section table {
   flex-shrink: 0;
   padding: 6px 12px;
   font-size: 13px;
+}
+
+.share-box-copy-btn:active {
+  background: var(--c-primary-dark);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 24%);
+  color: white;
+  transform: translateY(1px);
 }
 
 .project-actions-menu {
