@@ -789,22 +789,22 @@ td.col-notes .cell-clamp {
 .item-detail-close:hover { background: var(--c-surface-hover); color: var(--c-text); }
 
 .item-detail-body {
-  display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: 20px;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 28px 32px;
+  padding: 16px 24px 24px;
 }
 
-.item-detail-thumb {
+/* Image floats right so the field list wraps around it, saving vertical
+ * space. The margin keeps a comfortable gutter between text and image. */
+.item-detail-float-img {
   border-radius: 6px;
-  max-height: 200px;
-  max-width: 100%;
+  float: right;
+  margin: 0 0 12px 20px;
+  max-height: 180px;
+  max-width: 200px;
   object-fit: contain;
-  align-self: flex-start;
 }
 
 .item-detail-dl {

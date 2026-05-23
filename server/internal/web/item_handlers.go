@@ -284,17 +284,25 @@ func (a app) moveScheduleItem(w http.ResponseWriter, r *http.Request) {
 }
 
 var knownDataFields = []struct{ key, label string }{
+	// Core identity — shown first.
 	{"code", "Code"},
 	{"title", "Title"},
 	{"manufacturer", "Manufacturer"},
-	{"modelNumber", "Model Number"},
-	{"category", "Category"},
-	{"description", "Description"},
+	{"model_number", "Model"},
 	{"finish", "Finish"},
-	{"finishModelNumber", "Finish Model Number"},
-	{"availableFinishes", "Available Finishes"},
-	{"requiredAddOns", "Required Add-Ons"},
-	{"optionalCompanions", "Optional Companions"},
+	{"finish_model_number", "Finish model"},
+	{"color", "Color"},
+	{"category", "Category"},
+	// Pricing snapshot — shown as a group.
+	{"price", "Price"},
+	{"lead_time", "Lead time"},
+	{"stock_status", "Stock status"},
+	{"stock_count", "Stock count"},
+	{"priced_at", "Price captured"},
+	// Description & notes.
+	{"description", "Description"},
+	{"notes", "Notes"},
+	// Room.
 	{"room", "Room"},
 }
 
@@ -482,28 +490,15 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 	var b strings.Builder
 	b.WriteString(`<div class="item-detail-body">`)
 
-	// Image area: current image + picker strip if multiple images captured.
-	if item.SourceImageUrl != "" || len(item.SourceImageUrls) > 0 {
-		// The slot that holds this detail fragment in the template is
-		// id="item-detail-body-{scheduleID}" (see page.html).
-		detailSlotID := "item-detail-body-" + html.EscapeString(scheduleID)
-		imageURL := item.SourceImageUrl
-		if imageURL == "" && len(item.SourceImageUrls) > 0 {
-			imageURL = item.SourceImageUrls[0]
-		}
-		b.WriteString(`<div class="item-image-area">`)
-		if imageURL != "" {
-			fmt.Fprintf(&b, `<img class="item-detail-thumb" src="%s" alt="">`, html.EscapeString(imageURL))
-		}
-		// Upload custom image.
-		uploadEndpoint := fmt.Sprintf("/projects/%s/schedules/%s/items/%s/image",
-			html.EscapeString(projectID),
-			html.EscapeString(scheduleID),
-			html.EscapeString(item.ID))
-		fmt.Fprintf(&b,
-			`<form class="image-upload-form" hx-post="%s" hx-target="#%s" hx-swap="innerHTML" hx-encoding="multipart/form-data"><label class="image-upload-label">Upload custom image<input type="file" name="source_image_file" accept="image/*" style="display:none" onchange="this.closest('form').requestSubmit()"></label></form>`,
-			html.EscapeString(uploadEndpoint), detailSlotID)
-		b.WriteString(`</div>`)
+	// Float the image to the right so the field list wraps around it.
+	// Upload is intentionally omitted — that lives on the row-thumbnail
+	// click flow, not inside the detail modal.
+	imageURL := item.SourceImageUrl
+	if imageURL == "" && len(item.SourceImageUrls) > 0 {
+		imageURL = item.SourceImageUrls[0]
+	}
+	if imageURL != "" {
+		fmt.Fprintf(&b, `<img class="item-detail-float-img" src="%s" alt="">`, html.EscapeString(imageURL))
 	}
 
 	b.WriteString(`<dl class="item-detail-dl">`)
@@ -539,7 +534,14 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 		v := dm[f.key]
 		switch tv := v.(type) {
 		case string:
-			writeField(f.label, tv)
+			if f.key == "priced_at" {
+				// Store is ISO-8601; render as a human date via a <time> element
+				// so the layout JS can localise it the same way timestamps are.
+				fmt.Fprintf(&b, `<dt>%s</dt><dd><time class="local-time" datetime="%s">%s</time></dd>`,
+					html.EscapeString(f.label), html.EscapeString(tv), html.EscapeString(tv))
+			} else {
+				writeField(f.label, tv)
+			}
 		case []any:
 			strs := make([]string, 0, len(tv))
 			for _, it := range tv {
@@ -551,6 +553,7 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 		}
 	}
 
+	// Any schedule columns that aren't in the canonical list (custom columns).
 	for _, col := range columns {
 		if knownKeys[col.Key] {
 			continue
@@ -566,7 +569,7 @@ func writeItemDetailFragment(w http.ResponseWriter, projectID, scheduleID string
 		writeField(fmt.Sprintf("PDF %d", i+1), link)
 	}
 
-	b.WriteString(`</dl></div>`)
+	b.WriteString(`</dl><div style="clear:both"></div></div>`)
 
 	fmt.Fprint(w, b.String())
 }
