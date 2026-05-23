@@ -88,7 +88,7 @@ Critical Path
 - [ ] notes to support images, png / svg / copy-paste from CAD?
 - [ ] add link to mothership in chrome extension description
 - [ ] a feature to delete all of a users data / opt-out
-- [ ] user account page, dummy billing, stripe?
+- [x] user account page, dummy billing, stripe?
 - [ ] defend against out of control infra costs / abuse
 - [ ] research cloudflare json extractor: https://developers.cloudflare.com/browser-run/quick-actions/json-endpoint/
 - [ ] notes to support multiple "rows" or inner-sections?
