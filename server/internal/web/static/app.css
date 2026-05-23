@@ -810,6 +810,9 @@ td.col-notes .cell-clamp {
 
 .editing-cell {
   padding: 0 !important;
+  /* Pinned by JS on mousedown so the column doesn't collapse to the
+   * next-widest row's content when this cell shrinks to an input. */
+  min-width: var(--editing-cell-width, auto);
 }
 
 .cell-input {

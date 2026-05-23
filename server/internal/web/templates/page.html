@@ -118,6 +118,19 @@
       });
       window.__columnsChanged = true;
     }
+    // When an editable schedule cell is clicked, capture its rendered
+    // width on the parent row before HTMX swaps the <td>. The new
+    // editing-cell uses this as min-width so the column doesn't collapse
+    // to the next-widest row's content while we're typing in this one.
+    (function () {
+      document.addEventListener('mousedown', function (e) {
+        if (!(e.target instanceof Element)) return;
+        var td = e.target.closest('.editable-cell');
+        if (!td) return;
+        var row = td.closest('tr');
+        if (row) row.style.setProperty('--editing-cell-width', td.offsetWidth + 'px');
+      }, true);
+    })();
     (function () {
       var now = new Date();
       var todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
