@@ -1,0 +1,89 @@
+{{define "page-admin-extraction-detail"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / <a href="/admin/extractions">Extractions</a> / {{.Log.RequestID}}</div>
+  <h1>Extraction detail</h1>
+</div>
+<section class="admin-section">
+  <dl class="admin-detail">
+    <dt>Request ID</dt>
+    <dd class="admin-mono">{{.Log.RequestID}}</dd>
+
+    <dt>Time (UTC)</dt>
+    <dd class="admin-mono">{{.Log.CreatedAt}}</dd>
+
+    <dt>Status</dt>
+    <dd>{{if .Log.Success}}<span class="admin-badge admin-badge-ok">ok</span>{{else}}<span class="admin-badge admin-badge-err">error</span>{{end}}</dd>
+
+    <dt>Provider</dt>
+    <dd class="admin-mono">{{.Log.Provider}}</dd>
+
+    <dt>Model</dt>
+    <dd class="admin-mono">{{.Log.Model}}</dd>
+
+    <dt>Prompt version</dt>
+    <dd class="admin-mono">{{.Log.PromptVersion}}</dd>
+
+    <dt>Duration</dt>
+    <dd class="admin-mono">{{.Log.DurationMS}} ms</dd>
+
+    <dt>Tokens (in / out)</dt>
+    <dd class="admin-mono">{{if .Log.PromptTokens}}{{.Log.PromptTokens}}{{else}}—{{end}} / {{if .Log.CompletionTokens}}{{.Log.CompletionTokens}}{{else}}—{{end}}</dd>
+
+    <dt>Missing fields</dt>
+    <dd class="admin-mono">{{if .Log.MissingFieldCount}}<span class="admin-badge admin-badge-warn">{{.Log.MissingFieldCount}}</span>{{else}}0{{end}}</dd>
+
+    <dt>Page URL</dt>
+    <dd>{{if .Log.PageURL}}<a href="{{.Log.PageURL}}" target="_blank" rel="noopener">{{.Log.PageURL}}</a>{{else}}—{{end}}</dd>
+
+    <dt>Schedule ID</dt>
+    <dd class="admin-mono">{{if .Log.ScheduleID}}{{.Log.ScheduleID}}{{else}}—{{end}}</dd>
+
+    {{if not .Log.Success}}
+    <dt>Error</dt>
+    <dd>{{prettyJSON .Log.Error}}</dd>
+    {{end}}
+  </dl>
+</section>
+{{if .Log.PromptText}}
+<section class="admin-section">
+  <details class="admin-payload" open>
+    <summary>Prompt text (system + messages)</summary>
+    {{extractPromptMessages .Log.PromptText}}
+  </details>
+</section>
+<section class="admin-section">
+  <details class="admin-payload">
+    <summary>Prompt sent to model (raw)</summary>
+    {{prettyJSON .Log.PromptText}}
+  </details>
+</section>
+{{end}}
+{{if .Log.ResponseText}}
+<section class="admin-section">
+  <details class="admin-payload">
+    <summary>Raw model response</summary>
+    {{prettyJSON .Log.ResponseText}}
+  </details>
+</section>
+{{end}}
+<script>
+(function(){
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function colorize(pre){
+    var t=pre.textContent,obj;
+    try{obj=JSON.parse(t);}catch(e){return;}
+    pre.innerHTML=JSON.stringify(obj,null,2).replace(
+      /("(?:\\.|[^"\\])*")\s*:|("(?:\\.|[^"\\])*")|(true|false|null)|(-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+      function(m,k,s,b,n){
+        if(k) return '<span class="jk">'+esc(k)+'</span>:';
+        if(s) return '<span class="js">'+esc(s)+'</span>';
+        if(b) return '<span class="jb">'+b+'</span>';
+        if(n) return '<span class="jn">'+n+'</span>';
+        return m;
+      });
+  }
+  document.querySelectorAll('.admin-json').forEach(colorize);
+})();
+</script>
+
+{{end}}

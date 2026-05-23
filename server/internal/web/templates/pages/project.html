@@ -1,0 +1,192 @@
+{{define "page-project"}}
+{{$isContractor := eq .ViewMode "contractor"}}
+<nav class="breadcrumb">{{if $isContractor}}<a href="/share/{{.ShareToken}}">{{.Project.Name}}</a>{{else}}<a href="/projects">Projects</a>{{end}}</nav>
+{{template "project-header" .}}
+{{if not $isContractor}}
+<div class="project-actions-row">
+  <details class="actions-menu project-actions-menu">
+    <summary class="actions-menu-btn" title="Other project actions (export, reorder, delete…)">More ▾</summary>
+    <div class="actions-menu-list">
+      <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
+      <button type="button" class="actions-menu-item" onclick="document.getElementById('sched-reorder-modal').showModal();this.closest('details').removeAttribute('open')">Reorder schedules</button>
+      {{if .IsOwner}}
+      <button type="button" class="actions-menu-item" onclick="document.getElementById('collaborators-modal').showModal();this.closest('details').removeAttribute('open')">Manage collaborators</button>
+      <div class="actions-menu-divider"></div>
+      <form method="post" action="/projects/{{.Project.ID}}/delete"
+        onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
+        <button type="submit" class="actions-menu-item actions-menu-item--danger">Delete project</button>
+      </form>
+      {{end}}
+    </div>
+  </details>
+</div>
+{{end}}
+{{if and (not $isContractor) .IsOwner}}
+<dialog id="collaborators-modal" class="columns-modal">
+    <div class="columns-modal-inner">
+      <h3 class="columns-modal-title">Collaborators</h3>
+      {{if eq .MemberError "notfound"}}
+      <p class="collaborators-error">No account found for that email. They need to sign in to Sally first.</p>
+      {{else if eq .MemberError "own"}}
+      <p class="collaborators-error">You can't add yourself as a collaborator.</p>
+      {{end}}
+      <form method="post" action="/projects/{{.Project.ID}}/members" class="collaborators-add-form">
+        <input type="email" name="email" placeholder="collaborator@example.com" required class="collaborators-email-input">
+        <button type="submit" class="button button--small">Add</button>
+      </form>
+      {{if .Members}}
+      <ul class="collaborators-list">
+        {{range .Members}}
+        <li class="collaborators-item">
+          <span class="collaborators-name">{{if .UserName}}{{.UserName}}{{else}}{{.UserEmail}}{{end}}</span>
+          <span class="collaborators-email muted">{{if .UserName}}{{.UserEmail}}{{end}}</span>
+          <form method="post" action="/projects/{{$.Project.ID}}/members/{{.UserID}}/remove" style="margin:0">
+            <button type="submit" class="collaborators-remove-btn">Remove</button>
+          </form>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="muted collaborators-empty">No collaborators yet.</p>
+      {{end}}
+      <div class="col-modal-footer">
+        <button type="button" class="button" onclick="this.closest('dialog').close()">Done</button>
+      </div>
+    </div>
+  </dialog>
+  <script>
+    (function() {
+      var p = new URLSearchParams(window.location.search);
+      if (p.has('member_error')) {
+        document.getElementById('collaborators-modal').showModal();
+        history.replaceState(null, '', window.location.pathname);
+      }
+    })();
+  </script>
+  {{end}}
+  {{if not $isContractor}}
+  <dialog class="columns-modal" id="sched-reorder-modal">
+    <div class="columns-modal-inner">
+      <h3 class="columns-modal-title">Reorder Schedules</h3>
+      <ul class="col-modal-list" id="sched-reorder-list" data-project-id="{{.Project.ID}}">
+        {{range .Schedules}}
+        <li class="col-modal-row" data-sched-id="{{.Schedule.ID}}">
+          <div class="col-modal-move-btns">
+            <button class="col-modal-move" type="button" onclick="moveSchedRow(this,-1)" title="Move up">↑</button>
+            <button class="col-modal-move" type="button" onclick="moveSchedRow(this,1)" title="Move down">↓</button>
+          </div>
+          <span class="sched-reorder-name">{{.Schedule.Name}}</span>
+        </li>
+        {{end}}
+      </ul>
+      <div class="col-modal-footer">
+        <button type="button" class="button" onclick="this.closest('dialog').close()">Done</button>
+      </div>
+    </div>
+  </dialog>
+  <script>
+    (function () {
+      var modal = document.getElementById('sched-reorder-modal');
+      if (modal) {
+        modal.addEventListener('click', function (e) { if (e.target === modal) modal.close(); });
+        modal.addEventListener('toggle', function () {
+          if (modal.open) refreshSchedMoveButtons(document.getElementById('sched-reorder-list'));
+        });
+      }
+    })();
+    function refreshSchedMoveButtons(list) {
+      if (!list) return;
+      var rows = list.querySelectorAll('.col-modal-row');
+      rows.forEach(function (row, i) {
+        var btns = row.querySelectorAll('.col-modal-move');
+        if (btns[0]) btns[0].disabled = (i === 0);
+        if (btns[1]) btns[1].disabled = (i === rows.length - 1);
+      });
+    }
+    function moveSchedRow(btn, dir) {
+      var row = btn.closest('.col-modal-row');
+      var list = row.parentElement;
+      if (dir === -1) {
+        var prev = row.previousElementSibling;
+        if (prev) list.insertBefore(row, prev);
+      } else {
+        var next = row.nextElementSibling;
+        if (next) list.insertBefore(next, row);
+      }
+      refreshSchedMoveButtons(list);
+      saveSchedOrder(list);
+    }
+    function saveSchedOrder(list) {
+      var ids = Array.from(list.querySelectorAll('.col-modal-row')).map(function (r) { return r.dataset.schedId; });
+      var projectId = list.dataset.projectId;
+      var body = new URLSearchParams();
+      ids.forEach(function (id) { body.append('ids', id); });
+      fetch('/projects/' + projectId + '/schedules/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      }).then(function () {
+        var container = document.querySelector('.schedule-list');
+        if (!container) return;
+        ids.forEach(function (id) {
+          var el = document.getElementById('schedule-' + id);
+          if (el) container.appendChild(el);
+        });
+      });
+    }
+  </script>
+  {{end}}{{/* end {{if not $isContractor}} wrapping sched-reorder dialog */}}
+<div class="project-layout">
+  <div class="schedule-content">
+    {{if eq .ViewMode "contractor"}}
+    <div class="contractor-banner">
+      <p>You're viewing this project as a contractor. Click into each schedule to see items, prices, and lead times. Prices were captured at spec time — verify at the vendor link before ordering.</p>
+    </div>
+    {{end}}
+    {{if .Schedules}}
+    <ul class="schedule-list">
+      {{range .Schedules}}
+      <li class="schedule-list-row" id="schedule-{{.Schedule.ID}}">
+        <a class="schedule-list-link" href="{{if eq $.ViewMode "contractor"}}/share/{{$.ShareToken}}/schedules/{{.Schedule.ID}}{{else}}/projects/{{$.Project.ID}}/schedules/{{.Schedule.ID}}{{end}}">
+          <span class="schedule-list-name">{{.Schedule.Name}}{{if eq .Schedule.Kind "note"}} <span class="schedule-list-kind">(note)</span>{{end}}</span>
+          <span class="schedule-list-meta">
+            {{if ne .Schedule.Kind "note"}}<span class="schedule-list-count">{{.ItemCount}} item{{if ne .ItemCount 1}}s{{end}}</span> ·{{end}}
+            {{if and (eq $.ViewMode "contractor") .ContractorTotals (ne .Schedule.Kind "note")}}
+            <span class="schedule-list-subtotal">{{.ContractorTotals.SubtotalDisplay}}</span>
+            {{if or .ContractorTotals.MissingPrice .ContractorTotals.RangePrice}}
+            <span class="schedule-list-warn" title="{{len .ContractorTotals.MissingPrice}} without price, {{len .ContractorTotals.RangePrice}} with price ranges — not included in subtotal">⚠</span>
+            {{end}}
+            ·
+            {{end}}
+            <span class="schedule-list-updated">updated <time class="local-time" datetime="{{isoTime .LastUpdated}}">{{humanTime .LastUpdated}}</time></span>
+          </span>
+        </a>
+      </li>
+      {{end}}
+    </ul>
+    {{else}}
+    {{if eq .ViewMode "contractor"}}
+    <p class="muted">No schedules yet.</p>
+    {{else}}
+    <div class="empty-state empty-state--centered">
+      <div class="empty-state-content">
+        <p class="empty-state-headline">No schedules yet.</p>
+        <p class="empty-state-body">Schedules group related items — for example, <em>Lighting</em>, <em>Plumbing</em>, or <em>Door Hardware</em>. The easiest way to start one is to visit a product page in your browser (Home Depot, Ferguson, Lightology, etc.) and click <strong>SPEC</strong>; Sally will suggest a schedule name for you. You can also create one manually below.</p>
+      </div>
+    </div>
+    {{end}}
+    {{end}}
+    {{if ne .ViewMode "contractor"}}
+    <div class="add-schedule-row">
+      <form method="post" action="/projects/{{.Project.ID}}/schedules">
+        <button type="submit" class="button button-sm" title="A table of items — most schedules are this kind.">+ New schedule</button>
+      </form>
+      <form method="post" action="/projects/{{.Project.ID}}/notes">
+        <button type="submit" class="button button-sm button-secondary" title="A free-text page with no item table — for project-level reminders, supplier contacts, etc.">+ New note page</button>
+      </form>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+{{end}}

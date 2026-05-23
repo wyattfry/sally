@@ -1,16 +1,19 @@
 package web
 
 import (
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-//go:embed templates/page.html
-var pageTemplateHTML string
+//go:embed templates/page.html templates/partials/*.html templates/pages/*.html
+var templatesFS embed.FS
 
 var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 	"add":         func(a, b int) int { return a + b },
@@ -81,7 +84,7 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 			writeBlock("System", strings.Join(parts, "\n"))
 		}
 		for _, msg := range req.Messages {
-			label := strings.Title(msg.Role)
+			label := cases.Title(language.AmericanEnglish).String(msg.Role)
 			if label == "" {
 				label = "Message"
 			}
@@ -166,4 +169,4 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 			return t.Format("Jan 2, 2006")
 		}
 	},
-}).Parse(pageTemplateHTML))
+}).ParseFS(templatesFS, "templates/page.html", "templates/partials/*.html", "templates/pages/*.html"))

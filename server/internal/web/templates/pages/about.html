@@ -1,0 +1,147 @@
+{{define "page-about"}}
+<div class="about-page">
+  <div class="about-hero">
+    <h1>Meet Sally</h1>
+    <p class="about-tagline">She turns product pages into architectural schedules — no spreadsheets required.</p>
+    <p class="about-blurb">Click <strong>SPEC</strong> on any product page (Home Depot, Ferguson, Lightology, etc.) and Sally reads the page, drafts a schedule item, and files it in the right schedule. When the project is ready, share a single link with your contractor or client.</p>
+  </div>
+
+  <section class="about-carousel" aria-label="How to use Sally" data-total="7">
+    <div class="about-slide is-active" data-slide="1">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 1 of 7</p>
+        <h2>Install the Chrome extension</h2>
+        <p>Sally lives in your browser as a Chrome extension. <a href="https://chromewebstore.google.com/detail/sally-spec-poc/cpjlofdhdfpmbcmjbpipdfjjhhiohcac" target="_blank" rel="noreferrer">Open the Web Store listing</a> and click <strong>Add to Chrome</strong>.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/chrome-webstore.png" alt="Sally's Chrome Web Store listing">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="2">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 2 of 7</p>
+        <h2>Open a product and click SPEC</h2>
+        <p>Go to a product page on any vendor site. You'll see a <strong>SPEC</strong> button appear in the corner of the page. Click it to start.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/spec-button.png" alt="The SPEC button on a product page">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="3">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 3 of 7</p>
+        <h2>Sign in with Google</h2>
+        <p>The first time you SPEC something, Sally will ask you to sign in. One click and you're done.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/sign-in.png" alt="The Google sign-in prompt">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="4">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 4 of 7</p>
+        <h2>Pick (or name) a schedule</h2>
+        <p>If the item doesn't fit any of your existing schedules — or if it's your first item — Sally suggests a new schedule name (e.g. <em>Lighting</em>, <em>Plumbing</em>). Accept the suggestion or type your own.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/new-schedule.png" alt="The new-schedule prompt">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="5">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 5 of 7</p>
+        <h2>Review &amp; add</h2>
+        <p>Sally reads the product page and drafts the item — manufacturer, model number, finish, price, lead time, notes. Edit anything that's wrong, then click <strong>OK</strong> to file it.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/drafting.png" alt="The review panel after extraction">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="6">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 6 of 7</p>
+        <h2>Open your project</h2>
+        <p>Click <strong>View project</strong> in the confirmation panel, or jump straight to <a href="/projects">your projects page</a> any time. Edit anything inline — cell values, schedule names, even the column layout.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/view-project.png" alt="The view-project link">
+      </figure>
+    </div>
+
+    <div class="about-slide" data-slide="7">
+      <div class="about-slide-text">
+        <p class="about-step-kicker">Step 7 of 7</p>
+        <h2>Send a share link</h2>
+        <p>Every project has a built-in share link. Open the project, click <strong>More ▾</strong> &rarr; <strong>Copy share link</strong>, then text or email it. Anyone who opens the link sees a read-only view with prices, lead times, and stock.</p>
+      </div>
+      <figure class="about-slide-figure">
+        <img src="/static/share-link.png" alt="The copy-share-link action">
+      </figure>
+    </div>
+
+    <nav class="about-carousel-controls" aria-label="Carousel navigation">
+      <button type="button" class="about-nav-btn" data-dir="prev" aria-label="Previous step">‹</button>
+      <div class="about-dots" role="tablist">
+        <button type="button" class="about-dot is-active" data-slide="1" aria-label="Step 1"></button>
+        <button type="button" class="about-dot" data-slide="2" aria-label="Step 2"></button>
+        <button type="button" class="about-dot" data-slide="3" aria-label="Step 3"></button>
+        <button type="button" class="about-dot" data-slide="4" aria-label="Step 4"></button>
+        <button type="button" class="about-dot" data-slide="5" aria-label="Step 5"></button>
+        <button type="button" class="about-dot" data-slide="6" aria-label="Step 6"></button>
+        <button type="button" class="about-dot" data-slide="7" aria-label="Step 7"></button>
+      </div>
+      <button type="button" class="about-nav-btn" data-dir="next" aria-label="Next step">›</button>
+    </nav>
+  </section>
+
+  <div class="about-cta">
+    <span>Ready to try it?</span>
+    <a href="/projects" class="button">Go to your projects</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('.about-carousel');
+  if (!root) return;
+  var total = parseInt(root.dataset.total, 10) || 1;
+  var slides = root.querySelectorAll('.about-slide');
+  var dots = root.querySelectorAll('.about-dot');
+  var prevBtn = root.querySelector('.about-nav-btn[data-dir="prev"]');
+  var nextBtn = root.querySelector('.about-nav-btn[data-dir="next"]');
+  var current = 1;
+
+  function show(n) {
+    if (n < 1) n = 1;
+    if (n > total) n = total;
+    current = n;
+    slides.forEach(function (s) {
+      s.classList.toggle('is-active', parseInt(s.dataset.slide, 10) === n);
+    });
+    dots.forEach(function (d) {
+      d.classList.toggle('is-active', parseInt(d.dataset.slide, 10) === n);
+    });
+    prevBtn.disabled = (n === 1);
+    nextBtn.disabled = (n === total);
+  }
+
+  prevBtn.addEventListener('click', function () { show(current - 1); });
+  nextBtn.addEventListener('click', function () { show(current + 1); });
+  dots.forEach(function (d) {
+    d.addEventListener('click', function () { show(parseInt(d.dataset.slide, 10)); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  });
+
+  show(1);
+})();
+</script>
+{{end}}

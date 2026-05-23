@@ -1,0 +1,79 @@
+{{define "page-home"}}
+<div class="page-header">
+  <div>
+    <h1 style="margin:0">My Projects</h1>
+    <p class="page-subtitle">Each project is a building or job. Schedules live inside projects.</p>
+  </div>
+  <form method="post" action="/projects" style="margin:0">
+    <button type="submit" class="button" title="Create a new building or job. You'll add schedules and items inside.">New Project</button>
+  </form>
+</div>
+{{if .Projects}}
+<div class="project-cards">
+  {{range .Projects}}
+  <a class="project-card" href="/projects/{{.Project.ID}}">
+    <div class="project-thumb-wrap">
+      {{if .Project.ThumbnailUrl}}
+      <img src="{{.Project.ThumbnailUrl}}" alt="">
+      {{else if index .ThumbImages 0}}
+      <div class="project-thumb-grid">
+        {{range .ThumbImages}}
+        {{if .}}<img src="{{.}}" alt="">{{else}}<div class="project-thumb-cell"></div>{{end}}
+        {{end}}
+      </div>
+      {{else}}
+      <div class="project-thumb-initial">{{printf "%.1s" .Project.Name}}</div>
+      {{end}}
+    </div>
+    <div class="project-card-body">
+      <h2>{{.Project.Name}}</h2>
+      {{if .Project.Address}}<p class="project-card-meta">{{.Project.Address}}</p>{{end}}
+      {{if .Project.Description}}<p class="project-card-description">{{.Project.Description}}</p>{{end}}
+      <p class="project-card-meta">Updated <time class="local-time"
+          datetime="{{isoTime .Project.UpdatedAt}}">{{humanTime .Project.UpdatedAt}}</time></p>
+    </div>
+  </a>
+  {{end}}
+</div>
+{{else}}
+<div class="empty-state empty-state--centered">
+  <div class="empty-state-content">
+    <p class="empty-state-headline">No projects yet.</p>
+    <p class="empty-state-body">Click <strong>New Project</strong> above to start one, or read the <a href="/about">About page</a> for a quick walkthrough of how Sally works.</p>
+  </div>
+</div>
+{{end}}
+{{if .SharedProjects}}
+<div class="page-header" style="margin-top:2rem">
+  <h2 style="font-size:1.25rem;font-weight:600;margin:0">Shared with me</h2>
+</div>
+<div class="project-cards">
+  {{range .SharedProjects}}
+  <a class="project-card" href="/projects/{{.Project.ID}}">
+    <div class="project-thumb-wrap">
+      {{if .Project.ThumbnailUrl}}
+      <img src="{{.Project.ThumbnailUrl}}" alt="">
+      {{else if index .ThumbImages 0}}
+      <div class="project-thumb-grid">
+        {{range .ThumbImages}}
+        {{if .}}<img src="{{.}}" alt="">{{else}}<div class="project-thumb-cell"></div>{{end}}
+        {{end}}
+      </div>
+      {{else}}
+      <div class="project-thumb-initial">{{printf "%.1s" .Project.Name}}</div>
+      {{end}}
+    </div>
+    <div class="project-card-body">
+      <p class="project-card-meta"><span>{{.OwnerDisplayName}}</span></p>
+      <h2>{{.Project.Name}}</h2>
+      {{if .Project.Address}}<p class="project-card-meta">{{.Project.Address}}</p>{{end}}
+      {{if .Project.Description}}<p class="project-card-description">{{.Project.Description}}</p>{{end}}
+      <p class="project-card-meta">Updated <time class="local-time"
+          datetime="{{isoTime .Project.UpdatedAt}}">{{humanTime .Project.UpdatedAt}}</time></p>
+      <p class="project-card-meta"><span class="badge-shared">Shared with you</span></p>
+    </div>
+  </a>
+  {{end}}
+</div>
+{{end}}
+{{end}}

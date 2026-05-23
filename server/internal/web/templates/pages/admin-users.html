@@ -1,0 +1,49 @@
+{{define "page-admin-users"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / Users</div>
+  <h1>Users</h1>
+</div>
+{{if .NewLoginURL}}
+<div class="admin-login-link-banner">
+  <strong>Login link{{if .NewLoginName}} for {{.NewLoginName}}{{end}} — valid for 24 hours, single use:</strong>
+  <div class="admin-login-link-row">
+    <input class="admin-login-link-input" type="text" value="{{.NewLoginURL}}" readonly onclick="this.select()">
+    <button class="button button--small" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">Copy</button>
+  </div>
+</div>
+{{end}}
+<section class="admin-section">
+  <h2 class="admin-section-title">Create test user</h2>
+  <form method="post" action="/admin/users" class="admin-create-user-form">
+    <input type="email" name="email" placeholder="test@example.com" required class="collaborators-email-input">
+    <input type="text" name="name" placeholder="Display name (optional)" class="collaborators-email-input">
+    <button type="submit" class="button button--small">Create &amp; get link</button>
+  </form>
+</section>
+<section class="admin-section">
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>Email</th><th>Name</th><th>Joined</th><th>Projects</th><th>Schedules</th><th>Items</th><th>Last item</th><th></th></tr></thead>
+      <tbody>
+        {{range .Users}}
+        <tr>
+          <td class="admin-mono">{{.Email}}</td>
+          <td>{{.Name}}</td>
+          <td class="admin-mono">{{.CreatedAt}}</td>
+          <td>{{.ProjectCount}}</td>
+          <td>{{.ScheduleCount}}</td>
+          <td>{{.ItemCount}}</td>
+          <td class="admin-mono">{{if .LastItemAt}}{{.LastItemAt}}{{else}}—{{end}}</td>
+          <td>
+            <form method="post" action="/admin/users/{{.ID}}/login-link">
+              <button type="submit" class="button button--small">Get login link</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{{end}}

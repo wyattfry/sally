@@ -1,0 +1,38 @@
+{{define "page-edit-item"}}
+<nav class="breadcrumb">
+  <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
+  <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
+  <a href="/projects/{{.Project.ID}}#schedule-{{.Schedule.ID}}">{{.Schedule.Name}}</a> <span
+    class="breadcrumb-sep">/</span>
+  Edit Item
+</nav>
+<div class="form-page">
+  <h1>Edit Item</h1>
+  <div class="form-card">
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/edit" enctype="multipart/form-data">
+      <input type="hidden" name="position" value="{{.Item.Position}}">
+      <input type="hidden" name="source_title" value="{{.Item.SourceTitle}}">
+      <textarea name="source_pdf_links" style="display:none">{{range .Item.SourcePdfLinks}}{{.}}
+{{end}}</textarea>
+      <div class="form-fields">
+        {{range .Columns}}
+        <label>{{.Label}} <input name="col_{{.Key}}" value="{{index $.Item.DataMap .Key}}" autocomplete="off"></label>
+        {{end}}
+        <label>Source URL <input name="source_url" value="{{.Item.SourceUrl}}"></label>
+        <label>Image URL <input name="source_image_url" value="{{.Item.SourceImageUrl}}" placeholder="https://…"></label>
+        <label>Upload Image <input type="file" name="source_image_file" accept="image/*"></label>
+      </div>
+      <button type="submit">Update Item</button>
+    </form>
+  </div>
+  <div class="danger-zone">
+    <h3>Danger zone</h3>
+    <p>Permanently remove this item from the schedule.</p>
+    <form method="post" action="/projects/{{.Project.ID}}/schedules/{{.Schedule.ID}}/items/{{.Item.ID}}/delete"
+      style="margin-top:12px;">
+      <button type="submit" class="button-danger">Delete item</button>
+    </form>
+  </div>
+</div>
+
+{{end}}

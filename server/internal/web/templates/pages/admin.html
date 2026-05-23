@@ -1,0 +1,199 @@
+{{define "page-admin"}}
+<div class="page-header">
+  <h1>Admin</h1>
+</div>
+
+<section class="admin-section">
+  <h2 class="admin-section-title">Overview</h2>
+  <div class="admin-stat-grid">
+    <a class="admin-stat-card admin-stat-card-link" href="/admin/users">
+      <div class="admin-stat-value">{{.Counts.Users}}</div>
+      <div class="admin-stat-label">Users</div>
+      {{if .Counts.NewUsers7d}}<div class="admin-stat-sub">+{{.Counts.NewUsers7d}} this week</div>{{end}}
+    </a>
+    <a class="admin-stat-card admin-stat-card-link" href="/admin/api-tokens">
+      <div class="admin-stat-value">🔑</div>
+      <div class="admin-stat-label">API Tokens</div>
+    </a>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.Counts.Projects}}</div>
+      <div class="admin-stat-label">Projects</div>
+      {{if .Counts.NewProjects7d}}<div class="admin-stat-sub">+{{.Counts.NewProjects7d}} this week</div>{{end}}
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.Counts.Schedules}}</div>
+      <div class="admin-stat-label">Schedules</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.Counts.Items}}</div>
+      <div class="admin-stat-label">Items</div>
+      {{if .Counts.NewItems7d}}<div class="admin-stat-sub">+{{.Counts.NewItems7d}} this week</div>{{end}}
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{formatBytes .StorageBytes}}</div>
+      <div class="admin-stat-label">Uploads storage</div>
+      <div class="admin-stat-sub">{{.StorageDir}}</div>
+    </div>
+  </div>
+  <div class="admin-chart-row">
+    <div class="admin-chart-wrap">
+      <div class="admin-chart-header">
+        <span class="admin-chart-title">Items added</span>
+        <div class="admin-range-btns" id="items-range-btns">
+          <button class="admin-range-btn" data-range="1h">1h</button>
+          <button class="admin-range-btn" data-range="3h">3h</button>
+          <button class="admin-range-btn active" data-range="24h">24h</button>
+          <button class="admin-range-btn" data-range="7d">7d</button>
+        </div>
+      </div>
+      <canvas id="chart-items" height="120"></canvas>
+    </div>
+  </div>
+</section>
+
+<section class="admin-section">
+  <h2 class="admin-section-title">LLM extractions</h2>
+  <div class="admin-stat-grid">
+    <a class="admin-stat-card admin-stat-card-link" href="/admin/extractions">
+      <div class="admin-stat-value">{{.ExtractionSum.Total}}</div>
+      <div class="admin-stat-label">Total calls ↗</div>
+    </a>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{pct .ExtractionSum.Successes .ExtractionSum.Total}}</div>
+      <div class="admin-stat-label">Success rate</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{printf "%.0f" .ExtractionSum.AvgDurMS}}<span class="admin-stat-unit">ms</span></div>
+      <div class="admin-stat-label">Avg duration</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.Last24h}}</div>
+      <div class="admin-stat-label">Last 24 h</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.Last7d}}</div>
+      <div class="admin-stat-label">Last 7 days</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.TotalPromptTok}}</div>
+      <div class="admin-stat-label">Prompt tokens</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-value">{{.ExtractionSum.TotalCompleteTok}}</div>
+      <div class="admin-stat-label">Completion tokens</div>
+    </div>
+  </div>
+
+  <div class="admin-chart-row">
+    <div class="admin-chart-wrap">
+      <div class="admin-chart-header">
+        <span class="admin-chart-title">Extractions</span>
+        <div class="admin-range-btns" id="extract-range-btns">
+          <button class="admin-range-btn" data-range="1h">1h</button>
+          <button class="admin-range-btn" data-range="3h">3h</button>
+          <button class="admin-range-btn active" data-range="24h">24h</button>
+          <button class="admin-range-btn" data-range="7d">7d</button>
+        </div>
+      </div>
+      <canvas id="chart-extractions" height="120"></canvas>
+    </div>
+  </div>
+
+  {{if .ProviderStats}}
+  <table class="admin-table" style="margin-top:16px">
+    <thead><tr><th>Provider</th><th>Model</th><th>Calls</th><th>Success rate</th><th>Avg ms</th></tr></thead>
+    <tbody>
+      {{range .ProviderStats}}
+      <tr>
+        <td>{{.Provider}}</td>
+        <td class="admin-mono">{{.Model}}</td>
+        <td>{{.Total}}</td>
+        <td>{{pct .Successes .Total}}</td>
+        <td class="admin-mono">{{printf "%.0f" .AvgDurMS}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  var green = getComputedStyle(document.documentElement).getPropertyValue('--c-green').trim() || '#22c55e';
+  var red   = '#ef4444';
+  var muted = getComputedStyle(document.documentElement).getPropertyValue('--c-text-muted').trim() || '#888';
+
+  var itemHourly  = {{.ItemHourlyJSON}};
+  var itemDaily   = {{.ItemDailyJSON}};
+  var exHourly    = {{.ExtractHourlyJSON}};
+  var exDaily     = {{.ExtractDailyJSON}};
+
+  var rangeSlices = { '1h': -1, '3h': -3, '24h': null, '7d': null };
+
+  function slice(arr, range) {
+    var n = rangeSlices[range];
+    return n ? arr.slice(n) : arr;
+  }
+
+  function mkDataset(pts, color, label) {
+    return { label: label, data: pts.map(function(p){ return p.Count; }),
+      borderColor: color, backgroundColor: color + '22',
+      fill: true, tension: 0.3, pointRadius: 2 };
+  }
+  function mkErrDataset(pts, color) {
+    return { label: 'Errors', data: pts.map(function(p){ return p.Extra; }),
+      borderColor: color, backgroundColor: color + '22',
+      fill: true, tension: 0.3, pointRadius: 2 };
+  }
+
+  function makeChart(id, pts, extraDataset) {
+    var datasets = [mkDataset(pts, green, 'Total')];
+    if (extraDataset) datasets.push(extraDataset);
+    return new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels: pts.map(function(p){ return p.Date; }), datasets: datasets },
+      options: {
+        animation: false, responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: !!extraDataset, labels: { color: muted } } },
+        scales: {
+          x: { ticks: { color: muted, maxTicksLimit: 7, maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: muted, precision: 0 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  var initPts = slice(itemHourly, '24h');
+  var itemChart = makeChart('chart-items', initPts, null);
+
+  var exInitPts = slice(exHourly, '24h');
+  var exChart = makeChart('chart-extractions', exInitPts, mkErrDataset(exInitPts, red));
+
+  function applyRange(range, chart, hourly, daily, withErrors) {
+    var pts = (range === '7d') ? daily : slice(hourly, range);
+    chart.data.labels = pts.map(function(p){ return p.Date; });
+    chart.data.datasets[0].data = pts.map(function(p){ return p.Count; });
+    if (withErrors) chart.data.datasets[1].data = pts.map(function(p){ return p.Extra; });
+    chart.update();
+  }
+
+  document.getElementById('items-range-btns').addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-range-btn');
+    if (!btn) return;
+    this.querySelectorAll('.admin-range-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    applyRange(btn.dataset.range, itemChart, itemHourly, itemDaily, false);
+  });
+
+  document.getElementById('extract-range-btns').addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-range-btn');
+    if (!btn) return;
+    this.querySelectorAll('.admin-range-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    applyRange(btn.dataset.range, exChart, exHourly, exDaily, true);
+  });
+})();
+</script>
+
+{{end}}

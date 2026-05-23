@@ -1,0 +1,31 @@
+{{define "page-edit-project"}}
+<nav class="breadcrumb">
+  <a href="/projects">Projects</a> <span class="breadcrumb-sep">/</span>
+  <a href="/projects/{{.Project.ID}}">{{.Project.Name}}</a> <span class="breadcrumb-sep">/</span>
+  Edit
+</nav>
+<div class="form-page">
+  <h1>Edit Project</h1>
+  <div class="form-card">
+    <form method="post" action="/projects/{{.Project.ID}}/edit" enctype="multipart/form-data">
+      <div class="form-fields">
+        <label>Project Name <input name="name" value="{{.Project.Name}}" required></label>
+        <label>Address <input name="address" value="{{.Project.Address}}"></label>
+        <label>Description <input name="description" value="{{.Project.Description}}"></label>
+        <label>Thumbnail URL <input name="thumbnail_url" value="{{.Project.ThumbnailUrl}}"
+            placeholder="https://… (leave blank to use item images)"></label>
+        <label>Upload Thumbnail <input type="file" name="thumbnail_file" accept="image/*"></label>
+      </div>
+      <button type="submit">Update Project</button>
+    </form>
+  </div>
+  <div class="danger-zone">
+    <h3>Danger zone</h3>
+    <p>Permanently delete this project and all its schedules and items.</p>
+    <form method="post" action="/projects/{{.Project.ID}}/delete" style="margin-top:12px;">
+      <button type="submit" class="button-danger">Delete project</button>
+    </form>
+  </div>
+</div>
+
+{{end}}

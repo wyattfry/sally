@@ -1,0 +1,96 @@
+{{/* Shared partial: the project header at the top of the project detail
+     page and (in slightly slimmer form, but byte-identical markup) above
+     every schedule view. Keeping a single source of truth here means
+     navigating between project ↔ schedule doesn't shift the layout, and
+     copy/styling changes only need to be made once.
+
+     Required context fields (architect view):
+       .Project (Name, ID, ThumbnailUrl, Address, Description, CreatedAt)
+       .ViewMode ("architect" | "contractor")
+       .IsOwner            — for "Shared by X" badge
+       .OwnerDisplayName   — name to show in that badge
+       .ActiveLink         — *queries.ProjectShareLink (nil if no share link)
+       .ShareBaseURL       — origin for building the share URL
+       .ShareToken         — used by contractor view for back-link
+     Optional: .FirstItemImage — used as hero fallback when no thumbnail.
+*/}}
+{{define "project-header"}}
+{{$isContractor := eq .ViewMode "contractor"}}
+<div class="project-header">
+  <div class="project-header-main">
+    <div class="project-header-left">
+      {{if $isContractor}}
+      <div class="project-hero-wrap" id="proj-hero-{{.Project.ID}}">
+        {{if .Project.ThumbnailUrl}}
+        <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
+        {{else if .FirstItemImage}}
+        <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
+        {{else}}
+        <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
+        {{end}}
+      </div>
+      {{else}}
+      <div class="project-hero-wrap upload-target" id="proj-hero-{{.Project.ID}}"
+           onclick="this.querySelector('input[type=file]').click()" title="Click to upload a new thumbnail">
+        {{if .Project.ThumbnailUrl}}
+        <img class="project-hero-img" src="{{.Project.ThumbnailUrl}}" alt="">
+        {{else if .FirstItemImage}}
+        <img class="project-hero-img" src="{{.FirstItemImage}}" alt="">
+        {{else}}
+        <div class="project-hero-initial">{{printf "%.1s" .Project.Name}}</div>
+        {{end}}
+        <div class="upload-overlay"><span>Upload</span></div>
+        <form hx-post="/projects/{{.Project.ID}}/thumbnail" hx-target="#proj-hero-{{.Project.ID}}"
+              hx-swap="outerHTML" hx-encoding="multipart/form-data">
+          <input type="file" name="thumbnail_file" accept="image/*" style="display:none"
+                 onchange="this.closest('form').requestSubmit()">
+        </form>
+      </div>
+      {{end}}
+      <div class="project-header-text">
+        {{if and (not $isContractor) (not .IsOwner)}}<span class="badge-shared">Shared by {{.OwnerDisplayName}}</span>{{end}}
+        {{if $isContractor}}
+        <h1>{{.Project.Name}}</h1>
+        <div class="meta-field"><span class="meta-label">Created <time class="local-time" datetime="{{isoTime .Project.CreatedAt}}">{{humanTime .Project.CreatedAt}}</time></span></div>
+        {{if .Project.Address}}<div class="meta-field"><span class="meta-label">Address</span><span class="meta-value">{{.Project.Address}}</span></div>{{end}}
+        {{if .Project.Description}}<div class="meta-field"><span class="meta-label">Description</span><span class="meta-value">{{.Project.Description}}</span></div>{{end}}
+        {{else}}
+        <h1 class="editable-h1" data-field="name" title="Click to rename this project" hx-get="/projects/{{.Project.ID}}/fields/name/edit" hx-trigger="click"
+          hx-target="this" hx-swap="outerHTML">{{.Project.Name}}</h1>
+        <div class="meta-field"><span class="meta-label">Created <time class="local-time" datetime="{{isoTime .Project.CreatedAt}}">{{humanTime .Project.CreatedAt}}</time></span></div>
+        <div class="meta-field editable-meta" data-field="address" title="Click to edit the address" hx-get="/projects/{{.Project.ID}}/fields/address/edit"
+          hx-trigger="click" hx-target="this" hx-swap="outerHTML">
+          <span class="meta-label">Address</span>
+          {{if .Project.Address}}<span class="meta-value">{{.Project.Address}}</span>
+          {{else}}<span class="meta-placeholder">Click to add the job-site address</span>{{end}}
+        </div>
+        <div class="meta-field editable-meta" data-field="description" title="Click to edit the description"
+          hx-get="/projects/{{.Project.ID}}/fields/description/edit" hx-trigger="click" hx-target="this"
+          hx-swap="outerHTML">
+          <span class="meta-label">Description</span>
+          {{if .Project.Description}}<span class="meta-value">{{.Project.Description}}</span>
+          {{else}}<span class="meta-placeholder">Click to describe this project, e.g. "Lake house renovation, summer 2026"</span>{{end}}
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{if and (not $isContractor) .ActiveLink}}
+    <div class="project-header-right">
+      <div class="share-box">
+        <p class="share-box-label">Share this project</p>
+        <p class="share-box-explainer">Anyone with this link can view (but not edit) your schedules, prices, and lead times. Text it, email it, or print it on a spec sheet.</p>
+        <div class="share-box-url-row">
+          <input class="share-box-url-input" type="text" readonly
+            value="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}"
+            onclick="this.select()">
+          <button type="button" class="button share-box-copy-btn"
+            title="Copy link to clipboard"
+            data-share-url="{{.ShareBaseURL}}/share/{{.ActiveLink.Token}}"
+            onclick="copySallyShareLink(this)">Copy</button>
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}

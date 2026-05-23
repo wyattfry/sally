@@ -1,0 +1,48 @@
+{{define "page-admin-api-tokens"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / API Tokens</div>
+  <h1>API Tokens</h1>
+</div>
+{{if .NewToken}}
+<div class="admin-login-link-banner">
+  <strong>Token{{if .NewLabel}} "{{.NewLabel}}"{{end}} created — copy it now, it won't be shown again:</strong>
+  <div class="admin-login-link-row">
+    <input class="admin-login-link-input" type="text" value="{{.NewToken}}" readonly onclick="this.select()">
+    <button class="button button--small" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">Copy</button>
+  </div>
+  <p class="admin-token-hint">Use as: <code>Authorization: Bearer {{.NewToken}}</code></p>
+</div>
+{{end}}
+<section class="admin-section">
+  <h2 class="admin-section-title">Create token</h2>
+  <form method="post" action="/admin/api-tokens" class="admin-create-user-form">
+    <input type="text" name="label" placeholder="Label (e.g. local-debug)" class="collaborators-email-input">
+    <button type="submit" class="button button--small">Create token</button>
+  </form>
+</section>
+<section class="admin-section">
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>Label</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+      <tbody>
+        {{range .Tokens}}
+        <tr>
+          <td>{{if .Label}}{{.Label}}{{else}}<em class="admin-dim">—</em>{{end}}</td>
+          <td class="admin-mono">{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+          <td class="admin-mono">{{if .LastUsedAt.Valid}}{{.LastUsedAt.Time.Format "2006-01-02 15:04"}}{{else}}—{{end}}</td>
+          <td>
+            <form method="post" action="/admin/api-tokens/{{.ID}}/revoke" onsubmit="return confirm('Revoke this token?')">
+              <button type="submit" class="button button--small button--danger">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+        {{if not .Tokens}}
+        <tr><td colspan="4" class="admin-dim" style="text-align:center;padding:16px">No tokens yet.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{{end}}

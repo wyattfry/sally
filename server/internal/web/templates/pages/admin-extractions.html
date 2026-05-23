@@ -1,0 +1,29 @@
+{{define "page-admin-extractions"}}
+<div class="page-header">
+  <div class="breadcrumbs"><a href="/admin">Admin</a> / Extractions</div>
+  <h1>Extraction calls</h1>
+</div>
+<section class="admin-section">
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead><tr><th>Request ID</th><th>Time (UTC)</th><th>Provider / Model</th><th>ms</th><th>In tok</th><th>Out tok</th><th>Missing fields</th><th>Status</th><th>Page</th></tr></thead>
+      <tbody>
+        {{range .RecentLogs}}
+        <tr class="{{if .Success}}{{else}}admin-row-error{{end}}">
+          <td class="admin-mono"><a href="/admin/extractions/{{.RequestID}}" class="admin-reqid">{{.RequestID}}</a></td>
+          <td class="admin-mono">{{.CreatedAt}}</td>
+          <td class="admin-mono">{{.Provider}} / {{.Model}}</td>
+          <td class="admin-mono">{{.DurationMS}}</td>
+          <td class="admin-mono">{{if .PromptTokens}}{{.PromptTokens}}{{else}}—{{end}}</td>
+          <td class="admin-mono">{{if .CompletionTokens}}{{.CompletionTokens}}{{else}}—{{end}}</td>
+          <td class="admin-mono">{{if .MissingFieldCount}}<span class="admin-badge admin-badge-warn">{{.MissingFieldCount}}</span>{{else}}0{{end}}</td>
+          <td>{{if .Success}}<span class="admin-badge admin-badge-ok">ok</span>{{else}}<span class="admin-badge admin-badge-err" title="{{.Error}}">error</span>{{end}}</td>
+          <td class="admin-url">{{if .PageURL}}<a href="{{.PageURL}}" target="_blank" rel="noopener" title="{{.PageURL}}">{{.PageURL}}</a>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{{end}}

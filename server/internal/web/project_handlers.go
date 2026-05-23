@@ -181,7 +181,7 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render(w, projectsPage{
-		Kind:           "projects",
+		Kind:           "home",
 		Title:          "Projects",
 		Projects:       toListItems(projects),
 		SharedProjects: sharedItems,

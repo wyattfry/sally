@@ -13,7 +13,7 @@ func render(w http.ResponseWriter, data any) {
 	// the response in a half-written state ("superfluous WriteHeader" if we
 	// then try to call http.Error). Only flush to the wire on success.
 	var buf bytes.Buffer
-	if err := pageTemplate.Execute(&buf, data); err != nil {
+	if err := pageTemplate.ExecuteTemplate(&buf, "page.html", data); err != nil {
 		log.Printf("render: template execute: %v", err)
 		http.Error(w, "could not render page", http.StatusInternalServerError)
 		return
@@ -25,7 +25,7 @@ func render(w http.ResponseWriter, data any) {
 func renderNotFound(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
-	_ = pageTemplate.Execute(w, notFoundPage{Kind: "not-found", Title: "Page not found"})
+	_ = pageTemplate.ExecuteTemplate(w, "page.html", notFoundPage{Kind: "not-found", Title: "Page not found"})
 }
 
 func firstNonEmpty(value string, fallback string) string {
