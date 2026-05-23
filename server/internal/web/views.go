@@ -126,6 +126,12 @@ type notFoundPage struct {
 	Title string
 }
 
+type settingsPage struct {
+	Kind  string
+	Title string
+	User  queries.User
+}
+
 type adminPage struct {
 	Kind              string
 	Title             string

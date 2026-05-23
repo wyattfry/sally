@@ -17,9 +17,33 @@
     <div class="header-inner">
       <a href="/projects" class="header-logo">Sally</a>
       {{if ne .Kind "login"}}
-      <form method="post" action="/logout" style="margin:0">
-        <button type="submit" class="button-ghost">Sign out</button>
-      </form>
+      {{$u := currentUser}}
+      {{if $u}}
+      <details class="user-menu">
+        <summary class="user-menu-trigger" title="Account menu">
+          <span class="user-avatar" aria-hidden="true">{{userInitials}}</span>
+          <span class="user-display-name">{{userDisplayName}}</span>
+          <span class="user-menu-chevron">▾</span>
+        </summary>
+        <div class="user-menu-dropdown">
+          <div class="user-menu-identity">
+            <span class="user-avatar user-avatar--lg" aria-hidden="true">{{userInitials}}</span>
+            <div>
+              <p class="user-menu-name">{{userDisplayName}}</p>
+              <p class="user-menu-email">{{$u.Email}}</p>
+            </div>
+          </div>
+          <div class="user-menu-divider"></div>
+          <a class="user-menu-item" href="/settings">⚙ Account settings</a>
+          <div class="user-menu-divider"></div>
+          <form method="post" action="/logout" style="margin:0">
+            <button type="submit" class="user-menu-item user-menu-item--signout">↩ Sign out</button>
+          </form>
+        </div>
+      </details>
+      {{else}}
+      <a href="/login" class="button-ghost">Sign in</a>
+      {{end}}
       {{end}}
     </div>
   </header>
@@ -182,5 +206,6 @@
 {{else if eq .Kind "admin-api-tokens"}}{{template "page-admin-api-tokens" .}}
 {{else if eq .Kind "admin-extractions"}}{{template "page-admin-extractions" .}}
 {{else if eq .Kind "admin-extraction-detail"}}{{template "page-admin-extraction-detail" .}}
+{{else if eq .Kind "settings"}}{{template "page-settings" .}}
 {{end}}
 {{end}}

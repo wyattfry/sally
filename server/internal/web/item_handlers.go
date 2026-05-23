@@ -145,7 +145,7 @@ func (a app) editScheduleItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render(w, itemEditPage{
+	a.render(w, r, itemEditPage{
 		Kind:     "edit-item",
 		Title:    "Edit " + itemDisplayTitle(item),
 		Project:  loaded.project,

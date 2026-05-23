@@ -1,0 +1,24 @@
+{{define "page-settings"}}
+<div class="page-header">
+  <h1>Account Settings</h1>
+</div>
+<div class="settings-page">
+  <section class="settings-section">
+    <h2 class="settings-section-title">Profile</h2>
+    <dl class="settings-dl">
+      <dt>Name</dt><dd>{{.User.Name}}</dd>
+      <dt>Email</dt><dd>{{.User.Email}}</dd>
+    </dl>
+  </section>
+
+  <section class="settings-section">
+    <h2 class="settings-section-title">Billing</h2>
+    <p class="muted">Billing details and subscription management coming soon.</p>
+  </section>
+
+  <section class="settings-section settings-section--danger">
+    <h2 class="settings-section-title">Danger zone</h2>
+    <p class="muted">Account deletion and data export coming soon.</p>
+  </section>
+</div>
+{{end}}

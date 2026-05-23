@@ -34,12 +34,12 @@ func (a app) newShareSlugAvoidingConflicts(ctx context.Context) (string, error) 
 func (a app) loadShareLinkProject(w http.ResponseWriter, r *http.Request) (queries.Project, string, bool) {
 	token := strings.TrimSpace(r.PathValue("token"))
 	if token == "" {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return queries.Project{}, "", false
 	}
 	link, err := a.queries.GetActiveProjectShareLinkByHash(r.Context(), share.HashToken(token))
 	if errors.Is(err, sql.ErrNoRows) {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return queries.Project{}, "", false
 	}
 	if err != nil {
@@ -50,7 +50,7 @@ func (a app) loadShareLinkProject(w http.ResponseWriter, r *http.Request) (queri
 
 	project, err := a.queries.GetProject(r.Context(), link.ProjectID)
 	if errors.Is(err, sql.ErrNoRows) {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return queries.Project{}, "", false
 	}
 	if err != nil {
@@ -73,7 +73,7 @@ func (a app) showPublicShareProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render(w, projectDetailPage{
+	a.render(w, r, projectDetailPage{
 		Kind:       "project",
 		Title:      project.Name,
 		Project:    project,
@@ -93,7 +93,7 @@ func (a app) showPublicShareSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	schedule, err := a.queries.GetSchedule(r.Context(), r.PathValue("scheduleID"))
 	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return
 	}
 	if err != nil {
@@ -107,7 +107,7 @@ func (a app) showPublicShareSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	sw.ContractorTotals = computeContractorTotals(sw, a.contractorStaleRedDays)
 
-	render(w, scheduleDetailPage{
+	a.render(w, r, scheduleDetailPage{
 		Kind:           "schedule",
 		Title:          schedule.Name + " — " + project.Name,
 		Project:        project,

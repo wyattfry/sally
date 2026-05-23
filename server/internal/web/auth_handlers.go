@@ -24,23 +24,31 @@ func (a app) loginPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/projects", http.StatusSeeOther)
 		return
 	}
-	render(w, signInPage{Kind: "login", Title: "Sign in"})
+	a.render(w, r, signInPage{Kind: "login", Title: "Sign in"})
 }
 
 func (a app) aboutPage(w http.ResponseWriter, r *http.Request) {
-	render(w, aboutPage{Kind: "about", Title: "About Sally"})
+	a.render(w, r, aboutPage{Kind: "about", Title: "About Sally"})
 }
 
 func (a app) pressPage(w http.ResponseWriter, r *http.Request) {
-	render(w, staticPage{Kind: "press", Title: "Press"})
+	a.render(w, r, staticPage{Kind: "press", Title: "Press"})
 }
 
 func (a app) privacyPage(w http.ResponseWriter, r *http.Request) {
-	render(w, staticPage{Kind: "privacy", Title: "Privacy Policy"})
+	a.render(w, r, staticPage{Kind: "privacy", Title: "Privacy Policy"})
 }
 
 func (a app) contactPage(w http.ResponseWriter, r *http.Request) {
-	render(w, staticPage{Kind: "contact", Title: "Contact"})
+	a.render(w, r, staticPage{Kind: "contact", Title: "Contact"})
+}
+
+func (a app) settingsPage(w http.ResponseWriter, r *http.Request) {
+	user, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
+	a.render(w, r, settingsPage{Kind: "settings", Title: "Settings", User: user})
 }
 
 func (a app) startGoogleOAuth(w http.ResponseWriter, r *http.Request) {

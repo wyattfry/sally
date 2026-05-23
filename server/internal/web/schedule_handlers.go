@@ -94,7 +94,7 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	schedule, err := a.queries.GetSchedule(r.Context(), r.PathValue("scheduleID"))
 	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return
 	}
 	if err != nil {
@@ -121,7 +121,7 @@ func (a app) showSchedule(w http.ResponseWriter, r *http.Request) {
 
 	activeLinkPtr := a.activeShareLinkPtr(r.Context(), project.ID)
 
-	render(w, scheduleDetailPage{
+	a.render(w, r, scheduleDetailPage{
 		Kind:             "schedule",
 		Title:            schedule.Name + " — " + project.Name,
 		Project:          project,

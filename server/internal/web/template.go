@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	queries "sally/server/internal/db/generated"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -16,6 +17,10 @@ import (
 var templatesFS embed.FS
 
 var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
+	// Stub implementations replaced per-request in render() via Clone+Funcs.
+	"currentUser":     func() *queries.User { return nil },
+	"userInitials":    func() string { return "" },
+	"userDisplayName": func() string { return "" },
 	"add":         func(a, b int) int { return a + b },
 	"grandTotalDisplay": func(schedules []scheduleSummary) string {
 		var cents int64

@@ -71,6 +71,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadsDir))))
 	mux.HandleFunc("GET /login", a.loginPage)
 	mux.HandleFunc("GET /about", a.aboutPage)
+	mux.HandleFunc("GET /settings", a.settingsPage)
 	mux.HandleFunc("GET /press", a.pressPage)
 	mux.HandleFunc("GET /privacy", a.privacyPage)
 	mux.HandleFunc("GET /contact", a.contactPage)
@@ -183,7 +184,7 @@ func (a app) listProjects(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	render(w, projectsPage{
+	a.render(w, r, projectsPage{
 		Kind:           "home",
 		Title:          "Projects",
 		Projects:       toListItems(projects),
@@ -289,7 +290,7 @@ func (a app) showProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	render(w, projectDetailPage{
+	a.render(w, r, projectDetailPage{
 		Kind:             "project",
 		Title:            project.Name,
 		Project:          project,
@@ -311,7 +312,7 @@ func (a app) editProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render(w, projectEditPage{
+	a.render(w, r, projectEditPage{
 		Kind:    "edit-project",
 		Title:   "Edit " + project.Name,
 		Project: project,
@@ -350,7 +351,7 @@ func (a app) updateProject(w http.ResponseWriter, r *http.Request) {
 		ThumbnailUrl: thumbnailURL,
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return
 	}
 	if err != nil {

@@ -21,8 +21,10 @@ import (
 
 func TestAdminDashboardRendersChartSeriesAsJavaScriptArrays(t *testing.T) {
 	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	a := app{}
 
-	render(resp, adminPage{
+	a.render(resp, req, adminPage{
 		Kind:  "admin",
 		Title: "Admin",
 		ItemHourlyJSON: mustJSON([]appdb.DailyPoint{

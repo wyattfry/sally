@@ -65,7 +65,7 @@ func (a app) loadUserProject(w http.ResponseWriter, r *http.Request, projectID s
 	}
 	project, err := a.queries.GetProject(r.Context(), projectID)
 	if errors.Is(err, sql.ErrNoRows) {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return queries.User{}, queries.Project{}, false
 	}
 	if err != nil {
@@ -78,7 +78,7 @@ func (a app) loadUserProject(w http.ResponseWriter, r *http.Request, projectID s
 			UserID:    user.ID,
 		})
 		if errors.Is(memberErr, sql.ErrNoRows) {
-			renderNotFound(w)
+			a.renderNotFound(w, r)
 			return queries.User{}, queries.Project{}, false
 		}
 		if memberErr != nil {
@@ -98,7 +98,7 @@ func (a app) loadUserProjectAsOwner(w http.ResponseWriter, r *http.Request, proj
 	}
 	project, err := a.queries.GetProject(r.Context(), projectID)
 	if errors.Is(err, sql.ErrNoRows) {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return queries.User{}, queries.Project{}, false
 	}
 	if err != nil {
@@ -106,7 +106,7 @@ func (a app) loadUserProjectAsOwner(w http.ResponseWriter, r *http.Request, proj
 		return queries.User{}, queries.Project{}, false
 	}
 	if a.oauthConfig != nil && project.OwnerUserID != user.ID {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return queries.User{}, queries.Project{}, false
 	}
 	return user, project, true
@@ -120,7 +120,7 @@ func (a app) loadProjectSchedule(w http.ResponseWriter, r *http.Request, project
 
 	schedule, err := a.queries.GetSchedule(r.Context(), scheduleID)
 	if errors.Is(err, sql.ErrNoRows) || schedule.ProjectID != project.ID {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return projectSchedule{}, false
 	}
 	if err != nil {
@@ -139,7 +139,7 @@ func (a app) loadProjectScheduleItem(w http.ResponseWriter, r *http.Request) (pr
 
 	item, err := a.queries.GetScheduleItem(r.Context(), r.PathValue("itemID"))
 	if errors.Is(err, sql.ErrNoRows) || item.ScheduleID != loaded.schedule.ID {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return projectSchedule{}, queries.ScheduleItem{}, false
 	}
 	if err != nil {

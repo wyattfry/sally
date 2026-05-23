@@ -64,7 +64,7 @@ Bugs
 - [x] factor shared projects in selection of most recently changed project default
 - [x] remove image picker from item detail modal
 - [x] change "copy" to "copying" in the about pcage
-- [ ] warn if item is out of stock
+- [x] warn if item is out of stock
 - [ ] actions menu, remove bold from all items
 
 
@@ -92,8 +92,8 @@ Critical Path
 - [ ] defend against out of control infra costs / abuse
 - [ ] research cloudflare json extractor: https://developers.cloudflare.com/browser-run/quick-actions/json-endpoint/
 - [ ] notes to support multiple "rows" or inner-sections?
-- [ ] provision prod environment ()
-- [ ] contractor view: clicking thumbnails should show a modal with a larger rendering of the image
+- [ ] provision prod environment
+- [x] contractor view: clicking thumbnails should show a modal with a larger rendering of the image
 
 Nice To Have
 - [x] LLM: scrape PDF content
@@ -106,25 +106,25 @@ Nice To Have
 - [x] don't allow schedules with duplicate names
 - [x] admin: line graphs dont seem to work. Use a library? D3.js?
 
-- [ ] create a report of the expenses estimated for scaling up to the first milestone of users, e.g. 100? estimate the cost for cloud compute spend, database, LLM, what else? network traffic? BC/DR? Estimate what users would have to be charged to cover costs.
-- [ ] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
+- [x] create a report of the expenses estimated for scaling up to the first milestone of users, e.g. 100? estimate the cost for cloud compute spend, database, LLM, what else? network traffic? BC/DR? Estimate what users would have to be charged to cover costs.
+- [-] add "CODE" label to the code in each item's tile to help it stand out, indicate the significance
 - [ ] mothership: add hint text while editing a field on how to save and cancel
-- [ ] add Swagger: https://github.com/swaggo/swag
+- [-] add Swagger: https://github.com/swaggo/swag
 - [ ] more detail while extraction is underway, show the streaming data? or show the fields but with some animation instead of text values?
 - [ ] move an item between schedules
 - [ ] add a 'report bug / feedback' button on the mothership, send messages that arevisible in the admin portal
 - [ ] admin: use google user group?
 - [ ] alternatives to one-shot general purpose LLM? can i "build an agent" w/e that means?
-- [ ] admin: paginate tables (users, extraction calls)
+- [-] admin: paginate tables (users, extraction calls)
 - [ ] chrome ext: easy way to toggle SPEC button visibility
 - [x] show LLM / token usage, maybe by day? week? in user profile / settings / account page
-- [ ] make the project detail page's project name, address, desc narrower, atm they fill the available width, which is awkwardly wide. And their background color shold be slightly different than the page to show the user the clickable / editable area
+- [x] make the project detail page's project name, address, desc narrower, atm they fill the available width, which is awkwardly wide. And their background color shold be slightly different than the page to show the user the clickable / editable area
 - [ ] pressing Enter in any field in the SallyPanel should submit the form
 - [ ] in sallypanel, project selection might feel better as text with a 'select different project' button that brings up a modal or something? it doesn't feel right as a combo box
-- [ ] see what happens if you try adding different finishes of a product, If the product page supports it, "finish" should be a combobox with two-way binding to MODEL
-- [ ] breadcrumbs no longer needed, can be removed from views etc
+- [x] see what happens if you try adding different finishes of a product, If the product page supports it, "finish" should be a combobox with two-way binding to MODEL
+- [-] breadcrumbs no longer needed, can be removed from views etc
 - [ ] alternative to google sign-in
 - [ ] optimize LLM spend, both for development and data extraction
 - [ ] would a 'duplicate an item' feature be useful?
-- [ ] how much to charge? how often? monthly or by use?
+- [x] how much to charge? how often? monthly or by use?
 - [ ] print view version of shared page?

@@ -40,7 +40,7 @@ func (a app) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 			return false
 		}
 		if a.oauthConfig != nil && (a.adminEmail == "" || user.Email != a.adminEmail) {
-			renderNotFound(w)
+			a.renderNotFound(w, r)
 			return false
 		}
 		_ = a.queries.TouchAPITokenLastUsed(r.Context(), apiToken.ID)
@@ -52,7 +52,7 @@ func (a app) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 			return false
 		}
 		if a.adminEmail == "" || user.Email != a.adminEmail {
-			renderNotFound(w)
+			a.renderNotFound(w, r)
 			return false
 		}
 	}
@@ -108,7 +108,7 @@ func (a app) adminDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	render(w, adminPage{
+	a.render(w, r, adminPage{
 		Kind:              "admin",
 		Title:             "Admin",
 		Counts:            counts,
@@ -132,7 +132,7 @@ func (a app) adminUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not load users: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	render(w, adminUsersPage{
+	a.render(w, r, adminUsersPage{
 		Kind:         "admin-users",
 		Title:        "Admin — Users",
 		Users:        users,
@@ -182,7 +182,7 @@ func (a app) adminCreateLoginLink(w http.ResponseWriter, r *http.Request) {
 	userID := r.PathValue("userID")
 	user, err := a.queries.GetUser(r.Context(), userID)
 	if err != nil {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return
 	}
 
@@ -222,7 +222,7 @@ func (a app) adminAPITokens(w http.ResponseWriter, r *http.Request) {
 	if tokens == nil {
 		tokens = []dbgen.APIToken{}
 	}
-	render(w, adminAPITokensPage{
+	a.render(w, r, adminAPITokensPage{
 		Kind:     "admin-api-tokens",
 		Title:    "Admin — API Tokens",
 		Tokens:   tokens,
@@ -279,7 +279,7 @@ func (a app) adminExtractions(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not load extractions: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	render(w, adminExtractionsPage{
+	a.render(w, r, adminExtractionsPage{
 		Kind:       "admin-extractions",
 		Title:      "Admin — Extractions",
 		RecentLogs: logs,
@@ -293,14 +293,14 @@ func (a app) adminExtractionDetail(w http.ResponseWriter, r *http.Request) {
 	requestID := r.PathValue("requestID")
 	log, err := appdb.QueryExtractionLogByRequestID(r.Context(), a.db, requestID)
 	if errors.Is(err, sql.ErrNoRows) {
-		renderNotFound(w)
+		a.renderNotFound(w, r)
 		return
 	}
 	if err != nil {
 		http.Error(w, "could not load extraction: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	render(w, adminExtractionDetailPage{
+	a.render(w, r, adminExtractionDetailPage{
 		Kind:  "admin-extraction-detail",
 		Title: "Extraction " + requestID,
 		Log:   log,
