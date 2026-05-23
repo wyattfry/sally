@@ -446,6 +446,13 @@ export function SallyPanel({
                         <option key={f} value={f}>{f}</option>
                       ))}
                     </select>
+                  ) : col.key === "notes" ? (
+                    <textarea
+                      id={`sally-col-${col.key}`}
+                      rows={3}
+                      value={draft?.data[col.key] ?? ""}
+                      onChange={(event) => updateData(col.key, event.target.value)}
+                    />
                   ) : (
                     <input
                       id={`sally-col-${col.key}`}
