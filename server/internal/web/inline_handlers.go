@@ -30,7 +30,7 @@ func (a app) editItemCell(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "could not load items", http.StatusInternalServerError)
 			return
 		}
-		writeCellEditRoom(w, saveURL, value, loaded.schedule.ID, uniqueRooms(allItems))
+		writeCellEditRoom(w, saveURL, value, uniqueRooms(allItems))
 		return
 	}
 	writeCellEdit(w, saveURL, value, key)
@@ -150,22 +150,39 @@ func writeCellDisplay(w io.Writer, editURL, value, key string, isCode bool, sour
 		class, html.EscapeString(editURL), inner)
 }
 
-func writeCellEditRoom(w http.ResponseWriter, saveURL, value, scheduleID string, rooms []string) {
+func writeCellEditRoom(w http.ResponseWriter, saveURL, value string, rooms []string) {
 	v := html.EscapeString(value)
 	s := html.EscapeString(saveURL)
-	listID := "zl-" + scheduleID
-	esc := `onkeydown="if(event.key==='Escape'){this.value=this.dataset.original;htmx.trigger(this,'blur')}"`
+	// __new__ sentinel asks for a fresh room name. The inline onchange
+	// runs before HTMX's change listener fires, so by the time HTMX
+	// POSTs the value is either the typed-in name (committed) or the
+	// original value (cancelled — a no-op save).
+	onchange := `onchange="if(this.value==='__new__'){var n=prompt('New room name?');if(n&&n.trim()){this.add(new Option(n.trim(),n.trim(),false,true));this.value=n.trim();}else{this.value=this.dataset.original;}}"`
+	esc := `onkeydown="if(event.key==='Escape'){this.value=this.dataset.original;this.dispatchEvent(new Event('change'))}"`
 	var opts strings.Builder
-	opts.WriteString(`<option value="">No room</option>`)
-	for _, z := range rooms {
-		fmt.Fprintf(&opts, `<option value="%s">`, html.EscapeString(z))
+	fmt.Fprintf(&opts, `<option value="" class="cell-select-meta"%s>No room</option>`, optionSelected("", value))
+	if len(rooms) > 0 {
+		opts.WriteString(`<option disabled class="cell-select-divider">──────────</option>`)
+		for _, z := range rooms {
+			ze := html.EscapeString(z)
+			fmt.Fprintf(&opts, `<option value="%s"%s>%s</option>`, ze, optionSelected(z, value), ze)
+		}
+		opts.WriteString(`<option disabled class="cell-select-divider">──────────</option>`)
 	}
+	opts.WriteString(`<option value="__new__" class="cell-select-meta">New room…</option>`)
 	fmt.Fprintf(w,
 		`<td class="editing-cell col-room">`+
-			`<input class="cell-input" list="%s" name="value" value="%s" data-original="%s" autocomplete="off" autofocus `+
-			`hx-post="%s" hx-trigger="blur, keyup[key=='Enter']" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s>`+
-			`<datalist id="%s">%s</datalist></td>`,
-		listID, v, v, s, esc, listID, opts.String())
+			`<select class="cell-input cell-select" name="value" data-original="%s" autofocus `+
+			`hx-post="%s" hx-trigger="change" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s %s>%s</select>`+
+			`</td>`,
+		v, s, onchange, esc, opts.String())
+}
+
+func optionSelected(opt, current string) string {
+	if opt == current {
+		return " selected"
+	}
+	return ""
 }
 
 func uniqueRooms(items []queries.ScheduleItem) []string {

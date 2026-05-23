@@ -837,6 +837,24 @@ td.col-notes .cell-clamp {
   white-space: pre-wrap;
 }
 
+.cell-select {
+  appearance: auto;
+  cursor: pointer;
+}
+
+/* The dropdown shows "No room" / "New room…" italicized so they read
+ * as meta-actions rather than as named rooms. Italic option styling is
+ * honored by Chromium, Firefox, and Safari — older browsers fall back
+ * to the regular weight, which is harmless. */
+.cell-select-meta {
+  font-style: italic;
+  color: var(--c-text-muted);
+}
+
+.cell-select-divider {
+  color: var(--c-border-mid);
+}
+
 .editable-h1 {
   cursor: pointer;
 }
