@@ -350,13 +350,14 @@ export function SallyPanel({
             <p>{panel.message}</p>
           </div>
         ) : panel.kind === "thinking" ? (
-          <div className="thinking">
-            <div aria-hidden="true" className="thinking-spinner" />
-            <p>
-              {panel.tokenCount > 0
-                ? `Generating response… (${panel.tokenCount} tokens)`
-                : "Reading product information and drafting a schedule item."}
-            </p>
+          <div className="skeleton-panel" aria-busy="true" aria-label="Reading product…">
+            <div className="skeleton-image" />
+            {["90%","75%","60%","82%","70%","55%"].map((w, i) => (
+              <div key={i} className="skeleton-field">
+                <div className="skeleton-line skeleton-label" style={{ width: "38%" }} />
+                <div className="skeleton-line skeleton-input" style={{ width: w }} />
+              </div>
+            ))}
           </div>
         ) : (
           <>
