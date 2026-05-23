@@ -173,7 +173,7 @@ func writeCellEditRoom(w http.ResponseWriter, saveURL, value string, rooms []str
 	fmt.Fprintf(w,
 		`<td class="editing-cell col-room">`+
 			`<select class="cell-input cell-select" name="value" data-original="%s" autofocus `+
-			`hx-post="%s" hx-trigger="change" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s %s>%s</select>`+
+			`hx-post="%s" hx-trigger="change, blur" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s %s>%s</select>`+
 			`</td>`,
 		v, s, onchange, esc, opts.String())
 }

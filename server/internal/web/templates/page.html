@@ -118,18 +118,27 @@
       });
       window.__columnsChanged = true;
     }
-    // When an editable schedule cell is clicked, capture its rendered
-    // width on the parent row before HTMX swaps the <td>. The new
-    // editing-cell uses this as min-width so the column doesn't collapse
-    // to the next-widest row's content while we're typing in this one.
+    // Capture the editable-cell's rendered width on mousedown, then
+    // apply it as an inline min-width on the newly-swapped editing-cell
+    // in htmx:afterSwap. Using a global pending value (not a CSS var on
+    // the row) avoids the bug where clicking a second cell in the same
+    // row overwrites the var and the Room select expands to the wrong
+    // width.
     (function () {
+      var pendingCellWidth = null;
       document.addEventListener('mousedown', function (e) {
         if (!(e.target instanceof Element)) return;
         var td = e.target.closest('.editable-cell');
         if (!td) return;
-        var row = td.closest('tr');
-        if (row) row.style.setProperty('--editing-cell-width', td.offsetWidth + 'px');
+        pendingCellWidth = td.offsetWidth;
       }, true);
+      document.body.addEventListener('htmx:afterSwap', function (e) {
+        var el = e.detail && e.detail.elt;
+        if (el && el.classList && el.classList.contains('editing-cell') && pendingCellWidth) {
+          el.style.minWidth = pendingCellWidth + 'px';
+          pendingCellWidth = null;
+        }
+      });
     })();
     (function () {
       var now = new Date();
