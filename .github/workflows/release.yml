@@ -30,6 +30,19 @@ jobs:
 
       - run: npm ci
 
+      - name: Guard against localhost backend URL
+        run: |
+          url="${VITE_SALLY_BACKEND_BASE_URL:-}"
+          if [ -z "$url" ]; then
+            echo "❌ VITE_SALLY_BACKEND_BASE_URL is not set — refusing to build" >&2
+            exit 1
+          fi
+          if echo "$url" | grep -qiE 'localhost|127\.0\.0\.1|0\.0\.0\.0'; then
+            echo "❌ VITE_SALLY_BACKEND_BASE_URL is '$url' — looks like a local dev URL, refusing to build an extension for upload" >&2
+            exit 1
+          fi
+          echo "✅ Backend URL: $url"
+
       - name: Configure git user
         run: |
           git config user.name "GitHub Actions"

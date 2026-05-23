@@ -1,0 +1,114 @@
+name: Release Extension to Chrome Web Store
+
+# Triggers on version tags (e.g. v0.3.0) or manually.
+# Always uses VITE_SALLY_BACKEND_BASE_URL from the repo's "development"
+# environment — the build will hard-fail if that var is missing or looks
+# like a local address, so localhost:8080 can never sneak into a Store upload.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to release (e.g. v0.3.0) — must already exist on main'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      VITE_SALLY_BACKEND_BASE_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
+      VITE_SALLY_ALLOW_MOCK_FALLBACK: "false"
+
+    steps:
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Guard against localhost backend URL
+        run: |
+          url="${VITE_SALLY_BACKEND_BASE_URL:-}"
+          if [ -z "$url" ]; then
+            echo "❌ VITE_SALLY_BACKEND_BASE_URL is not set — set it in the repo's 'development' environment variables" >&2
+            exit 1
+          fi
+          if echo "$url" | grep -qiE 'localhost|127\.0\.0\.1|0\.0\.0\.0'; then
+            echo "❌ VITE_SALLY_BACKEND_BASE_URL is '$url' — this is a local dev URL" >&2
+            echo "   Set VITE_SALLY_BACKEND_BASE_URL in GitHub → Settings → Environments → development → Variables" >&2
+            exit 1
+          fi
+          echo "✅ Backend URL: $url"
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Verify backend URL baked into bundle
+        run: |
+          url="${VITE_SALLY_BACKEND_BASE_URL}"
+          # Strip protocol for grep since the bundle may encode differently
+          host=$(echo "$url" | sed 's|https\?://||')
+          if ! grep -q "$host" dist/contentScript.js; then
+            echo "❌ Expected '$host' in dist/contentScript.js but didn't find it — build may not have picked up the env var" >&2
+            exit 1
+          fi
+          echo "✅ Backend host '$host' found in bundle"
+
+      - name: Pack zip
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          FILENAME="sally-extension-${TAG}.zip"
+          echo "FILENAME=$FILENAME" >> "$GITHUB_ENV"
+          echo "TAG=$TAG"           >> "$GITHUB_ENV"
+          cd dist && zip -r "../$FILENAME" . && cd ..
+          echo "Packed $FILENAME ($(du -h "$FILENAME" | cut -f1))"
+
+      - name: Create / update GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # If a release for this tag already exists, delete it so we can
+          # re-create it with the fresh zip (idempotent re-runs).
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes "Chrome extension build for $TAG.
+Built against backend: \`${VITE_SALLY_BACKEND_BASE_URL}\`
+
+### Manual install (sideload)
+1. Download \`$FILENAME\` below and unzip it
+2. Open Chrome → \`chrome://extensions\`
+3. Enable **Developer mode** (top-right)
+4. Click **Load unpacked** → select the unzipped folder" \
+            "$FILENAME"
+
+      - name: Submit to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@v6.0.0
+        with:
+          file-path: ${{ env.FILENAME }}
+          extension-id: cpjlofdhdfpmbcmjbpipdfjjhhiohcac
+          client-id: ${{ vars.CLIENT_ID }}
+          client-secret: ${{ secrets.CLIENT_SECRET }}
+          refresh-token: ${{ vars.REFRESH_TOKEN }}
+          publish: false
