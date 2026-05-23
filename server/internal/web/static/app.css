@@ -140,7 +140,7 @@ button,
   font-size: 13px;
   gap: 10px;
   line-height: 1.5;
-  margin: 16px 0;
+  margin: 16px auto;
   max-width: 480px;
   padding: 12px 14px;
 }
@@ -530,6 +530,27 @@ button,
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Notes can carry critical contractor guidance ("verify rough-in",
+ * "trade pricing only", etc.). Give the column extra width and let the
+ * text wrap to its full length instead of clamping. */
+th.col-notes,
+td.col-notes {
+  max-width: 360px;
+  min-width: 220px;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+td.col-notes .cell-clamp {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  overflow: visible;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .item-thumb {
@@ -2542,8 +2563,9 @@ details.schedule-section table {
   color: #2a5d2a;
   font-size: 14px;
   line-height: 1.4;
-  margin: 14px 0;
+  margin: 14px auto;
   padding: 10px 14px;
+  max-width: 480px;
 }
 .contractor-banner p { margin: 0; }
 
