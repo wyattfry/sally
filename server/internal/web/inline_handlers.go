@@ -33,7 +33,7 @@ func (a app) editItemCell(w http.ResponseWriter, r *http.Request) {
 		writeCellEditRoom(w, saveURL, value, loaded.schedule.ID, uniqueRooms(allItems))
 		return
 	}
-	writeCellEdit(w, saveURL, value, key == "notes")
+	writeCellEdit(w, saveURL, value, key)
 }
 
 func (a app) saveItemCell(w http.ResponseWriter, r *http.Request) {
@@ -180,19 +180,23 @@ func uniqueRooms(items []queries.ScheduleItem) []string {
 	return out
 }
 
-func writeCellEdit(w http.ResponseWriter, saveURL, value string, multiline bool) {
+func writeCellEdit(w http.ResponseWriter, saveURL, value, key string) {
 	v := html.EscapeString(value)
 	s := html.EscapeString(saveURL)
+	k := html.EscapeString(key)
 	esc := `onkeydown="if(event.key==='Escape'){this.value=this.dataset.original;htmx.trigger(this,'blur')}"`
-	if multiline {
-		fmt.Fprintf(w, `<td class="editing-cell"><textarea class="cell-input cell-textarea" name="value" data-original="%s" autofocus `+
-			`hx-post="%s" hx-trigger="blur" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s>%s</textarea></td>`,
-			v, s, esc, v)
+	if key == "notes" {
+		// Auto-resize the textarea on focus + input so multi-line notes
+		// don't get truncated to the textarea's default rows count
+		// (otherwise clicking a tall cell would visibly shrink the row).
+		autosize := `oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onfocus="this.style.height='auto';this.style.height=this.scrollHeight+'px'"`
+		fmt.Fprintf(w, `<td class="editing-cell col-%s"><textarea class="cell-input cell-textarea" name="value" data-original="%s" autofocus `+
+			`hx-post="%s" hx-trigger="blur" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s %s>%s</textarea></td>`,
+			k, v, s, esc, autosize, v)
 	} else {
-		fmt.Fprintf(w, `<td class="editing-cell"><input class="cell-input" name="value" value="%s" data-original="%s" autofocus `+
-			`hx-post="%s" hx-trigger="blur, keyup[key=='Enter']" hx-target="closest td" hx-swap="outerHTML" hx-include="this" `+
-			`onkeydown="if(event.key==='Escape'){this.value=this.dataset.original;htmx.trigger(this,'blur')}"></td>`,
-			v, v, s)
+		fmt.Fprintf(w, `<td class="editing-cell col-%s"><input class="cell-input" name="value" value="%s" data-original="%s" autofocus `+
+			`hx-post="%s" hx-trigger="blur, keyup[key=='Enter']" hx-target="closest td" hx-swap="outerHTML" hx-include="this" %s></td>`,
+			k, v, v, s, esc)
 	}
 }
 

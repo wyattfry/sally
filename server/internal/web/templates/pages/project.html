@@ -1,6 +1,6 @@
 {{define "page-project"}}
 {{$isContractor := eq .ViewMode "contractor"}}
-<nav class="breadcrumb">{{if $isContractor}}<a href="/share/{{.ShareToken}}">{{.Project.Name}}</a>{{else}}<a href="/projects">Projects</a>{{end}}</nav>
+<nav class="breadcrumb">{{if $isContractor}}<a href="/share/{{.ShareToken}}">{{.Project.Name}}</a>{{else}}<a href="/projects">Home</a>{{end}}</nav>
 {{template "project-header" .}}
 {{if not $isContractor}}
 <div class="project-actions-row">

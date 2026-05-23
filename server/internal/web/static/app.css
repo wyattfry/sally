@@ -643,6 +643,10 @@ td.col-notes .cell-clamp {
   color: var(--c-text);
 }
 
+/* Row-action buttons keep their space reserved (visibility, not display)
+ * so hovering a row doesn't shift the layout of neighboring cells —
+ * particularly the wide Notes column, which used to re-wrap its text
+ * when the row-actions cell grew on hover. */
 .delete-row-btn {
   align-items: center;
   background: none;
@@ -650,13 +654,15 @@ td.col-notes .cell-clamp {
   border-radius: 4px;
   color: var(--c-text-label);
   cursor: pointer;
-  display: none;
+  display: inline-flex;
   font-size: 16px;
   height: 28px;
   justify-content: center;
   line-height: 1;
   margin-left: 28px;
   padding: 0;
+  vertical-align: middle;
+  visibility: hidden;
   width: 28px;
 }
 
@@ -666,8 +672,7 @@ td.col-notes .cell-clamp {
 }
 
 .item-row:hover .delete-row-btn {
-  display: inline-flex;
-  vertical-align: middle;
+  visibility: visible;
 }
 
 .detail-row-btn {
@@ -677,12 +682,14 @@ td.col-notes .cell-clamp {
   border-radius: 4px;
   color: var(--c-text-label);
   cursor: pointer;
-  display: none;
+  display: inline-flex;
   font-size: 15px;
   height: 28px;
   justify-content: center;
   line-height: 1;
   padding: 0;
+  vertical-align: middle;
+  visibility: hidden;
 }
 
 .detail-row-btn:hover {
@@ -691,8 +698,7 @@ td.col-notes .cell-clamp {
 }
 
 .item-row:hover .detail-row-btn {
-  display: inline-flex;
-  vertical-align: middle;
+  visibility: visible;
 }
 
 /* Item detail modal */
