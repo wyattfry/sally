@@ -40,7 +40,7 @@ func (a app) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 			return false
 		}
 		if a.oauthConfig != nil && (a.adminEmail == "" || user.Email != a.adminEmail) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			renderNotFound(w)
 			return false
 		}
 		_ = a.queries.TouchAPITokenLastUsed(r.Context(), apiToken.ID)
@@ -52,7 +52,7 @@ func (a app) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 			return false
 		}
 		if a.adminEmail == "" || user.Email != a.adminEmail {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			renderNotFound(w)
 			return false
 		}
 	}
