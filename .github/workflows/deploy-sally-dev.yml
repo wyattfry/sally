@@ -21,20 +21,22 @@ jobs:
     environment: development
 
     env:
-      PUBLIC_BASE_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
-      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'stub' }}
-      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
-      OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
-      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
-      GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
-      GOOGLE_REDIRECT_URL: ${{ vars.GOOGLE_REDIRECT_URL }}
-      POSTGRES_PASSWORD: ${{ secrets.SALLY_DEV_POSTGRES_PASSWORD }}
-      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-      CLOUDFLARED_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARED_TUNNEL_TOKEN }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       ADMIN_EMAIL: ${{ vars.ADMIN_EMAIL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      CLOUDFLARED_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARED_TUNNEL_TOKEN }}
+      GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_REDIRECT_URL: ${{ vars.GOOGLE_REDIRECT_URL }}
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'stub' }}
+      OLLAMA_BASE_URL: ${{ vars.OLLAMA_BASE_URL }}
+      OLLAMA_MODEL: ${{ vars.OLLAMA_MODEL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      POSTGRES_PASSWORD: ${{ secrets.SALLY_DEV_POSTGRES_PASSWORD }}
+      PUBLIC_BASE_URL: ${{ vars.VITE_SALLY_BACKEND_BASE_URL }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
 
     steps:
       - uses: actions/checkout@v4
