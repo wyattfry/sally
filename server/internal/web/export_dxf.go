@@ -23,21 +23,25 @@ import (
 // ── layout constants (inches) ────────────────────────────────────────────────
 
 const (
-	dxfMarginX    = 0.5   // left/right page margin
-	dxfMarginY    = 0.5   // bottom margin
-	dxfGapY       = 0.75  // vertical gap between consecutive schedule tables
-	dxfTitleH     = 0.50  // title row height
-	dxfHeaderH    = 0.32  // column-label row height
-	dxfRowH       = 0.28  // data row height
-	dxfTextTitle  = 0.18  // title text height
-	dxfTextHeader = 0.09  // column-label text height
-	dxfTextData   = 0.08  // cell text height
-	dxfPad        = 0.07  // horizontal padding inside a cell
-	dxfTextBaseFr = 0.28  // fraction of row height for text baseline (from bottom)
-	dxfMinColW    = 0.90  // minimum column width
-	dxfMaxColW    = 4.50  // normal maximum column width
-	dxfNotesMaxW  = 5.50  // notes/description column maximum
-	dxfCharW      = 0.055 // estimated character width at dxfTextData height
+	dxfMarginX    = 0.5  // left/right page margin
+	dxfMarginY    = 0.5  // bottom margin
+	dxfGapY       = 0.75 // vertical gap between consecutive schedule tables
+	dxfTitleH     = 0.50 // title row height
+	dxfHeaderH    = 0.36 // column-label row height
+	dxfMinRowH    = 0.36 // minimum data row height
+	dxfLineSpace  = 0.15 // line spacing for wrapped text
+	dxfTextTitle  = 0.18 // title text height
+	dxfTextHeader = 0.10 // column-label text height
+	dxfTextData   = 0.10 // cell text height
+	dxfPad        = 0.08 // horizontal padding inside a cell
+	dxfVPad       = 0.08 // vertical padding: baseline from cell bottom
+	dxfMinColW    = 1.00 // minimum column width
+	dxfMaxColW    = 3.50 // normal maximum column width
+	dxfNotesMaxW  = 5.00 // notes/description column maximum
+	// dxfCharW: effective width per character for STANDARD (simplex) font
+	// at dxfTextData height, accounting for inter-character spacing.
+	// Slightly conservative so lines never overflow their column boundary.
+	dxfCharW = 0.07
 )
 
 // ── handler ─────────────────────────────────────────────────────────────────
@@ -75,56 +79,30 @@ func (a app) exportProjectDXF(w http.ResponseWriter, r *http.Request) {
 
 // ── top-level writer ────────────────────────────────────────────────────────
 
-func dxfWriteProject(w io.Writer, projectName string, tables []scheduleWithItems) {
-	d := &dxfWriter{w: w}
-
-	// Compute total drawing height to set LIMMAX.
-	totalH := dxfMarginY
-	for i, sw := range tables {
-		rows := dxfCountRows(sw)
-		totalH += dxfTitleH + dxfHeaderH + float64(rows)*dxfRowH
-		if i < len(tables)-1 {
-			totalH += dxfGapY
-		}
-	}
-	totalH += dxfMarginY
-	totalW := dxfMarginX + dxfMaxColW*7 + dxfMarginX // generous estimate
-
-	d.header(totalW, totalH)
-	d.tables()
-	d.blocks()
-	d.sectionStart("ENTITIES")
-
-	// Draw each schedule table, stacked top-to-bottom.
-	curY := totalH - dxfMarginY // current top-of-table Y
-	for _, sw := range tables {
-		curY = dxfDrawTable(d, sw, curY)
-		curY -= dxfGapY
-	}
-
-	d.sectionEnd()
-	d.eof()
-}
-
-// dxfCountRows returns the total number of data rows across all room groups.
-func dxfCountRows(sw scheduleWithItems) int {
-	n := 0
-	for _, g := range sw.Groups {
-		n += len(g.Items)
-	}
-	return n
-}
-
 // dxfRow holds one item's flat display values.
 type dxfRow struct {
 	room    string
 	dataMap map[string]string
 }
 
-// dxfDrawTable draws a single schedule table starting with its top edge at
-// topY and returns the Y coordinate of the table's bottom edge.
-func dxfDrawTable(d *dxfWriter, sw scheduleWithItems, topY float64) float64 {
-	// Flatten items.
+// dxfTablePlan pre-computes columns and per-row heights so we can size the
+// drawing canvas before emitting any entities.
+type dxfTablePlan struct {
+	sw      scheduleWithItems
+	rows    []dxfRow
+	cols    []dxfCol
+	tableW  float64
+	rowH    []float64 // per-row height (varies with notes line count)
+	totalH  float64   // title + header + all data rows
+}
+
+type dxfCol struct {
+	key, label string
+	width      float64
+	isNotes    bool
+}
+
+func dxfPlanTable(sw scheduleWithItems) dxfTablePlan {
 	var rows []dxfRow
 	for _, g := range sw.Groups {
 		for _, it := range g.Items {
@@ -132,13 +110,7 @@ func dxfDrawTable(d *dxfWriter, sw scheduleWithItems, topY float64) float64 {
 		}
 	}
 
-	// Build columns.
-	type col struct {
-		key, label string
-		width      float64
-		isNotes    bool
-	}
-	var cols []col
+	var cols []dxfCol
 	hasRoom := false
 	for _, r2 := range rows {
 		if r2.room != "" {
@@ -148,7 +120,7 @@ func dxfDrawTable(d *dxfWriter, sw scheduleWithItems, topY float64) float64 {
 	}
 	if hasRoom {
 		w2 := dxfColWidthFromValues("Room", func(i int) string { return rows[i].room }, len(rows), false)
-		cols = append(cols, col{key: "room", label: "Room", width: w2})
+		cols = append(cols, dxfCol{key: "room", label: "Room", width: w2})
 	}
 	for _, sc := range sw.Columns {
 		if sc.Key == "room" {
@@ -156,89 +128,161 @@ func dxfDrawTable(d *dxfWriter, sw scheduleWithItems, topY float64) float64 {
 		}
 		notes := sc.Key == "notes" || sc.Key == "description"
 		w2 := dxfColWidthFromValues(sc.Label, func(i int) string { return rows[i].dataMap[sc.Key] }, len(rows), notes)
-		cols = append(cols, col{key: sc.Key, label: sc.Label, width: w2, isNotes: notes})
-	}
-	if len(cols) == 0 {
-		return topY
+		cols = append(cols, dxfCol{key: sc.Key, label: sc.Label, width: w2, isNotes: notes})
 	}
 
 	tableW := 0.0
 	for _, c := range cols {
 		tableW += c.width
 	}
-	x0 := dxfMarginX // left edge of table
 
-	// ── Title row ─────────────────────────────────────────────────────────
-	yTop := topY
-	yBottom := yTop - dxfTitleH
-	d.rect("BORDER", x0, yBottom, x0+tableW, yTop)
-	d.text("TITLE", x0+dxfPad, yBottom+dxfTitleH*dxfTextBaseFr, dxfTextTitle, sw.Schedule.Name)
-
-	// ── Column header row ─────────────────────────────────────────────────
-	y2 := yBottom
-	hdrBottom := y2 - dxfHeaderH
-	d.hline("BORDER", x0, x0+tableW, hdrBottom)
-	d.vline("BORDER", x0, hdrBottom, y2)
-	d.vline("BORDER", x0+tableW, hdrBottom, y2)
-	x := x0
-	for i, c := range cols {
-		d.text("COLHEAD", x+dxfPad, hdrBottom+dxfHeaderH*dxfTextBaseFr, dxfTextHeader, c.label)
-		if i < len(cols)-1 {
-			d.vline("BORDER", x+c.width, hdrBottom, y2)
-		}
-		x += c.width
-	}
-
-	// ── Data rows ─────────────────────────────────────────────────────────
+	// Per-row height: expand to fit wrapped notes.
+	rowH := make([]float64, len(rows))
 	for ri, row2 := range rows {
-		y2 = hdrBottom - float64(ri)*dxfRowH
-		rBottom := y2 - dxfRowH
-		d.hline("BORDER", x0, x0+tableW, rBottom)
-		d.vline("BORDER", x0, rBottom, y2)
-		d.vline("BORDER", x0+tableW, rBottom, y2)
-		x = x0
-		for ci, c := range cols {
+		h := dxfMinRowH
+		for _, c := range cols {
+			if !c.isNotes {
+				continue
+			}
 			var val string
 			if c.key == "room" {
 				val = row2.room
 			} else {
 				val = row2.dataMap[c.key]
 			}
-			if ci < len(cols)-1 {
-				d.vline("BORDER", x+c.width, rBottom, y2)
+			if val == "" {
+				continue
+			}
+			charsPerLine := int((c.width - 2*dxfPad) / dxfCharW)
+			if charsPerLine < 5 {
+				charsPerLine = 5
+			}
+			nLines := len(dxfWrap(val, charsPerLine))
+			need := dxfVPad + float64(nLines)*dxfLineSpace + dxfVPad
+			if need > h {
+				h = need
+			}
+		}
+		rowH[ri] = h
+	}
+
+	totalH := dxfTitleH + dxfHeaderH
+	for _, h := range rowH {
+		totalH += h
+	}
+
+	return dxfTablePlan{sw: sw, rows: rows, cols: cols, tableW: tableW, rowH: rowH, totalH: totalH}
+}
+
+func dxfWriteProject(w io.Writer, projectName string, tables []scheduleWithItems) {
+	d := &dxfWriter{w: w}
+
+	plans := make([]dxfTablePlan, len(tables))
+	for i, sw := range tables {
+		plans[i] = dxfPlanTable(sw)
+	}
+
+	totalH := dxfMarginY
+	maxW := 0.0
+	for i, p := range plans {
+		totalH += p.totalH
+		if p.tableW > maxW {
+			maxW = p.tableW
+		}
+		if i < len(plans)-1 {
+			totalH += dxfGapY
+		}
+	}
+	totalH += dxfMarginY
+	totalW := dxfMarginX + maxW + dxfMarginX
+
+	d.header(totalW, totalH)
+	d.tables()
+	d.blocks()
+	d.sectionStart("ENTITIES")
+
+	curY := totalH - dxfMarginY
+	for _, p := range plans {
+		curY = dxfDrawTable(d, p, curY)
+		curY -= dxfGapY
+	}
+
+	d.sectionEnd()
+	d.eof()
+}
+
+// dxfDrawTable draws one schedule table and returns the Y of its bottom edge.
+func dxfDrawTable(d *dxfWriter, p dxfTablePlan, topY float64) float64 {
+	if len(p.cols) == 0 {
+		return topY
+	}
+	x0 := dxfMarginX
+
+	// ── Title row ─────────────────────────────────────────────────────────
+	yBottom := topY - dxfTitleH
+	d.rect("BORDER", x0, yBottom, x0+p.tableW, topY)
+	d.text("TITLE", x0+dxfPad, yBottom+dxfVPad, dxfTextTitle, p.sw.Schedule.Name)
+
+	// ── Column header row ─────────────────────────────────────────────────
+	y2 := yBottom
+	hdrBottom := y2 - dxfHeaderH
+	d.hline("BORDER", x0, x0+p.tableW, hdrBottom)
+	d.vline("BORDER", x0, hdrBottom, y2)
+	d.vline("BORDER", x0+p.tableW, hdrBottom, y2)
+	x := x0
+	for i, c := range p.cols {
+		d.text("COLHEAD", x+dxfPad, hdrBottom+dxfVPad, dxfTextHeader, c.label)
+		if i < len(p.cols)-1 {
+			d.vline("BORDER", x+c.width, hdrBottom, y2)
+		}
+		x += c.width
+	}
+
+	// ── Data rows ─────────────────────────────────────────────────────────
+	curY := hdrBottom
+	for ri, row2 := range p.rows {
+		rH := p.rowH[ri]
+		rBottom := curY - rH
+		d.hline("BORDER", x0, x0+p.tableW, rBottom)
+		d.vline("BORDER", x0, rBottom, curY)
+		d.vline("BORDER", x0+p.tableW, rBottom, curY)
+		x = x0
+		for ci, c := range p.cols {
+			var val string
+			if c.key == "room" {
+				val = row2.room
+			} else {
+				val = row2.dataMap[c.key]
+			}
+			if ci < len(p.cols)-1 {
+				d.vline("BORDER", x+c.width, rBottom, curY)
 			}
 			if val != "" {
-				layer := "DATA"
 				if c.isNotes {
-					layer = "NOTES"
-					// Split notes into lines that fit the column width.
-					dxfTextLines(d, layer, x+dxfPad, rBottom, y2, dxfTextData, c.width-2*dxfPad, val)
+					dxfTextLines(d, "NOTES", x+dxfPad, rBottom, curY, dxfTextData, c.width-2*dxfPad, val)
 				} else {
-					d.text(layer, x+dxfPad, rBottom+dxfRowH*dxfTextBaseFr, dxfTextData, dxfFit(val, c.width))
+					d.text("DATA", x+dxfPad, rBottom+dxfVPad, dxfTextData, dxfFit(val, c.width))
 				}
 			}
 			x += c.width
 		}
+		curY = rBottom
 	}
 
-	// Return the Y of the table's bottom edge.
-	return hdrBottom - float64(len(rows))*dxfRowH
+	return curY
 }
 
-// dxfTextLines renders multi-line text (split on whitespace to fit colWidth)
-// as multiple TEXT entities, stacked from top of cell downward.
+// dxfTextLines renders wrapped text as stacked TEXT entities, top-to-bottom.
 func dxfTextLines(d *dxfWriter, layer string, x, rowBottom, rowTop, height, maxW float64, text string) {
 	charsPerLine := int(maxW / dxfCharW)
 	if charsPerLine < 5 {
 		charsPerLine = 5
 	}
 	lines := dxfWrap(text, charsPerLine)
-	rowH := rowTop - rowBottom
-	lineSpacing := height * 1.5
-	// Start near the top of the cell.
-	startY := rowTop - height - (rowH-float64(len(lines))*lineSpacing)/2
+	// Place first line just below the top of the cell.
+	startY := rowTop - height - dxfVPad
 	for i, line := range lines {
-		y := startY - float64(i)*lineSpacing
+		y := startY - float64(i)*dxfLineSpace
 		if y < rowBottom+height*0.2 {
 			break // don't overflow the cell
 		}
@@ -334,10 +378,10 @@ func (d *dxfWriter) tables() {
 	type lyr struct{ name, color string }
 	layers := []lyr{
 		{"BORDER", "7"},
-		{"TITLE", "4"},
-		{"COLHEAD", "2"},
+		{"TITLE", "7"},
+		{"COLHEAD", "7"},
 		{"DATA", "7"},
-		{"NOTES", "3"},
+		{"NOTES", "7"},
 	}
 	p(0, "TABLE"); p(2, "LAYER"); p(70, len(layers))
 	for _, l := range layers {
