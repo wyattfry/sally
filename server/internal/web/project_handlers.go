@@ -104,6 +104,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/delete", a.deleteScheduleItem)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/move", a.moveScheduleItem)
 	mux.HandleFunc("GET /projects/{projectID}/export.csv", a.exportProjectCSV)
+	mux.HandleFunc("GET /projects/{projectID}/export.dxf", a.exportProjectDXF)
 	mux.HandleFunc("GET /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/cells/{key}/edit", a.editItemCell)
 	mux.HandleFunc("POST /projects/{projectID}/schedules/{scheduleID}/items/{itemID}/cells/{key}", a.saveItemCell)
 	mux.HandleFunc("GET /projects/{projectID}/fields/{field}/edit", a.editProjectField)

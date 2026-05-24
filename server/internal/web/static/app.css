@@ -1102,6 +1102,30 @@ details.schedule-section>summary:hover .schedule-summary-actions {
   white-space: nowrap;
 }
 
+.export-dxf-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--c-text-muted);
+  font-size: 12px;
+  opacity: 0;
+  padding: 2px 6px;
+  text-decoration: none;
+  transition: opacity 0.1s;
+  white-space: nowrap;
+}
+
+thead:hover .export-dxf-btn {
+  opacity: 1;
+}
+
+.export-dxf-btn:hover {
+  background: var(--c-bg-subtle, #f3f4f6);
+  border-color: var(--c-border);
+  color: var(--c-text);
+  opacity: 1;
+}
+
 .edit-columns-btn {
   background: none;
   border: 1px solid transparent;

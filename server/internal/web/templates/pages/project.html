@@ -8,6 +8,7 @@
     <summary class="actions-menu-btn" title="Other project actions (export, reorder, delete…)">More ▾</summary>
     <div class="actions-menu-list">
       <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.csv" onclick="this.closest('details').removeAttribute('open')">Export CSV</a>
+      <a class="actions-menu-item" href="/projects/{{.Project.ID}}/export.dxf" onclick="this.closest('details').removeAttribute('open')">Export DXF</a>
       <button type="button" class="actions-menu-item" onclick="document.getElementById('sched-reorder-modal').showModal();this.closest('details').removeAttribute('open')">Reorder schedules</button>
       {{if .IsOwner}}
       <button type="button" class="actions-menu-item" onclick="document.getElementById('collaborators-modal').showModal();this.closest('details').removeAttribute('open')">Manage collaborators</button>

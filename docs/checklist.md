@@ -66,6 +66,17 @@ Bugs
 - [x] change "copy" to "copying" in the about pcage
 - [x] warn if item is out of stock
 - [ ] actions menu, remove bold from all items
+- [ ] sallpypanel project switcher isn't
+- [ ] sallpy panel "edit columns" -> "edit"
+- [ ] add hint to mothership via 'view projects' to tell user how to keep shopping
+- [ ] sallypanel: make file attachments smaller, notes field bigger
+- [ ] sallypanel, during extraction show some message
+- [ ] lightology melt pendant, LLM got manufactorer as 'Tom Dixon' but that is the designer, the manf is 'Lightology'
+- [ ] notes: LLM instructions: process the "notes" field, we are only interested in some info, e.g. measurments. Things not to include: warranty, certifications, countery of origin
+- [ ] share link: share/firstname.lastname/project-slug, warn that on project name change that old share links will break
+- [ ] contractor view: clicking thumbnails should show the same picker as architect view
+- [ ] download as DXF to import into drawing, or PDF booklet "project manual", cover page with project header, index, no page break between schedules, same columns as the contractor
+- [ ] about: slide 2, say the button is GREEN. in the intro paragraph say you can also export dxf or pdf project manual
 
 
 Critical Path
