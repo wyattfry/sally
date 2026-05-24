@@ -59,7 +59,7 @@ func TestExportProjectDXF(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", resp.Code, resp.Body.String())
 	}
 	body := resp.Body.String()
-	for _, want := range []string{"AC1009", "LTYPE", "CONTINUOUS", "BLOCKS", "$MODEL_SPACE", "ENTITIES", "Toilet Schedule", "Kohler", "K-3589", "Master Bath", "ADA comfort height"} {
+	for _, want := range []string{"AC1015", "LTYPE", "CONTINUOUS", "BLOCKS", "$MODEL_SPACE", "ENTITIES", "Toilet Schedule", "Kohler", "K-3589", "Master Bath", "ADA comfort height"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("DXF output missing %q", want)
 		}

@@ -221,7 +221,8 @@ func dxfDrawTable(d *dxfWriter, p dxfTablePlan, topY float64) float64 {
 	// ── Title row ─────────────────────────────────────────────────────────
 	yBottom := topY - dxfTitleH
 	d.rect("BORDER", x0, yBottom, x0+p.tableW, topY)
-	d.text("TITLE", x0+dxfPad, yBottom+dxfVPad, dxfTextTitle, p.sw.Schedule.Name)
+	// Top-left insertion: x = left+pad, y = top−pad, width = tableW−2pad
+	d.mtext("TITLE", x0+dxfPad, topY-dxfVPad, dxfTextTitle, p.tableW-2*dxfPad, p.sw.Schedule.Name)
 
 	// ── Column header row ─────────────────────────────────────────────────
 	y2 := yBottom
@@ -231,7 +232,7 @@ func dxfDrawTable(d *dxfWriter, p dxfTablePlan, topY float64) float64 {
 	d.vline("BORDER", x0+p.tableW, hdrBottom, y2)
 	x := x0
 	for i, c := range p.cols {
-		d.text("COLHEAD", x+dxfPad, hdrBottom+dxfVPad, dxfTextHeader, c.label)
+		d.mtext("COLHEAD", x+dxfPad, y2-dxfVPad, dxfTextHeader, c.width-2*dxfPad, c.label)
 		if i < len(p.cols)-1 {
 			d.vline("BORDER", x+c.width, hdrBottom, y2)
 		}
@@ -258,11 +259,13 @@ func dxfDrawTable(d *dxfWriter, p dxfTablePlan, topY float64) float64 {
 				d.vline("BORDER", x+c.width, rBottom, curY)
 			}
 			if val != "" {
+				layer := "DATA"
 				if c.isNotes {
-					dxfTextLines(d, "NOTES", x+dxfPad, rBottom, curY, dxfTextData, c.width-2*dxfPad, val)
-				} else {
-					d.text("DATA", x+dxfPad, rBottom+dxfVPad, dxfTextData, dxfFit(val, c.width))
+					layer = "NOTES"
 				}
+				// MTEXT with top-left attachment: x,y = top-left of text area.
+				// colW is the wrapping width; the CAD engine handles line breaks.
+				d.mtext(layer, x+dxfPad, curY-dxfVPad, dxfTextData, c.width-2*dxfPad, val)
 			}
 			x += c.width
 		}
@@ -270,24 +273,6 @@ func dxfDrawTable(d *dxfWriter, p dxfTablePlan, topY float64) float64 {
 	}
 
 	return curY
-}
-
-// dxfTextLines renders wrapped text as stacked TEXT entities, top-to-bottom.
-func dxfTextLines(d *dxfWriter, layer string, x, rowBottom, rowTop, height, maxW float64, text string) {
-	charsPerLine := int(maxW / dxfCharW)
-	if charsPerLine < 5 {
-		charsPerLine = 5
-	}
-	lines := dxfWrap(text, charsPerLine)
-	// Place first line just below the top of the cell.
-	startY := rowTop - height - dxfVPad
-	for i, line := range lines {
-		y := startY - float64(i)*dxfLineSpace
-		if y < rowBottom+height*0.2 {
-			break // don't overflow the cell
-		}
-		d.text(layer, x, y, height, line)
-	}
 }
 
 // dxfWrap wraps text to at most maxChars per line on word boundaries.
@@ -329,19 +314,6 @@ func dxfColWidthFromValues(label string, getValue func(int) string, n int, isNot
 	return math.Max(dxfMinColW, math.Min(maxW, float64(maxLen)*dxfCharW+2*dxfPad))
 }
 
-// dxfFit truncates s so it fits in a single-line cell of the given width.
-func dxfFit(s string, colW float64) string {
-	maxChars := int((colW - 2*dxfPad) / dxfCharW)
-	if maxChars < 3 {
-		maxChars = 3
-	}
-	r := []rune(s)
-	if len(r) > maxChars {
-		return string(r[:maxChars-1]) + "~"
-	}
-	return s
-}
-
 // ── low-level DXF writer ─────────────────────────────────────────────────────
 
 type dxfWriter struct{ w io.Writer }
@@ -355,11 +327,13 @@ func (d *dxfWriter) header(limW, limH float64) {
 	p := d.pair
 	p(0, "SECTION")
 	p(2, "HEADER")
-	p(9, "$ACADVER"); p(1, "AC1009")
+	// AC1015 = AutoCAD 2000. Minimum version that fully supports MTEXT.
+	p(9, "$ACADVER"); p(1, "AC1015")
 	p(9, "$INSBASE"); p(10, "0.0"); p(20, "0.0"); p(30, "0.0")
 	p(9, "$LIMMIN"); p(10, "0.0"); p(20, "0.0")
 	p(9, "$LIMMAX"); p(10, fmt.Sprintf("%.4f", limW)); p(20, fmt.Sprintf("%.4f", limH))
 	p(9, "$LUNITS"); p(70, 2)
+	p(9, "$MEASUREMENT"); p(70, 0) // 0 = English (inches)
 	p(0, "ENDSEC")
 }
 
@@ -368,37 +342,42 @@ func (d *dxfWriter) tables() {
 	p(0, "SECTION")
 	p(2, "TABLES")
 
-	// LTYPE table — must define CONTINUOUS so layers can reference it.
+	// LTYPE — CONTINUOUS linetype must exist before LAYER can reference it.
 	p(0, "TABLE"); p(2, "LTYPE"); p(70, 1)
 	p(0, "LTYPE"); p(2, "CONTINUOUS"); p(70, 0)
 	p(3, "Solid line"); p(72, 65); p(73, 0); p(40, "0.0")
 	p(0, "ENDTAB")
 
-	// LAYER table.
-	type lyr struct{ name, color string }
-	layers := []lyr{
-		{"BORDER", "7"},
-		{"TITLE", "7"},
-		{"COLHEAD", "7"},
-		{"DATA", "7"},
-		{"NOTES", "7"},
-	}
+	// LAYER
+	type lyr struct{ name string }
+	layers := []lyr{{"BORDER"}, {"TITLE"}, {"COLHEAD"}, {"DATA"}, {"NOTES"}}
 	p(0, "TABLE"); p(2, "LAYER"); p(70, len(layers))
 	for _, l := range layers {
-		p(0, "LAYER"); p(2, l.name); p(70, 0); p(62, l.color); p(6, "CONTINUOUS")
+		// color 7 = white on dark screens, plots as black on white paper
+		p(0, "LAYER"); p(2, l.name); p(70, 0); p(62, 7); p(6, "CONTINUOUS")
 	}
+	p(0, "ENDTAB")
+
+	// STYLE — needed by AC1015; defines the STANDARD text style used by MTEXT.
+	p(0, "TABLE"); p(2, "STYLE"); p(70, 1)
+	p(0, "STYLE"); p(2, "STANDARD"); p(70, 0); p(40, "0.0"); p(41, "1.0")
+	p(50, "0.0"); p(71, 0); p(42, "0.2"); p(3, "txt"); p(4, "")
 	p(0, "ENDTAB")
 
 	p(0, "ENDSEC")
 }
 
-// blocks writes the mandatory BLOCKS section with a minimal $MODEL_SPACE entry.
+// blocks writes the mandatory BLOCKS section (AC1015 requires both model and paper space).
 func (d *dxfWriter) blocks() {
 	p := d.pair
 	p(0, "SECTION"); p(2, "BLOCKS")
+	// $MODEL_SPACE
 	p(0, "BLOCK"); p(8, "0"); p(2, "$MODEL_SPACE"); p(70, 0)
-	p(10, "0.0"); p(20, "0.0"); p(30, "0.0")
-	p(3, "$MODEL_SPACE"); p(1, "")
+	p(10, "0.0"); p(20, "0.0"); p(30, "0.0"); p(3, "$MODEL_SPACE"); p(1, "")
+	p(0, "ENDBLK"); p(8, "0")
+	// $PAPER_SPACE (also required by AC1015)
+	p(0, "BLOCK"); p(8, "0"); p(2, "$PAPER_SPACE"); p(70, 0)
+	p(10, "0.0"); p(20, "0.0"); p(30, "0.0"); p(3, "$PAPER_SPACE"); p(1, "")
 	p(0, "ENDBLK"); p(8, "0")
 	p(0, "ENDSEC")
 }
@@ -407,17 +386,11 @@ func (d *dxfWriter) sectionStart(name string) { d.pair(0, "SECTION"); d.pair(2, 
 func (d *dxfWriter) sectionEnd()              { d.pair(0, "ENDSEC") }
 func (d *dxfWriter) eof()                     { d.pair(0, "EOF") }
 
-func (d *dxfWriter) hline(layer string, x1, x2, y float64) {
-	d.line(layer, x1, y, x2, y)
-}
-func (d *dxfWriter) vline(layer string, x, y1, y2 float64) {
-	d.line(layer, x, y1, x, y2)
-}
+func (d *dxfWriter) hline(layer string, x1, x2, y float64) { d.line(layer, x1, y, x2, y) }
+func (d *dxfWriter) vline(layer string, x, y1, y2 float64) { d.line(layer, x, y1, x, y2) }
 func (d *dxfWriter) rect(layer string, x1, y1, x2, y2 float64) {
-	d.hline(layer, x1, x2, y2)
-	d.hline(layer, x1, x2, y1)
-	d.vline(layer, x1, y1, y2)
-	d.vline(layer, x2, y1, y2)
+	d.hline(layer, x1, x2, y2); d.hline(layer, x1, x2, y1)
+	d.vline(layer, x1, y1, y2); d.vline(layer, x2, y1, y2)
 }
 
 func (d *dxfWriter) line(layer string, x1, y1, x2, y2 float64) {
@@ -427,30 +400,48 @@ func (d *dxfWriter) line(layer string, x1, y1, x2, y2 float64) {
 	p(11, fmt.Sprintf("%.4f", x2)); p(21, fmt.Sprintf("%.4f", y2)); p(31, "0.0")
 }
 
-func (d *dxfWriter) text(layer string, x, y, height float64, content string) {
+// mtext writes an MTEXT entity. The text is confined to colW inches; the CAD
+// software wraps it automatically. x,y is the top-left insertion point.
+// Attachment 1 = top-left, so text flows downward from that point.
+func (d *dxfWriter) mtext(layer string, x, y, height, colW float64, content string) {
 	if content == "" {
 		return
 	}
 	p := d.pair
-	p(0, "TEXT"); p(8, layer)
-	p(10, fmt.Sprintf("%.4f", x)); p(20, fmt.Sprintf("%.4f", y)); p(30, "0.0")
-	p(40, fmt.Sprintf("%.4f", height))
-	p(1, dxfEscape(content))
-	p(7, "STANDARD")
+	// Convert Go newlines to MTEXT paragraph separators.
+	safe := mtextEscape(content)
+	p(0, "MTEXT"); p(8, layer)
+	p(10, fmt.Sprintf("%.4f", x))
+	p(20, fmt.Sprintf("%.4f", y))
+	p(30, "0.0")
+	p(40, fmt.Sprintf("%.4f", height)) // character height
+	p(41, fmt.Sprintf("%.4f", colW))   // reference column width (triggers wrapping)
+	p(71, 1)                            // attachment: 1 = top-left
+	p(7, "STANDARD")                   // text style
+	p(1, safe)
 }
 
-// dxfEscape strips control characters and escapes DXF special chars in TEXT strings.
-func dxfEscape(s string) string {
+// mtextEscape converts text for MTEXT group-1 content:
+// newlines become \P, backslashes are doubled, braces/semicolons escaped.
+func mtextEscape(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
 	var b strings.Builder
 	for _, r := range s {
-		if r < 0x20 {
-			continue
-		}
 		switch r {
+		case '\n':
+			b.WriteString(`\P`)
 		case '\\':
-			b.WriteRune('\\'); b.WriteRune('\\')
+			b.WriteString(`\\`)
+		case '{':
+			b.WriteString(`\{`)
+		case '}':
+			b.WriteString(`\}`)
+		case ';':
+			b.WriteString(`\;`)
 		default:
-			b.WriteRune(r)
+			if r >= 0x20 {
+				b.WriteRune(r)
+			}
 		}
 	}
 	return b.String()
