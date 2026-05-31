@@ -130,7 +130,7 @@ func (api mothershipAPI) listSchedules(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "could not load project")
 		return
 	}
-	if api.oauthEnabled && project.OwnerUserID != user.ID {
+	if api.oauthEnabled && !api.canAccessProject(r.Context(), project, user.ID) {
 		writeJSONError(w, http.StatusNotFound, "project not found")
 		return
 	}
@@ -561,6 +561,20 @@ func toScheduleItemResponse(item queries.ScheduleItem) scheduleItemResponse {
 		SourceImageURLs: imgURLs,
 		SourcePDFLinks:  links,
 	}
+}
+
+// canAccessProject returns true when userID is either the project owner or a
+// project member (collaborator). Used by API endpoints that shared-project
+// users should be able to call from the extension.
+func (api mothershipAPI) canAccessProject(ctx context.Context, project queries.Project, userID string) bool {
+	if project.OwnerUserID == userID {
+		return true
+	}
+	_, err := api.queries.GetProjectMember(ctx, queries.GetProjectMemberParams{
+		ProjectID: project.ID,
+		UserID:    userID,
+	})
+	return err == nil
 }
 
 func (api mothershipAPI) requireUser(w http.ResponseWriter, r *http.Request) (queries.User, bool) {
