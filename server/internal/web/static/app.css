@@ -718,25 +718,27 @@ td.col-notes .cell-clamp {
   background: none;
   border: none;
   border-radius: 4px;
-  color: var(--c-text-label);
+  /* Always visible, but muted so it doesn't compete with cell content.
+   * Non-technical users benefit from the persistent affordance. */
+  color: var(--c-text-dim);
   cursor: pointer;
   display: inline-flex;
-  font-size: 15px;
+  font-size: 13px;
   height: 28px;
   justify-content: center;
   line-height: 1;
-  padding: 0;
+  padding: 0 2px;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: color 0.1s, text-decoration-color 0.1s;
   vertical-align: middle;
-  visibility: hidden;
+  visibility: visible;
 }
 
 .detail-row-btn:hover {
-  background: var(--c-surface-hover);
-  color: var(--c-text);
-}
-
-.item-row:hover .detail-row-btn {
-  visibility: visible;
+  color: var(--c-text-link);
+  text-decoration-color: currentColor;
 }
 
 /* Item detail modal */
