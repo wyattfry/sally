@@ -22,12 +22,28 @@ type SallyRuntimeConfig = {
 
 export class ExtractionError extends Error {
   kind: ExtractionErrorKind;
+  requestId?: string;
 
-  constructor(kind: ExtractionErrorKind, message: string) {
+  constructor(kind: ExtractionErrorKind, message: string, requestId?: string) {
     super(message);
     this.name = "ExtractionError";
     this.kind = kind;
+    this.requestId = requestId;
   }
+}
+
+const TIMEOUT_MINUTES = Math.round(EXTRACT_TIMEOUT_MS / 60_000);
+
+function backendMsg(serverMessage: string | undefined, requestId?: string): string {
+  const base = serverMessage?.trim()
+    ? `Sally couldn't process this page: ${serverMessage.trim()}`
+    : "Sally ran into a server error processing this page. Try again, or try a different product page.";
+  return requestId ? `${base} (Request ID: ${requestId})` : base;
+}
+
+function invalidMsg(detail: string, requestId?: string): string {
+  const base = `Something went wrong reading Sally's response — ${detail}`;
+  return requestId ? `${base} (Request ID: ${requestId})` : base;
 }
 
 type ExtractScheduleItemArgs = {
@@ -98,7 +114,7 @@ export async function extractScheduleItem({
             const payload = JSON.parse(data) as ExtractSpecResponse;
             if (!payload.proposal) {
               cleanup();
-              reject(new ExtractionError("invalid", "Extraction response was missing a proposal."));
+              reject(new ExtractionError("invalid", invalidMsg("the response was empty", payload.requestId), payload.requestId));
               return;
             }
             resolved = true;
@@ -106,8 +122,9 @@ export async function extractScheduleItem({
             resolve(toExtractResult(payload, now));
           } else if (event === "error") {
             const payload = JSON.parse(data) as ExtractSpecResponse;
+            const rid = payload?.requestId;
             cleanup();
-            reject(new ExtractionError("backend", payload?.error?.message || "Extraction request failed."));
+            reject(new ExtractionError("backend", backendMsg(payload?.error?.message, rid), rid));
           }
         } else if (msg.type === "ERROR") {
           cleanup();
@@ -115,7 +132,7 @@ export async function extractScheduleItem({
         } else if (msg.type === "DONE") {
           if (!resolved) {
             cleanup();
-            reject(new ExtractionError("invalid", "Stream ended without a completion event."));
+            reject(new ExtractionError("invalid", invalidMsg("the stream ended before Sally finished", request.requestId), request.requestId));
           }
         }
       });
@@ -123,7 +140,7 @@ export async function extractScheduleItem({
       port.onDisconnect.addListener(() => {
         if (!resolved) {
           cleanup();
-          reject(new ExtractionError("transport", "Connection to background script closed unexpectedly."));
+          reject(new ExtractionError("transport", "The connection was interrupted. Please try again.", request.requestId));
         }
       });
 
@@ -135,7 +152,7 @@ export async function extractScheduleItem({
 
       timeoutId = window.setTimeout(() => {
         cleanup();
-        reject(new ExtractionError("transport", "Extraction request timed out."));
+        reject(new ExtractionError("transport", `Sally took too long to read this page — the server didn't respond within ${TIMEOUT_MINUTES} minutes. Try again in a moment.`, request.requestId));
       }, EXTRACT_TIMEOUT_MS);
     });
   }
@@ -153,11 +170,11 @@ export async function extractScheduleItem({
 
     if (!response.ok) {
       const text = await response.text();
-      throw new ExtractionError("backend", text.trim() || "Extraction request failed.");
+      throw new ExtractionError("backend", backendMsg(text.trim() || undefined, request.requestId), request.requestId);
     }
 
     if (!response.body) {
-      throw new ExtractionError("invalid", "Empty response from extraction server.");
+      throw new ExtractionError("invalid", invalidMsg("the server returned an empty response", request.requestId), request.requestId);
     }
 
     const reader = response.body.getReader();
@@ -180,26 +197,27 @@ export async function extractScheduleItem({
         } else if (event === "done") {
           const payload = JSON.parse(data) as ExtractSpecResponse;
           if (!payload.proposal) {
-            throw new ExtractionError("invalid", "Extraction response was missing a proposal.");
+            throw new ExtractionError("invalid", invalidMsg("the response was empty", payload.requestId ?? request.requestId), payload.requestId ?? request.requestId);
           }
           return toExtractResult(payload, now);
         } else if (event === "error") {
           const payload = JSON.parse(data) as ExtractSpecResponse;
-          throw new ExtractionError("backend", payload?.error?.message || "Extraction request failed.");
+          const rid = payload?.requestId ?? request.requestId;
+          throw new ExtractionError("backend", backendMsg(payload?.error?.message, rid), rid);
         }
       }
     }
 
-    throw new ExtractionError("invalid", "Stream ended without a completion event.");
+    throw new ExtractionError("invalid", invalidMsg("the stream ended before Sally finished", request.requestId), request.requestId);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new ExtractionError("transport", "Extraction request timed out.");
+      throw new ExtractionError("transport", `Sally took too long to read this page — the server didn't respond within ${TIMEOUT_MINUTES} minutes. Try again in a moment.`, request.requestId);
     }
     if (error instanceof ExtractionError) {
       throw error;
     }
     if (error instanceof TypeError) {
-      throw new ExtractionError("transport", "Extraction backend is unreachable.");
+      throw new ExtractionError("transport", "Couldn't reach the Sally server. Check your internet connection and try again.", request.requestId);
     }
     throw error;
   } finally {
@@ -307,7 +325,7 @@ function clean(v: string | undefined | null): string {
 function toExtractResult(response: ExtractSpecResponse, now: Date): ExtractScheduleItemResult {
   const proposal = response.proposal;
   if (!proposal) {
-    throw new ExtractionError("invalid", "Extraction response was missing a proposal.");
+    throw new ExtractionError("invalid", invalidMsg("the response was empty", response.requestId), response.requestId);
   }
 
   const data: Record<string, string> = {};

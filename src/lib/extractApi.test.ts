@@ -263,7 +263,7 @@ describe("extractScheduleItem", () => {
       knownCategories: [],
       now: FIXED_NOW
     });
-    const rejection = expect(promise).rejects.toThrow("Extraction request timed out.");
+    const rejection = expect(promise).rejects.toThrow("Sally took too long to read this page");
 
     await vi.advanceTimersByTimeAsync(EXTRACT_TIMEOUT_MS);
 
@@ -288,7 +288,7 @@ describe("extractScheduleItem", () => {
         knownCategories: [],
         now: FIXED_NOW
       })
-    ).rejects.toThrow("Extraction request failed.");
+    ).rejects.toThrow("Sally ran into a server error");
   });
 });
 
