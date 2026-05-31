@@ -298,7 +298,7 @@ func (a app) scheduleSummaries(ctx context.Context, projectID string) ([]schedul
 			Schedule:      s,
 			ItemCount:     len(items),
 			LastUpdated:   last,
-			PreviewImages: collectPreviewImages(items, 3),
+			PreviewImages: collectPreviewImages(items, 6),
 		})
 	}
 	return out, nil
@@ -402,7 +402,7 @@ func (a app) scheduleSummariesWithContractorTotals(ctx context.Context, projectI
 			Schedule:         s,
 			ItemCount:        len(rawItems),
 			LastUpdated:      last,
-			PreviewImages:    collectPreviewImages(rawItems, 3),
+			PreviewImages:    collectPreviewImages(rawItems, 6),
 			ContractorTotals: totals,
 		})
 	}

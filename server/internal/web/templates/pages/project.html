@@ -126,7 +126,7 @@
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       }).then(function () {
-        var container = document.querySelector('.schedule-list');
+        var container = document.querySelector('.schedule-tiles');
         if (!container) return;
         ids.forEach(function (id) {
           var el = document.getElementById('schedule-' + id);
@@ -139,36 +139,38 @@
 <div class="project-layout">
   <div class="schedule-content">
     {{if .Schedules}}
-    <ul class="schedule-list">
+    <div class="schedule-tiles">
       {{range $i, $sched := .Schedules}}
-      <li class="schedule-list-row" id="schedule-{{$sched.Schedule.ID}}">
-        <a class="schedule-list-link" href="{{if eq $.ViewMode "contractor"}}/share/{{$.ShareToken}}/schedules/{{$sched.Schedule.ID}}{{else}}/projects/{{$.Project.ID}}/schedules/{{$sched.Schedule.ID}}{{end}}">
-          <div class="schedule-list-main">
-            <span class="schedule-list-name">{{$sched.Schedule.Name}}{{if eq $sched.Schedule.Kind "note"}} <span class="schedule-list-kind">(note)</span>{{end}}</span>
-            <span class="schedule-list-meta">
-              {{if ne $sched.Schedule.Kind "note"}}<span class="schedule-list-count">{{$sched.ItemCount}} item{{if ne $sched.ItemCount 1}}s{{end}}</span> ·{{end}}
-              {{if and (eq $.ViewMode "contractor") $sched.ContractorTotals (ne $sched.Schedule.Kind "note")}}
-              <span class="schedule-list-subtotal">{{$sched.ContractorTotals.SubtotalDisplay}}</span>
-              {{if or $sched.ContractorTotals.MissingPrice $sched.ContractorTotals.RangePrice}}
-              <span class="schedule-list-warn" title="{{len $sched.ContractorTotals.MissingPrice}} without price, {{len $sched.ContractorTotals.RangePrice}} with price ranges — not included in subtotal">⚠</span>
-              {{end}}
-              ·
-              {{end}}
-              <span class="schedule-list-updated">updated <time class="local-time" datetime="{{isoTime $sched.LastUpdated}}">{{humanTime $sched.LastUpdated}}</time></span>
-            </span>
-            {{if eq $.ViewMode "contractor"}}
-            <span class="schedule-list-hint">Click to view items →</span>
-            {{end}}
-          </div>
+      <a class="schedule-tile" id="schedule-{{$sched.Schedule.ID}}"
+         href="{{if eq $.ViewMode "contractor"}}/share/{{$.ShareToken}}/schedules/{{$sched.Schedule.ID}}{{else}}/projects/{{$.Project.ID}}/schedules/{{$sched.Schedule.ID}}{{end}}">
+        <div class="schedule-tile-thumbs">
           {{if $sched.PreviewImages}}
-          <div class="schedule-list-thumbs">
-            {{range $sched.PreviewImages}}<img class="schedule-list-thumb" src="{{.}}" alt="">{{end}}
+          {{range $sched.PreviewImages}}<img class="schedule-tile-thumb" src="{{.}}" alt="">{{end}}
+          {{else}}
+          <div class="schedule-tile-placeholder">
+            {{if eq $sched.Schedule.Kind "note"}}📝{{else}}📋{{end}}
           </div>
           {{end}}
-        </a>
-      </li>
+        </div>
+        <div class="schedule-tile-body">
+          <p class="schedule-tile-name">{{$sched.Schedule.Name}}{{if eq $sched.Schedule.Kind "note"}} <span class="schedule-list-kind">(note)</span>{{end}}</p>
+          <p class="schedule-tile-meta">
+            {{if ne $sched.Schedule.Kind "note"}}{{$sched.ItemCount}} item{{if ne $sched.ItemCount 1}}s{{end}}{{if eq $.ViewMode "contractor"}} ·{{end}}{{end}}
+            {{if and (eq $.ViewMode "contractor") $sched.ContractorTotals (ne $sched.Schedule.Kind "note")}}
+            {{$sched.ContractorTotals.SubtotalDisplay}}
+            {{if or $sched.ContractorTotals.MissingPrice $sched.ContractorTotals.RangePrice}}
+            <span class="schedule-list-warn" title="{{len $sched.ContractorTotals.MissingPrice}} without price, {{len $sched.ContractorTotals.RangePrice}} with price ranges — not included in subtotal">⚠</span>
+            {{end}}
+            {{end}}
+          </p>
+          <p class="schedule-tile-updated">Updated <time class="local-time" datetime="{{isoTime $sched.LastUpdated}}">{{humanTime $sched.LastUpdated}}</time></p>
+          {{if eq $.ViewMode "contractor"}}
+          <span class="schedule-list-hint">Click to view items →</span>
+          {{end}}
+        </div>
+      </a>
       {{end}}
-    </ul>
+    </div>
     {{else}}
     <div class="empty-state empty-state--centered">
       <div class="empty-state-content">

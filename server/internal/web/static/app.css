@@ -2826,6 +2826,95 @@ details.schedule-section table {
   box-shadow: 0 0 0 2px var(--c-accent, #4f7eff);
 }
 
+/* Schedule tile grid (project page) */
+.schedule-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 0 0 24px;
+}
+
+.schedule-tile {
+  background: white;
+  border: 1px solid var(--c-border-light);
+  border-radius: 10px;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-decoration: none;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.schedule-tile:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+/* Thumbnail grid inside the tile: up to 6 images in a 2×3 arrangement.
+ * Fewer images just fill from top-left; empty slots stay as surface. */
+.schedule-tile-thumbs {
+  aspect-ratio: 4 / 3;
+  background: var(--c-surface-image);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  overflow: hidden;
+  position: relative;
+}
+
+.schedule-tile-thumb {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+/* When there's only one image, let it fill the whole card header. */
+.schedule-tile-thumbs:has(.schedule-tile-thumb:only-child) .schedule-tile-thumb {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+
+.schedule-tile-placeholder {
+  align-items: center;
+  color: var(--c-text-dim);
+  display: flex;
+  font-size: 2rem;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  justify-content: center;
+}
+
+.schedule-tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+}
+
+.schedule-tile-name {
+  color: var(--c-text);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-tile-meta {
+  color: var(--c-text-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.schedule-tile-updated {
+  color: var(--c-text-dim);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* Keep the old list rule around for any remaining references */
 /* Schedule list (project page) */
 .schedule-list {
   list-style: none;
