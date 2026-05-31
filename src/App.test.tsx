@@ -124,7 +124,7 @@ describe("App", () => {
     vi.mocked(shouldAllowMockFallback).mockReturnValue(false);
     vi.mocked(shouldFallbackToMock).mockReturnValue(false);
     vi.mocked(listMothershipProjects).mockResolvedValue([
-      { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z" }
+      { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z", isOwned: true }
     ]);
     vi.mocked(listMothershipSchedules).mockResolvedValue([
       { id: "schedule-1", projectId: "project-1", name: "Bath", kind: "items", notes: "", position: 1 }
@@ -169,8 +169,8 @@ describe("App", () => {
   it("lets the user choose a Mother Ship schedule before saving", async () => {
     const user = userEvent.setup();
     vi.mocked(listMothershipProjects).mockResolvedValue([
-      { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z" },
-      { id: "project-2", name: "Townhouse", address: "307 W38th St.", description: "", updatedAt: "2026-01-01T00:00:00Z" }
+      { id: "project-1", name: "Lake House", address: "24 School St.", description: "", updatedAt: "2026-01-01T00:00:00Z", isOwned: true },
+      { id: "project-2", name: "Townhouse", address: "307 W38th St.", description: "", updatedAt: "2026-01-01T00:00:00Z", isOwned: true }
     ]);
     vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
       projectId === "project-2"
@@ -198,8 +198,8 @@ describe("App", () => {
     const user = userEvent.setup();
     storageState["sally.activeContext"] = { projectId: "project-2", scheduleId: "schedule-2" };
     vi.mocked(listMothershipProjects).mockResolvedValue([
-      { id: "project-1", name: "Newest Project", address: "", description: "", updatedAt: "2026-04-01T00:00:00Z" },
-      { id: "project-2", name: "Older Project", address: "", description: "", updatedAt: "2026-01-01T00:00:00Z" }
+      { id: "project-1", name: "Newest Project", address: "", description: "", updatedAt: "2026-04-01T00:00:00Z", isOwned: true },
+      { id: "project-2", name: "Older Project", address: "", description: "", updatedAt: "2026-01-01T00:00:00Z", isOwned: true }
     ]);
     vi.mocked(listMothershipSchedules).mockImplementation(async (projectId: string) =>
       projectId === "project-1"
@@ -408,6 +408,7 @@ describe("App", () => {
       address: "",
       description: "",
       updatedAt: "2026-01-01T00:00:00Z",
+      isOwned: true,
     }));
 
     render(<App />);
@@ -419,7 +420,7 @@ describe("App", () => {
 
     // Once a project exists, extraction should proceed.
     vi.mocked(listMothershipProjects).mockResolvedValue([
-      { id: "project-new", name: "Main St.", address: "", description: "", updatedAt: "2026-01-01T00:00:00Z" }
+      { id: "project-new", name: "Main St.", address: "", description: "", updatedAt: "2026-01-01T00:00:00Z", isOwned: true }
     ]);
     vi.mocked(listMothershipSchedules).mockResolvedValue([
       { id: "schedule-1", projectId: "project-new", name: "Bath", kind: "items", notes: "", position: 1 }

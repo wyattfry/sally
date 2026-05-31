@@ -26,6 +26,7 @@ export type Project = {
   address: string;
   description: string;
   updatedAt: string;
+  isOwned: boolean;
 };
 
 export type Schedule = {

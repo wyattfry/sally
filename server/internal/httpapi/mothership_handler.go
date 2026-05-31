@@ -74,9 +74,15 @@ func (api mothershipAPI) listProjects(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(merged, func(i, j int) bool {
 		return merged[i].UpdatedAt.After(merged[j].UpdatedAt)
 	})
+	ownedIDs := make(map[string]bool, len(owned))
+	for _, p := range owned {
+		ownedIDs[p.ID] = true
+	}
 	resp := make([]projectResponse, 0, len(merged))
 	for _, p := range merged {
-		resp = append(resp, toProjectResponse(p))
+		r := toProjectResponse(p)
+		r.IsOwned = ownedIDs[p.ID]
+		resp = append(resp, r)
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -470,6 +476,7 @@ type projectResponse struct {
 	Address     string `json:"address"`
 	Description string `json:"description"`
 	UpdatedAt   string `json:"updatedAt"`
+	IsOwned     bool   `json:"isOwned"`
 }
 
 type scheduleResponse struct {

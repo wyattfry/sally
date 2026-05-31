@@ -305,11 +305,27 @@ export function SallyPanel({
               }}
             >
               <option value="" disabled>Select a project...</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
+              {(() => {
+                const owned = projects.filter(p => p.isOwned);
+                const shared = projects.filter(p => !p.isOwned);
+                return (
+                  <>
+                    {owned.length > 0 && (
+                      <optgroup label="My projects">
+                        {owned.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </optgroup>
+                    )}
+                    {shared.length > 0 && (
+                      <optgroup label="Shared with me">
+                        {shared.map(p => <option key={p.id} value={p.id}>{p.name} (shared)</option>)}
+                      </optgroup>
+                    )}
+                    {owned.length === 0 && shared.length === 0 &&
+                      projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                    }
+                  </>
+                );
+              })()}
               <option value={ADD_NEW_VALUE}>New project...</option>
             </select>
           </div>
