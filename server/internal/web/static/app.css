@@ -1618,7 +1618,7 @@ details.schedule-section table {
 
 .project-actions-row {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin: -12px 0 12px;
 }
 

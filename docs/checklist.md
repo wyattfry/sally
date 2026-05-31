@@ -57,35 +57,37 @@ Bugs
 - [x] "[current selected]": this is still happening! investigate again. i had a project with a Windows Schedule with items. I went to a product page for a window, spec'd it, sallypanel wanted to make a new schedule called "Window Schedule [current selected]". 
 - [x] "stale code prefix": project with a schedule with insulation items. spec'd a product page for a window, and it wanted to add it to the insulation schedule (the llm extraction should have decided that the item did not logically fit with the items in the insulation schedule). i opted to add it to a new schedule named 'Window Schedule', the fields in sallypanel correctly updated back to the default fields (no R-Value), but the CODE kept the "I-" prefix from the previous table, when it should have determined a new Code prefix and number. Investigate.
 - [x] "empty custom fields": project with windows schedule with items, i added custom columns: rough opening, overall jamb, swing. i spec'd a window product page, the custom fields were empty. the product page has a Specifications collapsable section with the desired data for the custom fields, check whether the specs were sent to the LLM, if so, investigate why the custom fields came back empty. product page: https://www.homedepot.com/p/Hy-Lite-47-5-in-x-11-5-in-Manchester-Silkscreened-Decorative-Glass-White-New-Construction-Frame-Window-DF4711MCSSWHV1500/331463170
-- [ ] "HTTPS only error": got raw error in extension: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Only HTTPS URLs are supported."},"request_id":"req_011CamiCiV7uMRZHD25TAN8j"}`
-- [ ] "Download failure error": `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Unable to download the file. Please verify the URL and try again."},"request_id":"req_011Camj7gwaZSXvzqSjAht7C"}`
-- [ ] "robots.txt error": extension error: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"This URL is disallowed by the website's robots.txt file."},"request_id":"req_011CamkYhD1i1sJRXQ5rp8zt"}`
-- [ ] project with appliance and paint schedules, spec'd paint, wanted to put it in the appliance schedule, wtf??
 - [x] factor shared projects in selection of most recently changed project default
 - [x] remove image picker from item detail modal
 - [x] change "copy" to "copying" in the about pcage
 - [x] warn if item is out of stock
 - [x] sallypanel: separate owned and shared projects in the project selector
 - [x] sallpypanel project switcher isn't switching to shared projects
-- [ ] actions menu, remove bold from all items
-- [ ] item "Details" button can persist, not just on hover
-- [ ] in project detail view, switch from rows tiles / cards with 
 - [x] sallpy panel "edit columns" -> "edit"
+- [ ] "HTTPS only error": got raw error in extension: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Only HTTPS URLs are supported."},"request_id":"req_011CamiCiV7uMRZHD25TAN8j"}`
+- [ ] "Download failure error": `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"Unable to download the file. Please verify the URL and try again."},"request_id":"req_011Camj7gwaZSXvzqSjAht7C"}`
+- [ ] "robots.txt error": extension error: `provider failure: upstream status 400: {"type":"error","error":{"type":"invalid_request_error","message":"This URL is disallowed by the website's robots.txt file."},"request_id":"req_011CamkYhD1i1sJRXQ5rp8zt"}`
+- [ ] project with appliance and paint schedules, spec'd paint, wanted to put it in the appliance schedule, wtf??
+- [ ] actions menu, remove bold from all items
+
+
+- [x] item "Details" button can persist, not just on hover
+- [x] sallypanel: make file attachments smaller, notes field bigger
+- [x] sallypanel, during extraction show some message
+- [ ] download as DXF to import into drawing, or PDF booklet "project manual", cover page with project header, index, no page break between schedules, same columns as the contractor
+- [ ] notes: LLM instructions: process the "notes" field, we are only interested in info interesting to architects and contractors, e.g. measurments, what the item is, finish, description but not commercial. Things not to include: warranty, certifications, country of origin
+- [ ] in project detail view, switch from rows tiles / cards with 
 - [ ] clicking 'View Items' launches mothership in popup, not new tab
 - [ ] add hint to mothership via 'view projects' to tell user how to keep shopping
-- [ ] sallypanel: make file attachments smaller, notes field bigger
-- [ ] sallypanel, during extraction show some message
-- [ ] lightology melt pendant, LLM got manufactorer as 'Tom Dixon' but that is the designer, the manf is 'Lightology'
-- [ ] notes: LLM instructions: process the "notes" field, we are only interested in info interesting to architects and contractors, e.g. measurments, what the item is, finish, description but not commercial. Things not to include: warranty, certifications, country of origin
-- [ ] share link: share/firstname.lastname/project-slug, warn that on project name change that old share links will break
 - [ ] contractor view: clicking thumbnails should show the same picker as architect view
-- [ ] download as DXF to import into drawing, or PDF booklet "project manual", cover page with project header, index, no page break between schedules, same columns as the contractor
+- [ ] share link: share/firstname.lastname/project-slug, warn that on project name change that old share links will break
 - [ ] about: slide 2, say the button is GREEN. in the intro paragraph say you can also export dxf or pdf project manual
 - [ ] google oauth api: update name or make a new one, atm it is "sally-ci"
-- [ ] sally panel: if LLM server is unavailable, user sees "Connection to background script closed unexpectedly." -- replace with something better
+- [x] sally panel: if LLM server is unavailable, user sees "Connection to background script closed unexpectedly." -- replace with something better
 - [ ] google auth: handle if user has cookies turned off (private mode?)
 - [ ] optimize extraction: build mapping / profile by ecommerce site for where to find which fields on the page
 - [ ] mothership: add way to remove oneself from a shared project
+- [ ] lightology melt pendant, LLM got manufactorer as 'Tom Dixon' but that is the designer, the manf is 'Lightology'
 
 Critical Path
 - [x] add an About page that epxlains what problem this app solves, how to use it, how to install it, FAQs, etc

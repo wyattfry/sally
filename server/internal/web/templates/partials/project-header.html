@@ -50,13 +50,13 @@
       <div class="project-header-text">
         {{if and (not $isContractor) (not .IsOwner)}}<span class="badge-shared">Shared by {{.OwnerDisplayName}}</span>{{end}}
         {{if $isContractor}}
-        <h1>{{.Project.Name}}</h1>
+        <div class="meta-field"><span class="meta-label">Project</span><h1>{{.Project.Name}}</h1></div>
         <div class="meta-field"><span class="meta-label">Created <time class="local-time" datetime="{{isoTime .Project.CreatedAt}}">{{humanTime .Project.CreatedAt}}</time></span></div>
         {{if .Project.Address}}<div class="meta-field"><span class="meta-label">Address</span><span class="meta-value">{{.Project.Address}}</span></div>{{end}}
         {{if .Project.Description}}<div class="meta-field"><span class="meta-label">Description</span><span class="meta-value">{{.Project.Description}}</span></div>{{end}}
         {{else}}
-        <h1 class="editable-h1" data-field="name" title="Click to rename this project" hx-get="/projects/{{.Project.ID}}/fields/name/edit" hx-trigger="click"
-          hx-target="this" hx-swap="outerHTML">{{.Project.Name}}</h1>
+        <div class="meta-field"><span class="meta-label">Project</span><h1 class="editable-h1" data-field="name" title="Click to rename this project" hx-get="/projects/{{.Project.ID}}/fields/name/edit" hx-trigger="click"
+          hx-target="this" hx-swap="outerHTML">{{.Project.Name}}</h1></div>
         <div class="meta-field"><span class="meta-label">Created <time class="local-time" datetime="{{isoTime .Project.CreatedAt}}">{{humanTime .Project.CreatedAt}}</time></span></div>
         <div class="meta-field editable-meta" data-field="address" title="Click to edit the address" hx-get="/projects/{{.Project.ID}}/fields/address/edit"
           hx-trigger="click" hx-target="this" hx-swap="outerHTML">
