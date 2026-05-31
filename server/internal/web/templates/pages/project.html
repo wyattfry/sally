@@ -137,6 +137,9 @@
     }
   </script>
   {{end}}{{/* end {{if not $isContractor}} wrapping sched-reorder dialog */}}
+{{if and (not $isContractor) (lt (sumItemCounts .Schedules) 10)}}
+<div data-new-user="true" hidden></div>
+{{end}}
 <div class="project-layout">
   <div class="schedule-content">
     {{if .Schedules}}

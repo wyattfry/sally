@@ -1941,6 +1941,48 @@ details.schedule-section table {
   opacity: 1;
 }
 
+/* New-user idle hint toast — larger, friendlier, with a close button */
+.hint-toast {
+  background: #fff;
+  border: 1px solid var(--c-border-mid);
+  border-left: 4px solid var(--c-primary-mid);
+  border-radius: 8px;
+  bottom: 28px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 14%);
+  max-width: 320px;
+  padding: 14px 16px 14px 14px;
+  position: fixed;
+  right: 28px;
+  z-index: 9998;
+}
+
+.hint-toast[hidden] {
+  display: none;
+}
+
+.hint-toast-close {
+  background: none;
+  border: none;
+  color: var(--c-text-dim);
+  cursor: pointer;
+  float: right;
+  font-size: 14px;
+  line-height: 1;
+  margin: -2px -4px 0 8px;
+  padding: 2px 4px;
+}
+
+.hint-toast-close:hover {
+  color: var(--c-text);
+}
+
+.hint-toast-body {
+  color: var(--c-text);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* Button size variant */
 .button-sm {
   font-size: 13px;

@@ -12,6 +12,10 @@
   {{$s.Name}}
 </nav>
 {{template "project-header" .}}
+{{$totalItems := 0}}{{range $sw.Groups}}{{range .Items}}{{$totalItems = add $totalItems 1}}{{end}}{{end}}
+{{if and (not $isContractor) (lt $totalItems 10)}}
+<div data-new-user="true" hidden></div>
+{{end}}
 <div class="schedule-page">
   <div class="schedule-page-header">
     {{if $isContractor}}

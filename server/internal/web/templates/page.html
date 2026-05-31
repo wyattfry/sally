@@ -51,6 +51,10 @@
     {{template "content" .}}
   </main>
   <div id="copy-toast" class="copy-toast" aria-live="polite"></div>
+  <div id="hint-toast" class="hint-toast" role="status" hidden>
+    <button class="hint-toast-close" onclick="document.getElementById('hint-toast').hidden=true" aria-label="Dismiss">✕</button>
+    <p class="hint-toast-body">Want to add more items? Go back to a product page (Home Depot, Ferguson, etc.) and click <strong>SPEC</strong> — they'll appear here automatically.</p>
+  </div>
   <footer>
     <div class="footer-inner">
       <ul class="footer-links">
@@ -163,6 +167,37 @@
           pendingCellWidth = null;
         }
       });
+    })();
+    // New-user idle hint: after 7 s of no activity on a project/schedule
+    // page, show a toast explaining how to add more items. Shown only when
+    // the page embeds data-new-user="true" (item count < threshold) and only
+    // once per browser session so it doesn't nag.
+    (function () {
+      var el = document.querySelector('[data-new-user="true"]');
+      if (!el) return;
+      if (sessionStorage.getItem('sally-hint-shown')) return;
+      var toast = document.getElementById('hint-toast');
+      if (!toast) return;
+      var timer;
+      var IDLE_MS = 7000;
+      var AUTODISMISS_MS = 14000;
+      var dismissTimer;
+      function show() {
+        toast.hidden = false;
+        sessionStorage.setItem('sally-hint-shown', '1');
+        dismissTimer = setTimeout(function () { toast.hidden = true; }, AUTODISMISS_MS);
+      }
+      function reset() {
+        clearTimeout(timer);
+        timer = setTimeout(show, IDLE_MS);
+      }
+      ['mousemove', 'scroll', 'keydown', 'touchstart'].forEach(function (ev) {
+        document.addEventListener(ev, reset, { passive: true });
+      });
+      toast.querySelector('.hint-toast-close').addEventListener('click', function () {
+        clearTimeout(dismissTimer);
+      });
+      reset();
     })();
     (function () {
       var now = new Date();

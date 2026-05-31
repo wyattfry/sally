@@ -22,6 +22,15 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 	"userInitials":    func() string { return "" },
 	"userDisplayName": func() string { return "" },
 	"add":         func(a, b int) int { return a + b },
+	// sumItemCounts totals ItemCount across all schedules. Used by the
+	// new-user idle-hint to decide whether to show the toast.
+	"sumItemCounts": func(schedules []scheduleSummary) int {
+		n := 0
+		for _, s := range schedules {
+			n += s.ItemCount
+		}
+		return n
+	},
 	"grandTotalDisplay": func(schedules []scheduleSummary) string {
 		var cents int64
 		var hasAny bool
