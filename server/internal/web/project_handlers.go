@@ -129,6 +129,7 @@ func RegisterRoutes(mux *http.ServeMux, deps Deps) {
 	mux.HandleFunc("GET /admin/api/extraction-logs/{requestID}", a.adminExtractionLogDetailJSON)
 	mux.HandleFunc("POST /projects/{projectID}/members", a.addProjectMember)
 	mux.HandleFunc("POST /projects/{projectID}/members/{memberUserID}/remove", a.removeProjectMember)
+	mux.HandleFunc("POST /projects/{projectID}/leave", a.leaveProject)
 	mux.HandleFunc("GET /share/{token}", a.showPublicShareProject)
 	mux.HandleFunc("GET /share/{token}/schedules/{scheduleID}", a.showPublicShareSchedule)
 }

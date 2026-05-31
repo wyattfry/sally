@@ -17,6 +17,12 @@
         onsubmit="return confirm('Delete this project and all its schedules and items? This cannot be undone.')">
         <button type="submit" class="actions-menu-item actions-menu-item--danger">Delete project</button>
       </form>
+      {{else}}
+      <div class="actions-menu-divider"></div>
+      <form method="post" action="/projects/{{.Project.ID}}/leave"
+        onsubmit="return confirm('Remove yourself from this project? You will no longer have access.')">
+        <button type="submit" class="actions-menu-item actions-menu-item--danger">Leave project</button>
+      </form>
       {{end}}
     </div>
   </details>

@@ -105,7 +105,11 @@ func (a app) loadUserProjectAsOwner(w http.ResponseWriter, r *http.Request, proj
 		http.Error(w, "could not load project", http.StatusInternalServerError)
 		return queries.User{}, queries.Project{}, false
 	}
-	if a.oauthConfig != nil && project.OwnerUserID != user.ID {
+	// Always enforce owner check — not just when OAuth is enabled.
+	// Dev mode returns a consistent devUserEmail user, so if that user
+	// isn't the project owner (e.g. in tests with multiple users) the
+	// guard must still fire.
+	if project.OwnerUserID != user.ID {
 		a.renderNotFound(w, r)
 		return queries.User{}, queries.Project{}, false
 	}
