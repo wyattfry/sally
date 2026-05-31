@@ -65,11 +65,12 @@ Bugs
 - [x] remove image picker from item detail modal
 - [x] change "copy" to "copying" in the about pcage
 - [x] warn if item is out of stock
+- [x] sallypanel: separate owned and shared projects in the project selector
+- [x] sallpypanel project switcher isn't switching to shared projects
 - [ ] actions menu, remove bold from all items
 - [ ] item "Details" button can persist, not just on hover
-- [ ] sallpypanel project switcher isn't switching to shared projects
 - [ ] in project detail view, switch from rows tiles / cards with 
-- [ ] sallpy panel "edit columns" -> "edit"
+- [x] sallpy panel "edit columns" -> "edit"
 - [ ] clicking 'View Items' launches mothership in popup, not new tab
 - [ ] add hint to mothership via 'view projects' to tell user how to keep shopping
 - [ ] sallypanel: make file attachments smaller, notes field bigger

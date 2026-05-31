@@ -571,9 +571,30 @@
   box-shadow: 0 0 0 2px var(--c-accent);
 }
 
+.pdf-summary {
+  display: grid;
+  gap: 6px;
+}
+
+.pdf-summary-toggle {
+  background: none;
+  border: none;
+  color: var(--c-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+}
+
+.pdf-summary-toggle:hover {
+  color: var(--c-text);
+}
+
 .source-links {
   display: grid;
   gap: 6px;
+  padding-left: 12px;
 }
 
 .source-link {

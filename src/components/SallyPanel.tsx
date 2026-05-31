@@ -68,6 +68,7 @@ export function SallyPanel({
   const [editColumns, setEditColumns] = useState<ScheduleColumn[]>([]);
   const [addColLabel, setAddColLabel] = useState("");
   const [colError, setColError] = useState<string | null>(null);
+  const [pdfsExpanded, setPdfsExpanded] = useState(false);
 
   useEffect(() => {
     if (suggestedNewScheduleName) {
@@ -177,7 +178,7 @@ export function SallyPanel({
           <div className="panel-modal" role="dialog" aria-modal="true">
             {modal === "columns" ? (
               <>
-                <p className="panel-modal-title">Edit Columns</p>
+                <p className="panel-modal-title">Edit Fields</p>
                 <ul className="col-edit-list">
                   {editColumns.map((col, i) => (
                     <li key={col.id} className="col-edit-row">
@@ -317,7 +318,7 @@ export function SallyPanel({
                     )}
                     {shared.length > 0 && (
                       <optgroup label="Shared with me">
-                        {shared.map(p => <option key={p.id} value={p.id}>{p.name} (shared)</option>)}
+                        {shared.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </optgroup>
                     )}
                     {owned.length === 0 && shared.length === 0 &&
@@ -367,6 +368,8 @@ export function SallyPanel({
           </div>
         ) : panel.kind === "thinking" ? (
           <div className="skeleton-panel" aria-busy="true" aria-label="Reading product…">
+          <div aria-hidden="true" className="thinking-spinner" />
+          <p>Reading product information and drafting a schedule item.</p>
             <div className="skeleton-image" />
             {["90%","75%","60%","82%","70%","55%"].map((w, i) => (
               <div key={i} className="skeleton-field">
@@ -466,7 +469,7 @@ export function SallyPanel({
                   ) : col.key === "notes" ? (
                     <textarea
                       id={`sally-col-${col.key}`}
-                      rows={3}
+                      rows={6}
                       value={draft?.data[col.key] ?? ""}
                       onChange={(event) => updateData(col.key, event.target.value)}
                     />
@@ -488,12 +491,24 @@ export function SallyPanel({
             })()}
 
             {draft?.sourcePdfLinks?.length ? (
-              <div className="source-links">
-                {draft.sourcePdfLinks.map((link) => (
-                  <a className="source-link" href={link} key={link} rel="noreferrer" target="_blank">
-                    {link}
-                  </a>
-                ))}
+              <div className="pdf-summary">
+                <button
+                  type="button"
+                  className="pdf-summary-toggle"
+                  onClick={() => setPdfsExpanded(x => !x)}
+                  aria-expanded={pdfsExpanded}
+                >
+                  {pdfsExpanded ? "▾" : "▸"} Found {draft.sourcePdfLinks.length} PDF spec sheet{draft.sourcePdfLinks.length !== 1 ? "s" : ""}
+                </button>
+                {pdfsExpanded && (
+                  <div className="source-links">
+                    {draft.sourcePdfLinks.map((link) => (
+                      <a className="source-link" href={link} key={link} rel="noreferrer" target="_blank">
+                        {link}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : null}
           </>
@@ -520,7 +535,7 @@ export function SallyPanel({
               setModal("columns");
             }}
           >
-            Edit Columns
+            Edit
           </button>
         ) : null}
         <button className="action-button secondary" type="button" onClick={onCancel}>
